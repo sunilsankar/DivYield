@@ -189,7 +189,7 @@ async def sync_trading212(progress_cb: Optional[Callable[[int, int, str], None]]
                 if active_external_ids:
                     placeholders = ",".join("?" for _ in active_external_ids)
                     conn.execute(
-                        f"DELETE FROM holdings WHERE provider = 'trading212' AND external_id NOT IN ({placeholders});",
+                        f"DELETE FROM holdings WHERE provider = 'trading212' AND external_id NOT IN ({placeholders});",  # nosec B608
                         list(active_external_ids),
                     )
                 else:

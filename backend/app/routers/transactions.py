@@ -37,7 +37,7 @@ async def get_transactions(
         cursor = conn.cursor()
 
         # Count total matching rows
-        cursor.execute(f"SELECT COUNT(*) as cnt FROM transactions {where_clause};", params)
+        cursor.execute(f"SELECT COUNT(*) as cnt FROM transactions {where_clause};", params)  # nosec B608
         row = cursor.fetchone()
         total_count = row["cnt"] if row else 0
 
@@ -50,7 +50,7 @@ async def get_transactions(
             {where_clause}
             ORDER BY date DESC, id DESC
             LIMIT ? OFFSET ?;
-        """
+        """  # nosec B608
         cursor.execute(query_sql, params + [limit_val, offset_val])
         rows = cursor.fetchall()
 
