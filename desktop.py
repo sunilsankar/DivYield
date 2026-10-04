@@ -4,13 +4,21 @@ import socket
 import sys
 import threading
 import time
-import webview
-import uvicorn
 from pathlib import Path
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Ensure backend directory is in sys.path so app.* imports work properly
+base_dir = Path(__file__).resolve().parent
+backend_dir = base_dir / "backend"
+if backend_dir.exists() and str(backend_dir) not in sys.path:
+    sys.path.insert(0, str(backend_dir))
+
+import uvicorn
+import webview
+from app.main import app as fastapi_app
 
 def find_free_port():
     """Finds a free port on localhost."""
@@ -19,9 +27,9 @@ def find_free_port():
         return s.getsockname()[1]
 
 def run_server(port: int):
-    """Runs the FastAPI server via uvicorn."""
+    """Runs the FastAPI server via uvicorn with direct app instance."""
     # We must run it without reload in desktop mode
-    uvicorn.run("backend.app.main:app", host="127.0.0.1", port=port, log_level="warning")
+    uvicorn.run(fastapi_app, host="127.0.0.1", port=port, log_level="warning")
 
 def main():
     parser = argparse.ArgumentParser(description="DivYield Desktop App")

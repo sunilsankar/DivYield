@@ -1,106 +1,129 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-@layer base {
-  :root {
-    /* Color Grading Defaults (Apple System Blue & macOS Canvas) */
-    --primary: 0 122 255;          /* #007aff */
-    --primary-hover: 0 113 227;    /* #0071e3 Apple button hover */
-    --primary-light: 240 248 255;  /* #f0f8ff */
-    --primary-ring: 179 215 255;   /* #b3d7ff */
-    --primary-text: #0071e3;
-    --primary-gradient: linear-gradient(135deg, #007aff 0%, #0071e3 100%);
-    --bg-page: #f5f5f7;            /* macOS standard window background */
-    --text-main: #1d1d1f;          /* macOS high-contrast text */
-  }
+@theme {
+  --color-primary: rgb(var(--primary));
+  --color-primary-hover: rgb(var(--primary-hover));
+  --color-primary-light: rgb(var(--primary-light));
+  --color-primary-ring: rgb(var(--primary-ring));
 
-  /* Color Grading Palettes */
-  [data-color="emerald"] {
-    --primary: 16 185 129;         /* #10b981 */
-    --primary-hover: 5 150 105;   /* #059669 */
-    --primary-light: 236 253 245; /* #ecfdf5 */
-    --primary-ring: 167 243 208;  /* #a7f3d0 */
-    --primary-text: #047857;
-    --primary-gradient: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  }
+  --color-paper-50: #f8fafc;
+  --color-paper-100: #f1f5f9;
+  --color-paper-200: #e2e8f0;
+  --color-paper-300: #cbd5e1;
+  --color-paper-light: #f8fafc;
+  --color-paper-dark: #0f172a;
 
-  [data-color="amber"] {
-    --primary: 245 158 11;         /* #f59e0b */
-    --primary-hover: 217 119 6;   /* #d97706 */
-    --primary-light: 254 243 199; /* #fef3c7 */
-    --primary-ring: 253 230 138;  /* #fde68a */
-    --primary-text: #b45309;
-    --primary-gradient: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-  }
+  --color-ink-900: #0f172a;
+  --color-ink-800: #1e293b;
+  --color-ink-700: #334155;
+  --color-ink-muted: #64748b;
 
-  [data-color="rose"] {
-    --primary: 244 63 94;          /* #f43f5e */
-    --primary-hover: 225 29 72;   /* #e11d48 */
-    --primary-light: 255 241 242; /* #fff1f2 */
-    --primary-ring: 254 205 211;  /* #fecdd3 */
-    --primary-text: #be123c;
-    --primary-gradient: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%);
-  }
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Inter, "Segoe UI", Roboto, sans-serif;
+  --font-sketch: "Architects Daughter", cursive, sans-serif;
+  --font-hand: "Patrick Hand", cursive, sans-serif;
 
-  [data-color="ocean"] {
-    --primary: 14 165 233;         /* #0ea5e9 */
-    --primary-hover: 2 132 199;   /* #0284c7 */
-    --primary-light: 240 249 255; /* #f0f9ff */
-    --primary-ring: 186 230 253;  /* #bae6fd */
-    --primary-text: #0369a1;
-    --primary-gradient: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
-  }
+  --shadow-soft: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+  --shadow-soft-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-soft-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.07), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+}
 
-  /* Modern Theme Base */
-  body {
-    background-color: var(--bg-page);
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", "Inter", sans-serif;
-    color: var(--text-main, #1d1d1f);
-    letter-spacing: -0.012em;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    transition: background-color 0.25s ease;
-  }
+:root {
+  /* Color Grading Defaults (Apple System Blue & macOS Canvas) */
+  --primary: 0 122 255;          /* #007aff */
+  --primary-hover: 0 113 227;    /* #0071e3 Apple button hover */
+  --primary-light: 240 248 255;  /* #f0f8ff */
+  --primary-ring: 179 215 255;   /* #b3d7ff */
+  --primary-text: #0071e3;
+  --primary-gradient: linear-gradient(135deg, #007aff 0%, #0071e3 100%);
+  --bg-page: #f5f5f7;            /* macOS standard window background */
+  --text-main: #1d1d1f;          /* macOS high-contrast text */
+}
 
-  /* Sketch Theme Overrides */
-  [data-style="sketch"] {
-    --paper-bg: #faf7f2;
-    --paper-grid: rgba(24, 24, 27, 0.06);
-  }
+/* Color Grading Palettes */
+[data-color="emerald"] {
+  --primary: 16 185 129;         /* #10b981 */
+  --primary-hover: 5 150 105;   /* #059669 */
+  --primary-light: 236 253 245; /* #ecfdf5 */
+  --primary-ring: 167 243 208;  /* #a7f3d0 */
+  --primary-text: #047857;
+  --primary-gradient: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
 
-  [data-style="sketch"] body {
-    background-color: var(--paper-bg) !important;
-    background-image: 
-      linear-gradient(var(--paper-grid) 1px, transparent 1px),
-      linear-gradient(90deg, var(--paper-grid) 1px, transparent 1px) !important;
-    background-size: 24px 24px !important;
-  }
+[data-color="amber"] {
+  --primary: 245 158 11;         /* #f59e0b */
+  --primary-hover: 217 119 6;   /* #d97706 */
+  --primary-light: 254 243 199; /* #fef3c7 */
+  --primary-ring: 253 230 138;  /* #fde68a */
+  --primary-text: #b45309;
+  --primary-gradient: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+}
 
-  [data-style="sketch"],
-  [data-style="sketch"] body,
-  [data-style="sketch"] .font-sans,
-  [data-style="sketch"] p,
-  [data-style="sketch"] span,
-  [data-style="sketch"] td,
-  [data-style="sketch"] th,
-  [data-style="sketch"] div,
-  [data-style="sketch"] button,
-  [data-style="sketch"] input,
-  [data-style="sketch"] select {
-    font-family: 'Patrick Hand', 'Comic Neue', cursive, sans-serif !important;
-    letter-spacing: 0.015em;
-  }
+[data-color="rose"] {
+  --primary: 244 63 94;          /* #f43f5e */
+  --primary-hover: 225 29 72;   /* #e11d48 */
+  --primary-light: 255 241 242; /* #fff1f2 */
+  --primary-ring: 254 205 211;  /* #fecdd3 */
+  --primary-text: #be123c;
+  --primary-gradient: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%);
+}
 
-  [data-style="sketch"] h1,
-  [data-style="sketch"] h2,
-  [data-style="sketch"] h3,
-  [data-style="sketch"] h4,
-  [data-style="sketch"] .font-sketch,
-  [data-style="sketch"] .font-heading {
-    font-family: 'Architects Daughter', cursive, sans-serif !important;
-    letter-spacing: -0.01em;
-  }
+[data-color="ocean"] {
+  --primary: 14 165 233;         /* #0ea5e9 */
+  --primary-hover: 2 132 199;   /* #0284c7 */
+  --primary-light: 240 249 255; /* #f0f9ff */
+  --primary-ring: 186 230 253;  /* #bae6fd */
+  --primary-text: #0369a1;
+  --primary-gradient: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+}
+
+/* Modern Theme Base */
+body {
+  background-color: var(--bg-page);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", "Inter", sans-serif;
+  color: var(--text-main, #1d1d1f);
+  letter-spacing: -0.012em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.25s ease;
+}
+
+/* Sketch Theme Overrides */
+[data-style="sketch"] {
+  --paper-bg: #faf7f2;
+  --paper-grid: rgba(24, 24, 27, 0.06);
+}
+
+[data-style="sketch"] body {
+  background-color: var(--paper-bg) !important;
+  background-image: 
+    linear-gradient(var(--paper-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--paper-grid) 1px, transparent 1px) !important;
+  background-size: 24px 24px !important;
+}
+
+[data-style="sketch"],
+[data-style="sketch"] body,
+[data-style="sketch"] .font-sans,
+[data-style="sketch"] p,
+[data-style="sketch"] span,
+[data-style="sketch"] td,
+[data-style="sketch"] th,
+[data-style="sketch"] div,
+[data-style="sketch"] button,
+[data-style="sketch"] input,
+[data-style="sketch"] select {
+  font-family: 'Patrick Hand', 'Comic Neue', cursive, sans-serif !important;
+  letter-spacing: 0.015em;
+}
+
+[data-style="sketch"] h1,
+[data-style="sketch"] h2,
+[data-style="sketch"] h3,
+[data-style="sketch"] h4,
+[data-style="sketch"] .font-sketch,
+[data-style="sketch"] .font-heading {
+  font-family: 'Architects Daughter', cursive, sans-serif !important;
+  letter-spacing: -0.01em;
 }
 
 /* Sketch Theme Card & Button styling */
