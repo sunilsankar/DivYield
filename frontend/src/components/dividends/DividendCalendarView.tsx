@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   Calendar as CalendarIcon,
   ChevronLeft,
@@ -9,6 +9,9 @@ import {
   Clock,
   Sparkles,
   X,
+  Coins,
+  PieChart,
+  Info,
 } from "lucide-react";
 import { ApiDividendItem, ApiHolding, Holding } from "../../types";
 import { formatCurrency } from "../../lib/utils";
@@ -39,6 +42,10 @@ export const DividendCalendarView: React.FC<DividendCalendarViewProps> = ({
     dateStr: string;
     events: Array<ApiDividendItem & { displayStatus: "RECEIVED" | "EXPECTED"; companyName: string }>;
   } | null>(null);
+  const [expandedStockEvent, setExpandedStockEvent] = useState<(ApiDividendItem & {
+    displayStatus: "RECEIVED" | "EXPECTED";
+    companyName: string;
+  }) | null>(null);
 
   // Map holdings for fast company name resolution
   const holdingsNameMap = useMemo(() => {
@@ -50,6 +57,28 @@ export const DividendCalendarView: React.FC<DividendCalendarViewProps> = ({
     });
     return map;
   }, [holdings]);
+
+  // Find matching holding for expanded stock event
+  const matchingHolding = useMemo(() => {
+    if (!expandedStockEvent) return null;
+    const cleanTicker = expandedStockEvent.ticker.replace(/_US_EQ|_NL_EQ|_UK_EQ|_DE_EQ|\.US|\.AS|\.L/i, "").toUpperCase();
+    return holdings.find((h) => {
+      const hClean = (h.ticker || "").replace(/_US_EQ|_NL_EQ|_UK_EQ|_DE_EQ|\.US|\.AS|\.L/i, "").toUpperCase();
+      return hClean === cleanTicker;
+    });
+  }, [expandedStockEvent, holdings]);
+
+  // Handle escape key closing
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setExpandedStockEvent(null);
+        setSelectedDayEvents(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   // Combine both dividend sources and attach resolved company names
   const allEvents = useMemo(() => {
@@ -549,11 +578,15 @@ export const DividendCalendarView: React.FC<DividendCalendarViewProps> = ({
                       return (
                         <div
                           key={eIdx}
-                          title={`${ev.ticker}: ${ev.companyName} (${formatCurrency(ev.amount, currency)})`}
-                          className={`text-[10px] px-1.5 py-0.5 rounded truncate flex items-center justify-between border ${
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setExpandedStockEvent(ev);
+                          }}
+                          title={`Click to expand ${ev.ticker}: ${ev.companyName} (${formatCurrency(ev.amount, currency)})`}
+                          className={`text-[10px] px-1.5 py-0.5 rounded truncate flex items-center justify-between border cursor-pointer transition-all duration-150 hover:scale-[1.02] active:scale-[0.98] ${
                             isRec
-                              ? "bg-emerald-50 text-emerald-900 border-emerald-200/80"
-                              : "bg-indigo-50 text-indigo-900 border-indigo-200/80"
+                              ? "bg-emerald-50 text-emerald-900 border-emerald-200/80 hover:bg-emerald-100/90 shadow-2xs"
+                              : "bg-indigo-50 text-indigo-900 border-indigo-200/80 hover:bg-indigo-100/90 shadow-2xs"
                           }`}
                         >
                           <span className="font-bold mr-1">{ev.ticker}</span>
@@ -582,7 +615,7 @@ export const DividendCalendarView: React.FC<DividendCalendarViewProps> = ({
 
       {/* SELECTED DAY POPUP / DRAWER */}
       {selectedDayEvents && (
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-md p-6 relative">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-md p-6 relative animate-fade-in-up">
           <button
             onClick={() => setSelectedDayEvents(null)}
             className="absolute top-5 right-5 p-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-500 transition-colors"
@@ -604,7 +637,9 @@ export const DividendCalendarView: React.FC<DividendCalendarViewProps> = ({
             {selectedDayEvents.events.map((ev, i) => (
               <div
                 key={i}
-                className="bg-slate-50/70 p-3.5 rounded-xl border border-slate-200 flex flex-col justify-between"
+                onClick={() => setExpandedStockEvent(ev)}
+                title="Click to view full details"
+                className="bg-slate-50/70 hover:bg-slate-100/90 p-3.5 rounded-xl border border-slate-200 hover:border-primary/60 flex flex-col justify-between cursor-pointer transition-all duration-150 hover:shadow-xs"
               >
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
@@ -745,7 +780,9 @@ export const DividendCalendarView: React.FC<DividendCalendarViewProps> = ({
                   return (
                     <tr
                       key={e.id || idx}
-                      className="hover:bg-slate-50/70 transition-colors"
+                      onClick={() => setExpandedStockEvent(e)}
+                      title="Click to view detailed payout breakdown"
+                      className="hover:bg-slate-50/80 cursor-pointer transition-colors"
                     >
                       {/* Ticker AND Company Name with Logo */}
                       <td className="py-3 px-3">
@@ -807,6 +844,151 @@ export const DividendCalendarView: React.FC<DividendCalendarViewProps> = ({
           </div>
         )}
       </div>
+
+      {/* EXPANDED STOCK DETAIL MODAL */}
+      {expandedStockEvent && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in-up"
+          onClick={() => setExpandedStockEvent(null)}
+        >
+          <div
+            className="bg-white rounded-2xl max-w-lg w-full border border-slate-200 shadow-2xl p-6 relative overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header / Identity */}
+            <div className="flex items-start justify-between pb-4 border-b border-slate-100">
+              <div className="flex items-center gap-3.5">
+                <StockLogo ticker={expandedStockEvent.ticker} size="lg" />
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-xl font-bold text-slate-900 font-heading">
+                      {expandedStockEvent.ticker}
+                    </h3>
+                    <span
+                      className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                        expandedStockEvent.displayStatus === "RECEIVED"
+                          ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                          : "bg-indigo-50 text-indigo-800 border-indigo-200"
+                      }`}
+                    >
+                      {expandedStockEvent.displayStatus === "RECEIVED" ? "Paid / Received" : "Scheduled / Expected"}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5 line-clamp-1" title={expandedStockEvent.companyName}>
+                    {expandedStockEvent.companyName}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setExpandedStockEvent(null)}
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Payout Hero Strip */}
+            <div className="my-5 p-4 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 block mb-0.5">
+                  DIVIDEND PAYOUT AMOUNT
+                </span>
+                <div className="text-2xl font-bold font-mono text-slate-900">
+                  {formatCurrency(expandedStockEvent.amount, currency)}
+                </div>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-primary-light flex items-center justify-center text-primary">
+                <Coins className="w-5 h-5" />
+              </div>
+            </div>
+
+            {/* Key Dates Grid */}
+            <div className="grid grid-cols-3 gap-2.5 mb-5 text-center">
+              <div className="p-2.5 rounded-xl border border-slate-100 bg-slate-50/50">
+                <span className="text-[10px] text-slate-400 font-medium block">Payment Date</span>
+                <span className="text-xs font-semibold text-slate-800 block mt-0.5">
+                  {expandedStockEvent.payment_date || "Pending"}
+                </span>
+              </div>
+              <div className="p-2.5 rounded-xl border border-slate-100 bg-slate-50/50">
+                <span className="text-[10px] text-slate-400 font-medium block">Ex-Dividend</span>
+                <span className="text-xs font-semibold text-slate-800 block mt-0.5">
+                  {expandedStockEvent.ex_dividend_date || "—"}
+                </span>
+              </div>
+              <div className="p-2.5 rounded-xl border border-slate-100 bg-slate-50/50">
+                <span className="text-[10px] text-slate-400 font-medium block">Record Date</span>
+                <span className="text-xs font-semibold text-slate-800 block mt-0.5">
+                  {expandedStockEvent.record_date || "—"}
+                </span>
+              </div>
+            </div>
+
+            {/* Portfolio Position Context (if found) */}
+            {matchingHolding ? (() => {
+              const qty = "quantity" in matchingHolding ? matchingHolding.quantity : (matchingHolding as any).shares || 0;
+              const val = "market_value" in matchingHolding ? matchingHolding.market_value : (matchingHolding as any).value || 0;
+              const yld = "dividend_yield" in matchingHolding ? matchingHolding.dividend_yield : (matchingHolding as any).dividendYield || 0;
+              const sec = matchingHolding.sector || "Equities";
+
+              return (
+                <div className="p-4 rounded-xl border border-slate-200/80 bg-white mb-5 space-y-2.5">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+                    <PieChart className="w-3.5 h-3.5 text-primary" />
+                    <span>Portfolio Position Overview</span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-xs">
+                    <div>
+                      <span className="text-[10px] text-slate-400 block">Shares Held</span>
+                      <span className="font-semibold text-slate-800 font-mono">
+                        {qty.toFixed(qty % 1 === 0 ? 0 : 3)}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 block">Market Value</span>
+                      <span className="font-semibold text-slate-800 font-mono">
+                        {formatCurrency(val, currency)}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 block">Current Yield</span>
+                      <span className="font-semibold text-emerald-600 font-mono">
+                        {yld ? `${(yld * 100).toFixed(2)}%` : "—"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 block">Sector</span>
+                      <span className="font-semibold text-slate-800 truncate block">
+                        {sec}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })() : (
+              <div className="p-3.5 rounded-xl border border-slate-100 bg-slate-50/50 mb-5 flex items-center gap-2.5 text-xs text-slate-500">
+                <Info className="w-4 h-4 text-slate-400 shrink-0" />
+                <span>Historical payout record or mapped dividend event for {expandedStockEvent.ticker}.</span>
+              </div>
+            )}
+
+            {/* Footer */}
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+              <span className="text-[11px] text-slate-400">
+                Source: <span className="font-medium text-slate-600">{expandedStockEvent.source || (expandedStockEvent.displayStatus === "RECEIVED" ? "Trading 212" : "EODHD")}</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setExpandedStockEvent(null)}
+                className="px-4 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-medium transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

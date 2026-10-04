@@ -111,12 +111,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange }) => 
                 onClick={() => onTabChange(item.id)}
                 className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 text-left ${
                   isActive
-                    ? "bg-indigo-50 text-indigo-700 shadow-xs font-semibold translate-x-0.5"
+                    ? "bg-primary-light text-primary shadow-xs font-semibold translate-x-0.5"
                     : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
                 }`}
               >
                 <div className="flex items-center gap-2.5">
-                  <span className={`transition-colors duration-200 ${isActive ? "text-indigo-600" : "text-slate-400 group-hover:text-slate-600"}`}>
+                  <span className={`transition-colors duration-200 ${isActive ? "text-primary" : "text-slate-400 group-hover:text-slate-600"}`}>
                     {item.icon}
                   </span>
                   <span>{item.label}</span>
@@ -125,7 +125,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange }) => 
                   <span
                     className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
                       isActive
-                        ? "bg-indigo-100 text-indigo-700"
+                        ? "bg-primary-light text-primary font-semibold"
                         : "bg-slate-100 text-slate-600"
                     }`}
                   >
