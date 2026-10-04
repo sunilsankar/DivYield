@@ -304,6 +304,17 @@ DivYield operates locally on your machine.
 
 ---
 
+## Documentation
+
+- [Installation & Deployment Guide](docs/INSTALLATION.md)
+- [Architecture & System Design](docs/ARCHITECTURE.md)
+- [Database Schema & ER Diagram](docs/SCHEMA.md)
+- [API v1 Specification](docs/API.md)
+- [Functional Specification](docs/SPECIFICATION.md)
+- [Netherlands Box 3 Tax Specification](docs/TAX.md)
+
+---
+
 ## License
 
-MIT License. See [LICENSE](LICENSE) for details.
+Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for details.
