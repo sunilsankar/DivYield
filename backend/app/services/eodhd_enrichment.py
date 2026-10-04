@@ -13,7 +13,7 @@ from typing import Dict, Any, List, Optional, Tuple
 from app.config import settings
 from app.credentials import get_eodhd_credentials
 from app.database import get_db_connection
-from app.providers.eodhd import EODHDClient, EODHDError, EODHDAuthError
+from app.providers.eodhd import EODHDClient, EODHDError, EODHDAuthError, EODHDPlanLimitError
 
 
 def resolve_eodhd_symbol(ticker: str, conn: sqlite3.Connection) -> Tuple[str, str]:
@@ -68,6 +68,7 @@ class EODHDEnrichmentService:
     def __init__(self, client: Optional[EODHDClient] = None):
         self._client = client
         self._has_fundamentals: bool = True
+        self._quota_exceeded: bool = False
 
     def _get_client(self) -> EODHDClient:
         if self._client:
@@ -116,7 +117,12 @@ class EODHDEnrichmentService:
             fx_rate = float(h["fx_rate"] or 1.0)
             existing_sector = h["sector"]
 
+            if self._quota_exceeded:
+                return
+
             async with sem:
+                if self._quota_exceeded:
+                    return
                 try:
                     with get_db_connection() as conn:
                         eodhd_symbol, confidence = resolve_eodhd_symbol(ticker, conn)
@@ -267,9 +273,14 @@ class EODHDEnrichmentService:
                         instruments_enriched += 1
                         dividend_events_added += events_added_this_holding
 
+                except EODHDPlanLimitError:
+                    self._quota_exceeded = True
                 except Exception as exc:
-                    async with lock:
-                        errors.append(f"Error enriching {ticker}: {str(exc)}")
+                    if "402" in str(exc):
+                        self._quota_exceeded = True
+                    else:
+                        async with lock:
+                            errors.append(f"Error enriching {ticker}: {str(exc)}")
 
                 finally:
                     async with lock:
@@ -284,6 +295,16 @@ class EODHDEnrichmentService:
         # Run concurrent enrichment tasks
         tasks = [_enrich_one(h) for h in holdings]
         await asyncio.gather(*tasks)
+
+        if self._quota_exceeded:
+            return {
+                "success": True,
+                "quota_exceeded": True,
+                "message": f"Enriched {instruments_enriched} instruments. Note: EODHD HTTP 402 quota/plan limit reached (free tier is 20 calls/day); all Trading 212 data is intact.",
+                "instruments_enriched": instruments_enriched,
+                "dividend_events_added": dividend_events_added,
+                "errors": [],
+            }
 
         return {
             "success": len(errors) == 0,

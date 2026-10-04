@@ -151,6 +151,14 @@ def test_eodhd_client_statuses():
             assert res["status"] == "invalid_credentials"
             assert res["has_dividend_calendar"] is False
 
+        # 4. Base 402 -> subscription_limit
+        r_base_402 = httpx.Response(402, text="Daily limit reached", request=httpx.Request("GET", "https://test"))
+        with patch("httpx.AsyncClient.get", new_callable=AsyncMock) as mock_get:
+            mock_get.return_value = r_base_402
+            res = await client_eodhd.test_connection()
+            assert res["status"] == "subscription_limit"
+            assert res["has_dividend_calendar"] is False
+
     asyncio.run(_run_tests())
 
 

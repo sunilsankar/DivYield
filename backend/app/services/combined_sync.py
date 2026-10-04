@@ -104,7 +104,10 @@ async def run_combined_sync() -> Dict[str, Any]:
                 try:
                     enrich_service = EODHDEnrichmentService()
                     enrich_res = await enrich_service.enrich_portfolio(progress_cb=update_sync_progress)
-                    eodhd_status_str = "connected" if enrich_res.get("success") else "partial_error"
+                    if enrich_res.get("quota_exceeded"):
+                        eodhd_status_str = "quota_limited"
+                    else:
+                        eodhd_status_str = "connected" if enrich_res.get("success") else "partial_error"
                     set_setting("eodhd_last_enriched", now_iso)
                     set_setting("eodhd_sync_status", eodhd_status_str)
                 except Exception as exc:
@@ -121,7 +124,7 @@ async def run_combined_sync() -> Dict[str, Any]:
             # Step 3: Record combined sync in sync_log
             update_sync_progress(8, 8, "Finalizing combined sync...")
             overall_success = t212_res.get("success", False) and (
-                eodhd_status_str in ("connected", "not_configured", "skipped")
+                eodhd_status_str in ("connected", "quota_limited", "not_configured", "skipped")
             )
             total_items = (
                 t212_res.get("holdings_count", 0)
@@ -141,7 +144,11 @@ async def run_combined_sync() -> Dict[str, Any]:
                     (
                         "SUCCESS" if overall_success else "PARTIAL_OR_FAILED",
                         total_items,
-                        str(t212_res.get("error") or enrich_res.get("errors") or "")[:250],
+                        (
+                            str(t212_res.get("error") or enrich_res.get("errors") or "")
+                            if not enrich_res.get("quota_exceeded")
+                            else "Note: EODHD HTTP 402 quota reached; Trading 212 sync succeeded."
+                        )[:250],
                     ),
                 )
                 conn.commit()

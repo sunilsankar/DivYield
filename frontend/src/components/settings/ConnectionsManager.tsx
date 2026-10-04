@@ -214,6 +214,11 @@ export const ConnectionsManager: React.FC<Props> = ({ onConnectionChange }) => {
           type: "error",
           message: "✗ Invalid EODHD API Token. Please check your token at eodhd.com.",
         });
+      } else if (res.status === "subscription_limit") {
+        setEodhdFeedback({
+          type: "warning",
+          message: "⚠ Payment Required (HTTP 402): EODHD daily limit reached (free tier is 20 calls/day) or paid subscription required. DivYield will continue to track your portfolio seamlessly with Trading 212 data.",
+        });
       } else {
         setEodhdFeedback({
           type: "error",
@@ -295,6 +300,14 @@ export const ConnectionsManager: React.FC<Props> = ({ onConnectionChange }) => {
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-800 border border-rose-200">
             <XCircle className="w-3.5 h-3.5 text-rose-600" />
             Invalid Credentials
+          </span>
+        );
+      case "subscription_limit":
+      case "quota_limited":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+            <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+            Plan Limit (402)
           </span>
         );
       case "access_denied":

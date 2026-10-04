@@ -26,6 +26,11 @@ class EODHDNotFoundError(EODHDError):
     pass
 
 
+class EODHDPlanLimitError(EODHDError):
+    """Raised when EODHD returns HTTP 402 (Payment Required / Subscription Plan Required / Quota Exceeded)."""
+    pass
+
+
 class EODHDClient:
     """Client for EODHD Market Data and Dividend API."""
 
@@ -57,6 +62,8 @@ class EODHDClient:
                         return resp.json()
                     elif resp.status_code in (401, 403):
                         raise EODHDAuthError(f"EODHD authentication failed (HTTP {resp.status_code}): {resp.text[:200]}")
+                    elif resp.status_code == 402:
+                        raise EODHDPlanLimitError(f"EODHD Payment Required (HTTP 402): Account subscription required or daily API request quota reached.")
                     elif resp.status_code == 404:
                         raise EODHDNotFoundError(f"EODHD resource not found for {path}")
                     elif resp.status_code == 429:
@@ -106,6 +113,12 @@ class EODHDClient:
                     "has_dividend_calendar": False,
                     "message": "Invalid EODHD API token or unauthorized access",
                 }
+            elif base_resp.status_code == 402:
+                return {
+                    "status": "subscription_limit",
+                    "has_dividend_calendar": False,
+                    "message": "Payment Required (HTTP 402): EODHD daily request limit reached (free tier is 20 calls/day) or paid subscription plan required.",
+                }
             elif base_resp.status_code >= 500:
                 return {
                     "status": "provider_unavailable",
@@ -129,7 +142,7 @@ class EODHDClient:
                     has_calendar = True
                 elif cal_resp.status_code in (402, 403):
                     has_calendar = False
-                    warning = "Dividend Calendar Unavailable (requires EODHD subscription with calendar access)"
+                    warning = "Dividend Calendar Unavailable (requires paid EODHD subscription with calendar access - HTTP 402)"
                 else:
                     has_calendar = False
                     warning = f"Dividend Calendar responded with HTTP {cal_resp.status_code}"
@@ -150,7 +163,7 @@ class EODHDClient:
         try:
             data = await self._request(f"/fundamentals/{clean_ticker}")
             return data
-        except EODHDNotFoundError:
+        except (EODHDNotFoundError, EODHDPlanLimitError):
             return None
 
     async def get_dividends(
@@ -172,7 +185,7 @@ class EODHDClient:
             if isinstance(data, list):
                 return data
             return []
-        except EODHDNotFoundError:
+        except (EODHDNotFoundError, EODHDPlanLimitError):
             return []
 
     async def get_dividend_calendar(
@@ -189,7 +202,7 @@ class EODHDClient:
             elif isinstance(data, list):
                 return data
             return []
-        except (EODHDNotFoundError, EODHDAuthError):
+        except (EODHDNotFoundError, EODHDAuthError, EODHDPlanLimitError):
             # Calendar may not be permitted on basic tier
             return []
 
