@@ -63,17 +63,30 @@
   /* Sketch Theme Overrides */
   [data-style="sketch"] {
     --paper-bg: #faf7f2;
-    --paper-grid: rgba(24, 24, 27, 0.045);
+    --paper-grid: rgba(24, 24, 27, 0.06);
   }
 
   [data-style="sketch"] body {
-    background-color: var(--paper-bg);
+    background-color: var(--paper-bg) !important;
     background-image: 
       linear-gradient(var(--paper-grid) 1px, transparent 1px),
-      linear-gradient(90deg, var(--paper-grid) 1px, transparent 1px);
-    background-size: 24px 24px;
-    font-family: 'Patrick Hand', 'Comic Neue', cursive, sans-serif;
-    letter-spacing: 0.01em;
+      linear-gradient(90deg, var(--paper-grid) 1px, transparent 1px) !important;
+    background-size: 24px 24px !important;
+  }
+
+  [data-style="sketch"],
+  [data-style="sketch"] body,
+  [data-style="sketch"] .font-sans,
+  [data-style="sketch"] p,
+  [data-style="sketch"] span,
+  [data-style="sketch"] td,
+  [data-style="sketch"] th,
+  [data-style="sketch"] div,
+  [data-style="sketch"] button,
+  [data-style="sketch"] input,
+  [data-style="sketch"] select {
+    font-family: 'Patrick Hand', 'Comic Neue', cursive, sans-serif !important;
+    letter-spacing: 0.015em;
   }
 
   [data-style="sketch"] h1,
@@ -83,14 +96,21 @@
   [data-style="sketch"] .font-sketch,
   [data-style="sketch"] .font-heading {
     font-family: 'Architects Daughter', cursive, sans-serif !important;
+    letter-spacing: -0.01em;
   }
 }
 
 /* Sketch Theme Card & Button styling */
+[data-style="sketch"] header {
+  background-color: rgba(250, 247, 242, 0.95) !important;
+  border-bottom: 2px solid #18181b !important;
+}
+
 [data-style="sketch"] .theme-card,
 [data-style="sketch"] .bg-white.rounded-2xl,
-[data-style="sketch"] .bg-white.rounded-xl {
-  background-color: #ffffff !important;
+[data-style="sketch"] .bg-white.rounded-xl,
+[data-style="sketch"] .rounded-2xl.border,
+[data-style="sketch"] .rounded-xl.border {
   border: 2px solid #18181b !important;
   border-radius: 255px 15px 225px 15px/15px 225px 15px 255px !important;
   box-shadow: 3px 3px 0px 0px #18181b !important;
@@ -99,29 +119,32 @@
 
 [data-style="sketch"] .theme-card:hover,
 [data-style="sketch"] .bg-white.rounded-2xl:hover,
-[data-style="sketch"] .bg-white.rounded-xl:hover {
+[data-style="sketch"] .bg-white.rounded-xl:hover,
+[data-style="sketch"] .rounded-2xl.border:hover,
+[data-style="sketch"] .rounded-xl.border:hover {
   transform: translate(-1px, -1px);
-  box-shadow: 4px 4px 0px 0px #18181b !important;
+  box-shadow: 4.5px 4.5px 0px 0px #18181b !important;
 }
 
 [data-style="sketch"] .theme-button,
 [data-style="sketch"] button:not(.btn-unstyled) {
-  border: 1.5px solid #18181b;
-  border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
-  box-shadow: 2px 2px 0px 0px #18181b;
+  border: 2px solid #18181b !important;
+  border-radius: 255px 15px 225px 15px/15px 225px 15px 255px !important;
+  box-shadow: 2px 2px 0px 0px #18181b !important;
   transition: all 0.1s ease;
 }
 
 [data-style="sketch"] .theme-button:active,
 [data-style="sketch"] button:not(.btn-unstyled):active {
   transform: translate(1.5px, 1.5px);
-  box-shadow: 0px 0px 0px 0px #18181b;
+  box-shadow: 0px 0px 0px 0px #18181b !important;
 }
 
-[data-style="sketch"] .sketch-badge {
-  border: 1.5px solid #18181b;
-  border-radius: 120px 8px 110px 8px/8px 110px 8px 120px;
-  box-shadow: 1.5px 1.5px 0px 0px #18181b;
+[data-style="sketch"] .sketch-badge,
+[data-style="sketch"] span.rounded-full.border {
+  border: 1.5px solid #18181b !important;
+  border-radius: 120px 8px 110px 8px/8px 110px 8px 120px !important;
+  box-shadow: 1.5px 1.5px 0px 0px #18181b !important;
 }
 
 /* Modern clean scrollbar */

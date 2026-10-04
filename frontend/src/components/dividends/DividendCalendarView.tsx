@@ -601,9 +601,20 @@ export const DividendCalendarView: React.FC<DividendCalendarViewProps> = ({
                     })}
 
                     {cell.events.length > 2 && (
-                      <div className="text-[9px] font-medium text-center text-slate-500 bg-slate-100 rounded py-0.5">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedDayEvents({
+                            dateStr: cell.dateStr,
+                            events: cell.events,
+                          });
+                        }}
+                        className="w-full text-[9px] font-semibold text-center text-indigo-700 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/70 rounded py-0.5 transition-all cursor-pointer shadow-2xs hover:shadow-xs"
+                        title={`Click to view all ${cell.events.length} payouts for this day`}
+                      >
                         +{cell.events.length - 2} more
-                      </div>
+                      </button>
                     )}
                   </div>
                 </div>
@@ -613,65 +624,116 @@ export const DividendCalendarView: React.FC<DividendCalendarViewProps> = ({
         </div>
       )}
 
-      {/* SELECTED DAY POPUP / DRAWER */}
+      {/* SELECTED DAY POPUP MODAL (EXPANDED DAY MODAL) */}
       {selectedDayEvents && (
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-md p-6 relative animate-fade-in-up">
-          <button
-            onClick={() => setSelectedDayEvents(null)}
-            className="absolute top-5 right-5 p-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-500 transition-colors"
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in-up"
+          onClick={() => setSelectedDayEvents(null)}
+        >
+          <div
+            className="bg-white rounded-2xl max-w-2xl w-full max-h-[85vh] flex flex-col border border-slate-200 shadow-2xl p-6 relative overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
           >
-            <X className="w-4 h-4" />
-          </button>
-
-          <div className="flex items-center gap-2.5 mb-4">
-            <CalendarIcon className="w-5 h-5 text-indigo-600" />
-            <h4 className="text-base font-bold text-slate-900">
-              Dividends on {selectedDayEvents.dateStr}
-            </h4>
-            <span className="text-xs font-semibold text-slate-700 bg-slate-100 px-2.5 py-0.5 rounded-full border border-slate-200">
-              {selectedDayEvents.events.length} payouts
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-            {selectedDayEvents.events.map((ev, i) => (
-              <div
-                key={i}
-                onClick={() => setExpandedStockEvent(ev)}
-                title="Click to view full details"
-                className="bg-slate-50/70 hover:bg-slate-100/90 p-3.5 rounded-xl border border-slate-200 hover:border-primary/60 flex flex-col justify-between cursor-pointer transition-all duration-150 hover:shadow-xs"
-              >
+            {/* Header */}
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-primary-light flex items-center justify-center text-primary">
+                  <CalendarIcon className="w-5 h-5" />
+                </div>
                 <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <div className="flex items-center gap-2">
-                      <StockLogo ticker={ev.ticker} size="sm" />
-                      <span className="font-bold text-sm text-slate-900">
-                        {ev.ticker}
-                      </span>
-                    </div>
-                    <span
-                      className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
-                        ev.displayStatus === "RECEIVED"
-                          ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-                          : "bg-indigo-50 text-indigo-800 border-indigo-200"
-                      }`}
-                    >
-                      {ev.displayStatus}
+                  <h4 className="text-lg font-bold text-slate-900 font-heading">
+                    Dividends on {selectedDayEvents.dateStr}
+                  </h4>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-xs font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
+                      {selectedDayEvents.events.length} dividend payouts
+                    </span>
+                    <span className="text-xs text-slate-500">
+                      Total:{" "}
+                      <strong className="text-slate-900 font-mono">
+                        {formatCurrency(
+                          selectedDayEvents.events.reduce((sum, e) => sum + e.amount, 0),
+                          currency
+                        )}
+                      </strong>
                     </span>
                   </div>
-                  <div className="text-xs text-slate-500 truncate mb-2" title={ev.companyName}>
-                    {ev.companyName}
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between pt-2 border-t border-slate-200 text-xs">
-                  <span className="text-slate-500 font-medium">Payout</span>
-                  <span className="font-mono font-bold text-sm text-slate-900">
-                    {formatCurrency(ev.amount, currency)}
-                  </span>
                 </div>
               </div>
-            ))}
+
+              <button
+                type="button"
+                onClick={() => setSelectedDayEvents(null)}
+                className="w-8 h-8 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-400 hover:text-slate-700 flex items-center justify-center transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Scrollable Stock List */}
+            <div className="overflow-y-auto pr-1 space-y-2.5 max-h-[58vh]">
+              <p className="text-xs text-slate-500 mb-2">
+                Click any stock below to expand full details, yield, and portfolio holding status:
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {selectedDayEvents.events.map((ev, i) => (
+                  <div
+                    key={i}
+                    onClick={() => {
+                      setExpandedStockEvent(ev);
+                    }}
+                    title="Click for full breakdown"
+                    className="bg-slate-50 hover:bg-slate-100/90 p-4 rounded-xl border border-slate-200 hover:border-primary transition-all duration-150 cursor-pointer flex flex-col justify-between shadow-2xs hover:shadow-xs group"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2.5">
+                          <StockLogo ticker={ev.ticker} size="md" />
+                          <div>
+                            <span className="font-bold text-sm text-slate-900 block group-hover:text-primary transition-colors">
+                              {ev.ticker}
+                            </span>
+                            <span className="text-[11px] text-slate-500 truncate max-w-[150px] block" title={ev.companyName}>
+                              {ev.companyName}
+                            </span>
+                          </div>
+                        </div>
+                        <span
+                          className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border shrink-0 ${
+                            ev.displayStatus === "RECEIVED"
+                              ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                              : "bg-indigo-50 text-indigo-800 border-indigo-200"
+                          }`}
+                        >
+                          {ev.displayStatus}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2.5 border-t border-slate-200/80 text-xs">
+                      <span className="text-slate-500 font-medium">Payout Amount</span>
+                      <span className="font-mono font-bold text-base text-slate-900">
+                        {formatCurrency(ev.amount, currency)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+              <span className="text-[11px] text-slate-400">
+                Press <kbd className="px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded font-mono text-[10px]">Esc</kbd> or click outside to close
+              </span>
+              <button
+                type="button"
+                onClick={() => setSelectedDayEvents(null)}
+                className="px-4 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-medium transition-colors"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}
