@@ -6,8 +6,10 @@ from cryptography.fernet import Fernet
 import keyring
 from keyring.errors import KeyringError
 
+from app.config import settings
+
 SERVICE_NAME = "divyield"
-DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
+DATA_DIR = settings.data_dir
 SECRET_KEY_FILE = DATA_DIR / ".secret.key"
 ENCRYPTED_SECRETS_FILE = DATA_DIR / ".secrets.enc"
 

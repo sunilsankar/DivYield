@@ -36,47 +36,47 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <>
-      <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200/80 px-4 md:px-8 py-3 transition-all duration-200">
+      <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-black/[0.08] px-4 md:px-8 py-2.5 transition-all duration-200">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
           {/* Brand & Tagline */}
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-sm ring-2 ring-primary-light transition-transform duration-200 hover:scale-105">
-              <TrendingUp className="w-5 h-5 text-white" />
+            <div className="w-9 h-9 bg-primary rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-2xs ring-1 ring-black/5 transition-transform duration-150 hover:scale-102">
+              <TrendingUp className="w-4.5 h-4.5 text-white" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xl font-bold tracking-tight text-slate-900 font-heading">
+              <div className="flex items-center gap-1.5">
+                <span className="text-lg font-bold tracking-tight text-slate-900 font-heading">
                   DivYield
                 </span>
-                <span className="text-[10px] font-medium tracking-wide px-2 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-full font-sans">
+                <span className="text-[10px] font-semibold tracking-wide px-1.5 py-0.5 bg-emerald-500/10 text-emerald-700 rounded-md font-sans">
                   v1.0
                 </span>
               </div>
-              <p className="text-xs text-slate-500 hidden sm:block font-medium">
+              <p className="text-[11px] text-slate-500 hidden sm:block font-medium -mt-0.5">
                 Portfolio Overview & Dividend Tracker
               </p>
             </div>
           </div>
 
-          {/* Center / Status Chips */}
-          <div className="hidden lg:flex items-center gap-2.5">
+          {/* Center / Status Chips (macOS HIG controls) */}
+          <div className="hidden lg:flex items-center gap-2">
             {/* Health Pill */}
             <button
               onClick={onRefreshHealth}
               title="Click to check backend status"
-              className="flex items-center gap-2 px-3 py-1.5 bg-slate-50/80 hover:bg-slate-100 border border-slate-200 rounded-xl transition-all duration-200 text-xs text-slate-700 hover:text-slate-900"
+              className="flex items-center gap-2 px-2.5 py-1.5 bg-black/[0.03] hover:bg-black/[0.06] border border-black/[0.06] rounded-lg transition-colors duration-150 text-xs text-slate-700 hover:text-slate-900"
             >
               <span
                 className={`w-2 h-2 rounded-full transition-all duration-300 ${
                   health?.status === "ok"
-                    ? "bg-emerald-500 shadow-xs shadow-emerald-200"
+                    ? "bg-emerald-500"
                     : healthLoading
                     ? "bg-amber-400 animate-pulse"
                     : "bg-rose-500"
                 }`}
               />
               <Database className="w-3.5 h-3.5 text-slate-500" />
-              <span className="font-medium">
+              <span className="font-medium text-[11px]">
                 {healthLoading
                   ? "Checking API..."
                   : health?.status === "ok"
@@ -89,10 +89,10 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               onClick={onOpenConnections}
               title="Configure Trading 212 & EODHD connections"
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50/80 hover:bg-slate-100 border border-slate-200 rounded-xl transition-all duration-200 text-xs text-slate-700 hover:text-slate-900"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-black/[0.03] hover:bg-black/[0.06] border border-black/[0.06] rounded-lg transition-colors duration-150 text-xs text-slate-700 hover:text-slate-900"
             >
               <KeyRound className="w-3.5 h-3.5 text-slate-500" />
-              <span className="font-medium">
+              <span className="font-medium text-[11px]">
                 {connections?.trading212.status === "connected" ? (
                   <span className="text-emerald-600 font-semibold flex items-center gap-1">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> T212: Connected
@@ -106,22 +106,22 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
 
             {/* Read-Only Security Pill */}
-            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50/70 border border-blue-200/80 rounded-xl text-xs text-blue-800 font-medium">
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-lg text-[11px] text-blue-800 font-medium">
               <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
               <span>Trading 212: Read-Only</span>
             </div>
           </div>
 
-          {/* Right Action: Clear Segmented Theme Switch, Color Modal, and Sync Button */}
-          <div className="flex items-center gap-2.5">
-            {/* Explicit Segmented Theme Switch: [ Modern | Sketch UI ] */}
-            <div className="flex items-center bg-slate-100/90 p-1 rounded-xl border border-slate-200/80">
+          {/* Right Action: macOS Segmented Theme Switch, Color Modal, and Sync Button */}
+          <div className="flex items-center gap-2">
+            {/* Native macOS Segmented Control */}
+            <div className="flex items-center bg-black/[0.05] p-0.5 rounded-lg border border-black/[0.04]">
               <button
                 type="button"
                 onClick={() => setStyleTheme("modern")}
-                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
                   styleTheme === "modern"
-                    ? "bg-white text-slate-900 shadow-xs border border-slate-200/70"
+                    ? "bg-white text-slate-900 shadow-2xs font-semibold"
                     : "text-slate-500 hover:text-slate-900"
                 }`}
                 title="Use clean modern UI"
@@ -132,9 +132,9 @@ export const Navbar: React.FC<NavbarProps> = ({
               <button
                 type="button"
                 onClick={() => setStyleTheme("sketch")}
-                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
                   styleTheme === "sketch"
-                    ? "bg-amber-100 text-stone-900 shadow-xs border border-stone-800"
+                    ? "bg-amber-100 text-stone-900 shadow-2xs border border-stone-800 font-semibold"
                     : "text-slate-500 hover:text-slate-900"
                 }`}
                 title="Use hand-drawn Sketch UI"
@@ -149,7 +149,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               type="button"
               onClick={() => setIsPreferencesOpen(true)}
               title="Display preferences & color grading"
-              className="p-2 rounded-xl border border-slate-200 bg-slate-50/80 hover:bg-slate-100 text-slate-700 hover:text-slate-900 transition-colors"
+              className="p-1.5 rounded-lg border border-black/[0.08] bg-black/[0.03] hover:bg-black/[0.06] text-slate-700 hover:text-slate-900 transition-colors"
             >
               <Palette className="w-4 h-4 text-primary" />
             </button>
@@ -166,10 +166,10 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               onClick={onSync}
               disabled={isSyncing}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl bg-primary hover:bg-primary-hover text-white shadow-sm hover:shadow-md transition-all duration-200 active:scale-[0.98] disabled:opacity-75 disabled:cursor-not-allowed"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium rounded-lg bg-primary hover:bg-primary-hover text-white shadow-2xs hover:shadow-xs transition-all duration-150 active:scale-[0.98] disabled:opacity-75 disabled:cursor-not-allowed"
             >
               <RefreshCw
-                className={`w-4 h-4 ${isSyncing ? "animate-spin text-white" : ""}`}
+                className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin text-white" : ""}`}
               />
               <span>
                 {isSyncing

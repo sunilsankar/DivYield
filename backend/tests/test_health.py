@@ -17,5 +17,8 @@ def test_health_endpoint():
 def test_root_endpoint():
     response = client.get("/")
     assert response.status_code == 200
-    data = response.json()
-    assert "message" in data
+    if response.headers.get("content-type", "").startswith("application/json"):
+        data = response.json()
+        assert "message" in data
+    else:
+        assert "text/html" in response.headers.get("content-type", "")

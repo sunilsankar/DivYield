@@ -12,7 +12,9 @@ import {
   Lock,
   ExternalLink,
   Info,
+  HelpCircle,
 } from "lucide-react";
+import { SetupGuideModal } from "./SetupGuideModal";
 import {
   fetchConnections,
   saveTrading212Credentials,
@@ -32,6 +34,8 @@ export const ConnectionsManager: React.FC<Props> = ({ onConnectionChange }) => {
   const [connections, setConnections] = useState<ConnectionsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  const [guideProvider, setGuideProvider] = useState<'trading212' | 'eodhd' | null>(null);
 
   // Trading 212 Form State
   const [t212ApiKey, setT212ApiKey] = useState("");
@@ -422,9 +426,19 @@ export const ConnectionsManager: React.FC<Props> = ({ onConnectionChange }) => {
             {/* Input Form */}
             <form onSubmit={handleSaveT212} className="mt-5 space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  API Key {connections?.trading212.configured && <span className="text-slate-400 font-normal">(Leave blank to keep current)</span>}
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-slate-700">
+                    API Key {connections?.trading212.configured && <span className="text-slate-400 font-normal">(Leave blank to keep existing)</span>}
+                  </label>
+                  <button 
+                    type="button" 
+                    onClick={() => setGuideProvider('trading212')}
+                    className="text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1"
+                  >
+                    <HelpCircle className="w-3.5 h-3.5" />
+                    How to get this?
+                  </button>
+                </div>
                 <div className="relative">
                   <input
                     type={showT212Key ? "text" : "password"}
@@ -609,9 +623,19 @@ export const ConnectionsManager: React.FC<Props> = ({ onConnectionChange }) => {
             {/* Input Form */}
             <form onSubmit={handleSaveEODHD} className="mt-5 space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  API Token {connections?.eodhd.configured && <span className="text-slate-400 font-normal">(Leave blank to keep current)</span>}
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-slate-700">
+                    API Token {connections?.eodhd.configured && <span className="text-slate-400 font-normal">(Leave blank to keep existing)</span>}
+                  </label>
+                  <button 
+                    type="button" 
+                    onClick={() => setGuideProvider('eodhd')}
+                    className="text-xs text-emerald-600 hover:text-emerald-700 font-medium flex items-center gap-1"
+                  >
+                    <HelpCircle className="w-3.5 h-3.5" />
+                    How to get this?
+                  </button>
+                </div>
                 <div className="relative">
                   <input
                     type={showEodhdToken ? "text" : "password"}
@@ -701,6 +725,12 @@ export const ConnectionsManager: React.FC<Props> = ({ onConnectionChange }) => {
           </div>
         </div>
       </div>
+
+      <SetupGuideModal
+        isOpen={guideProvider !== null}
+        onClose={() => setGuideProvider(null)}
+        provider={guideProvider || 'trading212'}
+      />
     </div>
   );
 };

@@ -11,7 +11,7 @@ export interface ColorGradingOption {
 }
 
 export const COLOR_GRADING_OPTIONS: ColorGradingOption[] = [
-  { id: "indigo", name: "Indigo Slate", dotColor: "#6366f1", description: "Modern, professional & balanced" },
+  { id: "indigo", name: "Apple Blue", dotColor: "#007aff", description: "Native macOS system blue & balanced" },
   { id: "emerald", name: "Forest Mint", dotColor: "#10b981", description: "Fresh, money & dividend focused" },
   { id: "amber", name: "Warm Amber", dotColor: "#f59e0b", description: "Warm brass & sunset tones" },
   { id: "rose", name: "Ruby Rose", dotColor: "#f43f5e", description: "Vibrant & expressive" },
