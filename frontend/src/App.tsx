@@ -16,7 +16,7 @@ import { DividendCalendarView } from "./components/dividends/DividendCalendarVie
 import { AnalyticsView } from "./components/analytics/AnalyticsView";
 import { TaxEstimatorView } from "./components/tax/TaxEstimatorView";
 import { DataToolsView } from "./components/data/DataToolsView";
-import { SketchSparkle } from "./components/ui/SketchIcons";
+import { KeyRound, Wallet, RefreshCw, Sparkles } from "lucide-react";
 import {
   HealthStatus,
   Holding,
@@ -28,7 +28,6 @@ import {
   HoldingItem,
   ApiDividendItem,
 } from "./types";
-import { KeyRound, Wallet, RefreshCw } from "lucide-react";
 import {
   fetchConnections,
   fetchPortfolioSummary,
@@ -340,16 +339,16 @@ export function App() {
         syncProgress={syncProgress}
       />
 
-      {/* Sync Progress Banner in Sketch style */}
+      {/* Sync Progress Banner in Modern style */}
       {isSyncing && (
-        <div className="bg-amber-100 border-b-2 border-ink-900 px-4 py-3 text-ink-900 shadow-sketch-sm">
+        <div className="bg-indigo-50 border-b border-indigo-100 px-4 py-3 text-slate-900 shadow-sm">
           <div className="max-w-xl mx-auto flex flex-col gap-1.5">
-            <div className="flex items-center justify-between text-xs font-mono font-bold">
+            <div className="flex items-center justify-between text-xs font-semibold">
               <span className="flex items-center gap-2 truncate">
-                <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-700 shrink-0" />
-                <span className="truncate">{syncProgress?.stepMessage || "Synchronizing portfolio & dividends..."}</span>
+                <RefreshCw className="w-3.5 h-3.5 animate-spin text-indigo-600 shrink-0" />
+                <span className="truncate text-slate-800">{syncProgress?.stepMessage || "Synchronizing portfolio & dividends..."}</span>
               </span>
-              <span className="bg-amber-200 border border-ink-900 px-2 py-0.5 rounded-sketch text-[11px] shrink-0 font-bold ml-2">
+              <span className="bg-white border border-indigo-200 text-indigo-700 px-2 py-0.5 rounded-full text-[11px] shrink-0 font-bold ml-2 shadow-xs">
                 {syncProgress && syncProgress.totalSteps > 0
                   ? `Step ${syncProgress.currentStep}/${syncProgress.totalSteps} (${Math.round(
                       (syncProgress.currentStep / syncProgress.totalSteps) * 100
@@ -357,9 +356,9 @@ export function App() {
                   : "Syncing..."}
               </span>
             </div>
-            <div className="w-full bg-white border-2 border-ink-900 rounded-sketch h-3.5 overflow-hidden p-0.5 shadow-inner">
+            <div className="w-full bg-indigo-100/70 rounded-full h-2.5 overflow-hidden p-0.5">
               <div
-                className="bg-amber-400 h-full rounded-[2px] transition-all duration-300 ease-out border-r border-ink-900"
+                className="bg-indigo-600 h-full rounded-full transition-all duration-300 ease-out"
                 style={{
                   width: `${
                     syncProgress && syncProgress.totalSteps > 0
@@ -375,8 +374,8 @@ export function App() {
 
       {/* Result Notification Banner (when not syncing) */}
       {!isSyncing && notification && (
-        <div className="bg-amber-100 border-b-2 border-ink-900 px-4 py-2 text-center text-xs font-mono font-bold text-ink-900 flex items-center justify-center gap-2">
-          <SketchSparkle className="w-4 h-4 text-amber-600" />
+        <div className="bg-emerald-50 border-b border-emerald-100 px-4 py-2.5 text-center text-xs font-medium text-emerald-900 flex items-center justify-center gap-2">
+          <Sparkles className="w-4 h-4 text-emerald-600" />
           <span>{notification}</span>
         </div>
       )}
@@ -409,27 +408,27 @@ export function App() {
               />
 
               {activeHoldings.length === 0 && (
-                <div className="sketch-card p-6 bg-amber-50/70 border-2 border-dashed border-amber-900/30 text-center flex flex-col items-center justify-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center border-2 border-amber-900 shadow-sketch">
-                    <Wallet className="w-6 h-6 text-amber-900" />
+                <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-8 text-center flex flex-col items-center justify-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-indigo-50 border border-indigo-200/60 flex items-center justify-center text-indigo-600">
+                    <Wallet className="w-6 h-6" />
                   </div>
                   <div>
-                    <h3 className="font-sketch text-xl font-bold text-ink-900">Portfolio Ready for Sync</h3>
-                    <p className="text-sm font-hand text-ink-700 max-w-md mx-auto mt-1">
-                      Sample data has been removed. Configure your Trading 212 API credentials in Settings and click <strong>Sync Now</strong> to fetch your real holdings and dividend history.
+                    <h3 className="text-lg font-bold text-slate-900 tracking-tight">Portfolio Ready for Sync</h3>
+                    <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
+                      Configure your Trading 212 API credentials in Connections and click <strong>Sync Now</strong> to fetch your real holdings, orders, and dividend history.
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center justify-center gap-3 mt-1">
                     <button
                       onClick={() => setCurrentTab("connections")}
-                      className="sketch-btn bg-amber-200 hover:bg-amber-300 text-ink-900 px-4 py-1.5 text-xs font-mono font-bold"
+                      className="bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 px-4 py-2 text-xs font-semibold rounded-xl shadow-sm transition-all"
                     >
                       Configure API Keys &rarr;
                     </button>
                     <button
                       onClick={handleSyncNow}
                       disabled={isSyncing}
-                      className="sketch-btn bg-ink-900 text-paper-100 hover:bg-ink-800 px-4 py-1.5 text-xs font-mono font-bold flex items-center gap-1.5 disabled:opacity-50"
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 text-xs font-semibold rounded-xl shadow-sm flex items-center gap-2 transition-all disabled:opacity-50"
                     >
                       <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`} />
                       {isSyncing ? "Syncing..." : "Sync Now"}
@@ -527,54 +526,54 @@ export function App() {
           )}
 
           {currentTab === "settings" && (
-            <div className="sketch-card p-6 bg-white space-y-6">
-              <div className="pb-3 border-b-2 border-ink-900 border-dashed flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 space-y-6">
+              <div className="pb-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                  <h2 className="font-sketch text-2xl font-bold text-ink-900">
+                  <h2 className="text-xl font-bold text-slate-900 tracking-tight">
                     System Preferences & Config
                   </h2>
-                  <p className="text-xs font-hand text-ink-muted">
+                  <p className="text-xs text-slate-500 mt-0.5">
                     DivYield configuration stored locally in SQLite (WAL mode)
                   </p>
                 </div>
                 <button
                   onClick={() => setCurrentTab("connections")}
-                  className="sketch-btn px-4 py-2 font-sketch text-xs font-bold bg-amber-400 border-2 border-ink-900 rounded-sketch hover:bg-amber-300 flex items-center gap-2 self-start"
+                  className="px-4 py-2 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-sm flex items-center gap-2 self-start transition-all"
                 >
                   <KeyRound className="w-4 h-4" />
                   Manage API Connections
                 </button>
               </div>
 
-              <div className="space-y-4 max-w-md text-sm font-hand">
+              <div className="space-y-4 max-w-md text-xs">
                 <div>
-                  <label className="block font-bold text-ink-900 mb-1">Base Currency</label>
-                  <select className="w-full p-2 bg-paper-50 border-2 border-ink-900 rounded-sketch font-mono text-xs">
+                  <label className="block font-semibold text-slate-700 mb-1.5">Base Currency</label>
+                  <select className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     <option value="EUR">EUR (€) — Euro (Default)</option>
                     <option value="USD">USD ($) — US Dollar</option>
                     <option value="GBP">GBP (£) — British Pound</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block font-bold text-ink-900 mb-1">Tax Jurisdiction</label>
-                  <select className="w-full p-2 bg-paper-50 border-2 border-ink-900 rounded-sketch font-mono text-xs">
+                  <label className="block font-semibold text-slate-700 mb-1.5">Tax Jurisdiction</label>
+                  <select className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     <option value="NL">Netherlands (Box 3 - Wealth Tax)</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block font-bold text-ink-900 mb-1">Sync Frequency</label>
-                  <select className="w-full p-2 bg-paper-50 border-2 border-ink-900 rounded-sketch font-mono text-xs">
+                  <label className="block font-semibold text-slate-700 mb-1.5">Sync Frequency</label>
+                  <select className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     <option value="manual">Manual ("Sync Now" button only)</option>
                   </select>
                 </div>
               </div>
 
               {/* Security Audit Badge in Settings */}
-              <div className="p-4 bg-paper-50 border-2 border-dashed border-ink-900 rounded-sketch text-xs font-hand space-y-1">
-                <span className="font-bold text-ink-900 block font-sketch text-sm">Security & Privacy Checklist</span>
-                <p className="text-ink-700">✓ OS Keychain credential storage enabled</p>
-                <p className="text-ink-700">✓ Trading 212 order execution strictly forbidden and disabled</p>
-                <p className="text-ink-700">✓ Zero secrets written to SQLite or browser storage</p>
+              <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-xl text-xs space-y-1.5">
+                <span className="font-bold text-slate-900 block text-xs">Security & Privacy Checklist</span>
+                <p className="text-slate-600">✓ OS Keychain credential storage enabled (Fernet AES fallback)</p>
+                <p className="text-slate-600">✓ Trading 212 order execution strictly forbidden and disabled</p>
+                <p className="text-slate-600">✓ Zero secrets written to SQLite or browser storage</p>
               </div>
             </div>
           )}
@@ -582,10 +581,10 @@ export function App() {
       </div>
 
       {/* Footer */}
-      <footer className="border-t-2 border-ink-900 bg-white/70 py-4 px-6 mt-8">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-xs font-mono text-ink-muted">
+      <footer className="border-t border-slate-200/80 bg-white/70 py-4 px-6 mt-8">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
           <div className="flex items-center gap-2">
-            <span className="font-sketch font-bold text-ink-900 text-sm">DivYield</span>
+            <span className="font-bold text-slate-900 text-sm">DivYield</span>
             <span>•</span>
             <span>Local-first portfolio & dividend tracker</span>
           </div>

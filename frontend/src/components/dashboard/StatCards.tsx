@@ -1,6 +1,5 @@
 import React from "react";
 import { TrendingUp, Wallet, Coins, CalendarDays, ArrowUpRight, ArrowDownRight } from "lucide-react";
-import { SketchWavyLine, SketchTape } from "../ui/SketchIcons";
 import { formatCurrency } from "@/lib/utils";
 
 interface StatCardsProps {
@@ -23,113 +22,126 @@ export const StatCards: React.FC<StatCardsProps> = ({
   upcoming30Days,
 }) => {
   const isPositive = dailyChange >= 0;
+
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4.5">
       {/* 1. Portfolio Value */}
-      <div className="sketch-card p-4 bg-white relative overflow-hidden">
-        <SketchTape className="w-16 absolute -top-1 right-6 z-10" />
-        <div className="flex items-center justify-between text-ink-muted mb-1">
-          <span className="text-xs font-mono uppercase tracking-wider font-semibold text-ink-700">
-            Portfolio Value
-          </span>
-          <Wallet className="w-4 h-4 text-amber-600" />
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5 flex flex-col justify-between">
+        <div>
+          <div className="flex items-center justify-between text-slate-500 mb-2">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Portfolio Value
+            </span>
+            <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+              <Wallet className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="flex items-baseline gap-1 my-1">
+            <span className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+              {formatCurrency(portfolioValue)}
+            </span>
+          </div>
         </div>
-        <div className="flex items-baseline gap-1 my-1">
-          <span className="font-sketch text-3xl font-black text-ink-900 tracking-tight">
-            {formatCurrency(portfolioValue)}
-          </span>
-        </div>
-        <SketchWavyLine className="w-24 h-2 text-amber-500 mb-2" />
-        <div className="flex items-center gap-1.5 text-xs font-mono">
+
+        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center gap-2 text-xs">
           <span
-            className={`flex items-center font-bold px-1.5 py-0.5 rounded-sketch border ${
+            className={`inline-flex items-center font-semibold px-2 py-0.5 rounded-full ${
               isPositive
-                ? "text-emerald-700 bg-emerald-50 border-emerald-700"
-                : "text-rose-700 bg-rose-50 border-rose-700"
+                ? "text-emerald-700 bg-emerald-50"
+                : "text-rose-700 bg-rose-50"
             }`}
           >
             {isPositive ? (
-              <ArrowUpRight className="w-3 h-3 mr-0.5" />
+              <ArrowUpRight className="w-3.5 h-3.5 mr-0.5" />
             ) : (
-              <ArrowDownRight className="w-3 h-3 mr-0.5" />
+              <ArrowDownRight className="w-3.5 h-3.5 mr-0.5" />
             )}
             {isPositive ? "+" : ""}
             {formatCurrency(dailyChange)} ({isPositive ? "+" : ""}
             {dailyChangePercent.toFixed(2)}%)
           </span>
-          <span className="text-ink-muted font-hand">return</span>
+          <span className="text-slate-400 font-normal">total return</span>
         </div>
       </div>
 
       {/* 2. Projected Annual Dividend */}
-      <div className="sketch-card p-4 bg-white relative overflow-hidden">
-        <SketchTape className="w-16 absolute -top-1 right-6 z-10" />
-        <div className="flex items-center justify-between text-ink-muted mb-1">
-          <span className="text-xs font-mono uppercase tracking-wider font-semibold text-ink-700">
-            Forward Dividend
-          </span>
-          <Coins className="w-4 h-4 text-emerald-600" />
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5 flex flex-col justify-between">
+        <div>
+          <div className="flex items-center justify-between text-slate-500 mb-2">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Forward Dividend
+            </span>
+            <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <Coins className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="flex items-baseline gap-1.5 my-1">
+            <span className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+              {formatCurrency(annualDividend)}
+            </span>
+            <span className="text-xs font-medium text-slate-400">/ yr</span>
+          </div>
         </div>
-        <div className="flex items-baseline gap-1 my-1">
-          <span className="font-sketch text-3xl font-black text-ink-900 tracking-tight">
-            {formatCurrency(annualDividend)}
-          </span>
-          <span className="text-xs font-hand text-ink-muted">/ yr</span>
-        </div>
-        <SketchWavyLine className="w-24 h-2 text-emerald-500 mb-2" />
-        <div className="flex items-center justify-between text-xs font-mono">
-          <span className="font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded-sketch border border-emerald-700">
+
+        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+          <span className="font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
             {dividendYield.toFixed(2)}% Yield
           </span>
-          <span className="text-ink-700 font-hand">
+          <span className="text-slate-500 font-medium">
             ~{formatCurrency(annualDividend / 12)}/mo
           </span>
         </div>
       </div>
 
       {/* 3. Received Dividends YTD */}
-      <div className="sketch-card p-4 bg-white relative overflow-hidden">
-        <SketchTape className="w-16 absolute -top-1 right-6 z-10" />
-        <div className="flex items-center justify-between text-ink-muted mb-1">
-          <span className="text-xs font-mono uppercase tracking-wider font-semibold text-ink-700">
-            Received (YTD)
-          </span>
-          <TrendingUp className="w-4 h-4 text-blue-600" />
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5 flex flex-col justify-between">
+        <div>
+          <div className="flex items-center justify-between text-slate-500 mb-2">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Received (YTD)
+            </span>
+            <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+              <TrendingUp className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="flex items-baseline gap-1 my-1">
+            <span className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+              {formatCurrency(receivedYtd)}
+            </span>
+          </div>
         </div>
-        <div className="flex items-baseline gap-1 my-1">
-          <span className="font-sketch text-3xl font-black text-ink-900 tracking-tight">
-            {formatCurrency(receivedYtd)}
+
+        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center gap-2 text-xs text-slate-600">
+          <span className="font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full">
+            Actual Payouts
           </span>
-        </div>
-        <SketchWavyLine className="w-24 h-2 text-blue-500 mb-2" />
-        <div className="flex items-center gap-1.5 text-xs font-mono text-ink-700">
-          <span className="font-bold text-blue-800 bg-blue-50 px-1.5 py-0.5 rounded-sketch border border-blue-700">
-            24 Payouts
-          </span>
-          <span className="text-ink-muted font-hand">banked</span>
+          <span className="text-slate-400 font-normal">credited</span>
         </div>
       </div>
 
       {/* 4. Upcoming Next 30 Days */}
-      <div className="sketch-card p-4 bg-white relative overflow-hidden">
-        <SketchTape className="w-16 absolute -top-1 right-6 z-10" />
-        <div className="flex items-center justify-between text-ink-muted mb-1">
-          <span className="text-xs font-mono uppercase tracking-wider font-semibold text-ink-700">
-            Next 30 Days
-          </span>
-          <CalendarDays className="w-4 h-4 text-purple-600" />
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5 flex flex-col justify-between">
+        <div>
+          <div className="flex items-center justify-between text-slate-500 mb-2">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Next 30 Days
+            </span>
+            <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+              <CalendarDays className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="flex items-baseline gap-1 my-1">
+            <span className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+              {formatCurrency(upcoming30Days)}
+            </span>
+          </div>
         </div>
-        <div className="flex items-baseline gap-1 my-1">
-          <span className="font-sketch text-3xl font-black text-ink-900 tracking-tight">
-            {formatCurrency(upcoming30Days)}
+
+        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center gap-2 text-xs text-slate-600">
+          <span className="font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full">
+            Scheduled
           </span>
-        </div>
-        <SketchWavyLine className="w-24 h-2 text-purple-500 mb-2" />
-        <div className="flex items-center gap-1.5 text-xs font-mono text-ink-700">
-          <span className="font-bold text-purple-800 bg-purple-50 px-1.5 py-0.5 rounded-sketch border border-purple-700">
-            3 Scheduled
-          </span>
-          <span className="text-ink-muted font-hand">ex-dates passed</span>
+          <span className="text-slate-400 font-normal">forward events</span>
         </div>
       </div>
     </div>

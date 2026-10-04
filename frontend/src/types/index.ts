@@ -338,3 +338,26 @@ export interface TaxRulesData {
   rules: TaxRuleItem[];
 }
 
+export type NetherlandsTaxResult = NetherlandsTaxData;
+export type TaxRulesResponse = TaxRulesData;
+export type ProjectionsResult = ProjectionsResponse;
+export type DividendGrowthResult = DividendGrowthResponse;
+
+export interface CashInterestItem {
+  id: number;
+  source: string;
+  period_start: string;
+  period_end: string;
+  average_balance: number;
+  annual_rate: number;
+  interest_earned: number;
+  notes?: string | null;
+  created_at?: string | null;
+}
+
+export interface CashInterestResponse {
+  periods: CashInterestItem[];
+  total_interest_ytd: number;
+}
+
+

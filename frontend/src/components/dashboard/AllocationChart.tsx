@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from "recharts";
 import { SectorAllocation } from "@/types";
-import { SketchSparkle, SketchWavyLine } from "../ui/SketchIcons";
+import { PieChart as PieChartIcon } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
 interface AllocationChartProps {
@@ -15,31 +15,30 @@ export const AllocationChart: React.FC<AllocationChartProps> = ({ data, totalVal
   const activeSector = activeIndex !== null ? data[activeIndex] : null;
 
   return (
-    <div className="sketch-card p-5 bg-white flex flex-col justify-between h-full">
+    <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 flex flex-col justify-between h-full transition-all duration-200">
       {/* Header */}
       <div>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-1">
           <div className="flex items-center gap-2">
-            <span className="font-sketch text-xl font-bold text-ink-900">
+            <h3 className="text-lg font-bold text-slate-900 tracking-tight">
               Portfolio Allocation
-            </span>
-            <SketchSparkle className="w-4 h-4 text-amber-500" />
+            </h3>
+            <PieChartIcon className="w-4 h-4 text-indigo-600" />
           </div>
-          <span className="text-xs font-mono px-2 py-0.5 bg-paper-200 border border-ink-900 rounded-sketch text-ink-800">
+          <span className="text-xs font-semibold px-2.5 py-0.5 bg-slate-100 text-slate-700 rounded-full">
             By Sector
           </span>
         </div>
-        <p className="text-xs font-hand text-ink-muted -mt-0.5">
-          {data.length > 0 ? `diversification breakdown across ${data.length} sectors` : "no sector breakdown yet"}
+        <p className="text-xs text-slate-500 font-normal">
+          {data.length > 0 ? `Diversification breakdown across ${data.length} sectors` : "No sector breakdown available"}
         </p>
-        <SketchWavyLine className="w-32 h-2 text-ink-900/30 my-2" />
       </div>
 
-      {/* Donut Chart with central illustration */}
+      {/* Donut Chart with central info */}
       {data.length === 0 ? (
-        <div className="h-60 my-2 flex flex-col items-center justify-center border-2 border-dashed border-ink-900/20 rounded-sketch p-4 text-center">
-          <p className="font-sketch font-bold text-ink-900 text-sm">No Sector Allocations Yet</p>
-          <p className="text-xs font-hand text-ink-muted mt-1">
+        <div className="h-60 my-4 flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 p-6 bg-slate-50/50 text-center">
+          <p className="font-semibold text-slate-800 text-sm">No Sector Allocations Yet</p>
+          <p className="text-xs text-slate-500 mt-1">
             Run Combined Sync to enrich your portfolio with sector data
           </p>
         </div>
@@ -52,10 +51,10 @@ export const AllocationChart: React.FC<AllocationChartProps> = ({ data, totalVal
                   if (active && payload && payload.length) {
                     const item = payload[0].payload as SectorAllocation;
                     return (
-                      <div className="bg-white border-2 border-ink-900 rounded-sketch p-2.5 shadow-sketch text-xs font-mono">
-                        <p className="font-bold text-ink-900">{item.sector}</p>
-                        <p className="text-emerald-700 font-bold">{formatCurrency(item.value)}</p>
-                        <p className="text-ink-muted">{item.percentage.toFixed(1)}% of total</p>
+                      <div className="bg-slate-900 text-white rounded-xl px-3 py-2 shadow-lg text-xs">
+                        <p className="font-semibold text-white">{item.sector}</p>
+                        <p className="text-emerald-400 font-bold mt-0.5">{formatCurrency(item.value)}</p>
+                        <p className="text-slate-400 text-[11px]">{item.percentage.toFixed(1)}% of total</p>
                       </div>
                     );
                   }
@@ -66,11 +65,11 @@ export const AllocationChart: React.FC<AllocationChartProps> = ({ data, totalVal
                 data={data}
                 cx="50%"
                 cy="50%"
-                innerRadius={65}
-                outerRadius={95}
-                paddingAngle={4}
+                innerRadius={68}
+                outerRadius={96}
+                paddingAngle={3}
                 dataKey="value"
-                stroke="#18181b"
+                stroke="#ffffff"
                 strokeWidth={2}
                 onMouseEnter={(_, index) => setActiveIndex(index)}
                 onMouseLeave={() => setActiveIndex(null)}
@@ -79,9 +78,9 @@ export const AllocationChart: React.FC<AllocationChartProps> = ({ data, totalVal
                   <Cell
                     key={`cell-${index}`}
                     fill={entry.color}
-                    className="transition-transform duration-200 cursor-pointer"
+                    className="transition-opacity duration-200 cursor-pointer"
                     style={{
-                      filter: activeIndex === index ? "brightness(1.08)" : "none",
+                      opacity: activeIndex === null || activeIndex === index ? 1 : 0.6,
                     }}
                   />
                 ))}
@@ -91,14 +90,14 @@ export const AllocationChart: React.FC<AllocationChartProps> = ({ data, totalVal
 
           {/* Center label */}
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
-            <span className="text-[11px] font-mono text-ink-muted uppercase tracking-wider">
-              {activeSector ? activeSector.sector : "Total Holdings"}
+            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+              {activeSector ? activeSector.sector : "Holdings Value"}
             </span>
-            <span className="font-sketch text-lg font-black text-ink-900">
+            <span className="text-xl font-bold text-slate-900 tracking-tight mt-0.5">
               {activeSector ? `${activeSector.percentage.toFixed(1)}%` : formatCurrency(totalValue)}
             </span>
             {activeSector && (
-              <span className="text-[10px] font-mono text-emerald-700 font-semibold">
+              <span className="text-xs text-emerald-600 font-semibold">
                 {formatCurrency(activeSector.value)}
               </span>
             )}
@@ -106,30 +105,30 @@ export const AllocationChart: React.FC<AllocationChartProps> = ({ data, totalVal
         </div>
       )}
 
-      {/* Illustrated Legend */}
+      {/* Legend */}
       {data.length > 0 && (
-        <div className="grid grid-cols-2 gap-2 pt-3 border-t-2 border-dashed border-ink-900/20 max-h-36 overflow-y-auto">
+        <div className="grid grid-cols-2 gap-2 pt-4 border-t border-slate-100 max-h-36 overflow-y-auto">
           {data.slice(0, 8).map((item, idx) => (
             <div
               key={item.sector}
               onMouseEnter={() => setActiveIndex(idx)}
               onMouseLeave={() => setActiveIndex(null)}
-              className={`flex items-center justify-between p-1.5 rounded-sketch cursor-pointer transition-all border ${
+              className={`flex items-center justify-between p-2 rounded-xl cursor-pointer transition-all duration-150 ${
                 activeIndex === idx
-                  ? "bg-amber-50 border-ink-900 shadow-sketch-sm"
-                  : "border-transparent hover:bg-paper-100"
+                  ? "bg-slate-100 text-slate-900"
+                  : "hover:bg-slate-50 text-slate-700"
               }`}
             >
-              <div className="flex items-center gap-1.5 min-w-0">
+              <div className="flex items-center gap-2 min-w-0">
                 <span
-                  className="w-3 h-3 rounded-full border border-ink-900 flex-shrink-0"
+                  className="w-2.5 h-2.5 rounded-full flex-shrink-0"
                   style={{ backgroundColor: item.color }}
                 />
-                <span className="text-xs font-hand font-semibold text-ink-800 truncate">
+                <span className="text-xs font-medium truncate">
                   {item.sector}
                 </span>
               </div>
-              <span className="text-xs font-mono font-bold text-ink-900 ml-1">
+              <span className="text-xs font-bold text-slate-900 ml-1">
                 {item.percentage.toFixed(0)}%
               </span>
             </div>

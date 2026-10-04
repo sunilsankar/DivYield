@@ -14,7 +14,6 @@ import {
   Link2,
   Edit3,
 } from "lucide-react";
-import { SketchPin } from "../ui/SketchIcons";
 
 export type NavTab =
   | "dashboard"
@@ -45,7 +44,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange }) => 
       id: "holdings",
       label: "Holdings & Portfolio",
       icon: <PieChart className="w-4 h-4" />,
-      badge: "8",
     },
     {
       id: "transactions",
@@ -56,7 +54,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange }) => 
       id: "dividends",
       label: "Dividends & Payouts",
       icon: <Coins className="w-4 h-4" />,
-      badge: "€1.8k",
     },
     {
       id: "calendar",
@@ -98,37 +95,38 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange }) => 
   return (
     <aside className="w-full md:w-64 flex-shrink-0 flex flex-col gap-4">
       {/* Navigation Card */}
-      <div className="sketch-card p-4 bg-white">
-        <div className="flex items-center justify-between pb-3 mb-2 border-b-2 border-ink-900 border-dashed">
-          <span className="font-sketch text-lg font-bold text-ink-900">Navigation</span>
-          <SketchPin className="w-5 h-5 text-amber-500" />
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-3 transition-all duration-200">
+        <div className="px-3 pt-2 pb-2.5 mb-1 border-b border-slate-100 flex items-center justify-between">
+          <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+            Navigation
+          </span>
         </div>
 
-        <nav className="flex flex-col gap-1.5">
+        <nav className="flex flex-col gap-1">
           {navItems.map((item) => {
             const isActive = currentTab === item.id;
             return (
               <button
                 key={item.id}
                 onClick={() => onTabChange(item.id)}
-                className={`flex items-center justify-between px-3 py-2 rounded-sketch text-sm font-hand font-bold transition-all text-left ${
+                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 text-left ${
                   isActive
-                    ? "bg-amber-100 text-ink-900 border-2 border-ink-900 shadow-sketch-sm translate-x-1"
-                    : "text-ink-700 hover:bg-paper-100 hover:text-ink-900 border-2 border-transparent"
+                    ? "bg-indigo-50 text-indigo-700 shadow-xs font-semibold translate-x-0.5"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
                 }`}
               >
                 <div className="flex items-center gap-2.5">
-                  <span className={isActive ? "text-amber-700" : "text-ink-muted"}>
+                  <span className={`transition-colors duration-200 ${isActive ? "text-indigo-600" : "text-slate-400 group-hover:text-slate-600"}`}>
                     {item.icon}
                   </span>
                   <span>{item.label}</span>
                 </div>
                 {item.badge && (
                   <span
-                    className={`text-[10px] font-mono px-2 py-0.5 rounded-sketch border ${
+                    className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
                       isActive
-                        ? "bg-amber-300 border-ink-900 text-ink-900 font-bold"
-                        : "bg-paper-200 border-ink-900/30 text-ink-700"
+                        ? "bg-indigo-100 text-indigo-700"
+                        : "bg-slate-100 text-slate-600"
                     }`}
                   >
                     {item.badge}
@@ -140,19 +138,21 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange }) => 
         </nav>
       </div>
 
-      {/* Security Mandate Note */}
-      <div className="sketch-card p-4 bg-emerald-50/70 border-emerald-950">
-        <div className="flex items-start gap-2.5">
-          <ShieldCheck className="w-5 h-5 text-emerald-700 flex-shrink-0 mt-0.5" />
+      {/* Security Mandate Card */}
+      <div className="bg-emerald-50/60 rounded-2xl border border-emerald-200/60 p-4 transition-all duration-200 hover:shadow-xs">
+        <div className="flex items-start gap-3">
+          <div className="w-8 h-8 rounded-xl bg-emerald-100 flex items-center justify-center flex-shrink-0 text-emerald-600">
+            <ShieldCheck className="w-4 h-4" />
+          </div>
           <div>
-            <h4 className="font-sketch font-bold text-sm text-emerald-950">
+            <h4 className="font-semibold text-sm text-emerald-950">
               Read-Only Security
             </h4>
-            <p className="text-xs font-hand text-emerald-900 mt-1 leading-snug">
+            <p className="text-xs text-emerald-800/80 mt-1 leading-relaxed">
               Trading 212 execution is hard-blocked. No buy/sell orders can ever be placed or modified.
             </p>
-            <div className="mt-2 flex items-center gap-1.5 text-[11px] font-mono text-emerald-800">
-              <Lock className="w-3 h-3 text-emerald-700" />
+            <div className="mt-2.5 flex items-center gap-1.5 text-[11px] font-medium text-emerald-700">
+              <Lock className="w-3 h-3 text-emerald-600" />
               <span>Orders - Execute: OFF</span>
             </div>
           </div>

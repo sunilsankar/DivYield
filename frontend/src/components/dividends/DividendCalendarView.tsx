@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { ApiDividendItem, ApiHolding, Holding } from "../../types";
 import { formatCurrency } from "../../lib/utils";
+import { StockLogo } from "../ui/StockLogo";
 
 interface DividendCalendarViewProps {
   receivedDividends: ApiDividendItem[];
@@ -98,26 +99,30 @@ export const DividendCalendarView: React.FC<DividendCalendarViewProps> = ({
           return false;
         }
       }
+
+      const dateStr = item.payment_date || item.ex_dividend_date;
+      if (!dateStr) return false;
+
       if (viewMode === "month") {
-        const dateStr = item.payment_date || item.ex_dividend_date;
-        if (!dateStr) return false;
-        const d = new Date(dateStr);
-        if (d.getFullYear() !== selectedYear || d.getMonth() !== selectedMonth) {
-          return false;
+        const parts = dateStr.split("-");
+        if (parts.length >= 2) {
+          const y = parseInt(parts[0], 10);
+          const m = parseInt(parts[1], 10) - 1;
+          return y === selectedYear && m === selectedMonth;
         }
       } else if (viewMode === "year") {
-        const dateStr = item.payment_date || item.ex_dividend_date;
-        if (!dateStr) return false;
-        const d = new Date(dateStr);
-        if (d.getFullYear() !== selectedYear) {
-          return false;
+        const parts = dateStr.split("-");
+        if (parts.length >= 1) {
+          const y = parseInt(parts[0], 10);
+          return y === selectedYear;
         }
       }
+
       return true;
     });
   }, [allEvents, statusFilter, tickerSearch, viewMode, selectedYear, selectedMonth]);
 
-  // Totals for the current filtered view
+  // Totals for current filter
   const totalReceived = useMemo(() => {
     return filteredEvents
       .filter((e) => e.displayStatus === "RECEIVED")
@@ -130,163 +135,168 @@ export const DividendCalendarView: React.FC<DividendCalendarViewProps> = ({
       .reduce((sum, e) => sum + e.amount, 0);
   }, [filteredEvents]);
 
+  // Month navigation labels
   const monthNames = [
     "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December",
+    "July", "August", "September", "October", "November", "December"
   ];
-
   const weekdayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-  // Visual Calendar Grid calculations (Monday start)
+  // Visual Month Calendar Grid Generator
   const calendarGrid = useMemo(() => {
-    if (viewMode !== "month") return [];
-
     const firstDayOfMonth = new Date(selectedYear, selectedMonth, 1);
-    const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+    const lastDayOfMonth = new Date(selectedYear, selectedMonth + 1, 0);
+    const totalDays = lastDayOfMonth.getDate();
 
-    // In JS, getDay() returns 0 for Sunday, 1 for Monday, etc.
-    // Convert to Monday = 0, Sunday = 6
-    let startingDay = firstDayOfMonth.getDay() - 1;
-    if (startingDay === -1) startingDay = 6;
+    // Monday-based indexing: Sunday is 7, Monday is 1
+    let startDayOfWeek = firstDayOfMonth.getDay();
+    if (startDayOfWeek === 0) startDayOfWeek = 7;
 
-    const daysInPrevMonth = new Date(selectedYear, selectedMonth, 0).getDate();
+    const cells: Array<{
+      day: number;
+      dateStr: string;
+      isCurrentMonth: boolean;
+      isToday: boolean;
+      events: typeof filteredEvents;
+    }> = [];
 
-    // Map events by date (YYYY-MM-DD)
-    const eventsByDate = new Map<string, typeof allEvents>();
-    filteredEvents.forEach((ev) => {
-      const rawDate = ev.payment_date || ev.ex_dividend_date;
-      if (rawDate) {
-        const dateKey = rawDate.slice(0, 10);
-        const existing = eventsByDate.get(dateKey) || [];
-        existing.push(ev);
-        eventsByDate.set(dateKey, existing);
-      }
-    });
-
-    const grid = [];
-    const today = new Date();
-    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-
-    // Previous month filler days
-    for (let i = startingDay - 1; i >= 0; i--) {
-      const dayNum = daysInPrevMonth - i;
-      grid.push({
+    // Previous month padding
+    const prevMonthLastDay = new Date(selectedYear, selectedMonth, 0).getDate();
+    for (let i = startDayOfWeek - 1; i > 0; i--) {
+      const dayNum = prevMonthLastDay - i + 1;
+      const prevMonth = selectedMonth === 0 ? 11 : selectedMonth - 1;
+      const prevYear = selectedMonth === 0 ? selectedYear - 1 : selectedYear;
+      const dStr = `${prevYear}-${String(prevMonth + 1).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
+      cells.push({
         day: dayNum,
+        dateStr: dStr,
         isCurrentMonth: false,
-        dateStr: "",
         isToday: false,
         events: [],
       });
     }
 
+    const todayStr = new Date().toISOString().slice(0, 10);
+
     // Current month days
-    for (let d = 1; d <= daysInMonth; d++) {
-      const dateStr = `${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-      const dayEvents = eventsByDate.get(dateStr) || [];
-      grid.push({
-        day: d,
+    for (let day = 1; day <= totalDays; day++) {
+      const dStr = `${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+      const dayEvents = filteredEvents.filter((ev) => {
+        const evDate = ev.payment_date || ev.ex_dividend_date;
+        return evDate === dStr;
+      });
+
+      cells.push({
+        day,
+        dateStr: dStr,
         isCurrentMonth: true,
-        dateStr,
-        isToday: dateStr === todayStr,
+        isToday: dStr === todayStr,
         events: dayEvents,
       });
     }
 
-    // Trailing days to round out 35 or 42 cells
-    const remaining = (7 - (grid.length % 7)) % 7;
-    for (let r = 1; r <= remaining; r++) {
-      grid.push({
-        day: r,
+    // Trailing padding to make a complete 7xN grid
+    const remaining = (7 - (cells.length % 7)) % 7;
+    for (let i = 1; i <= remaining; i++) {
+      const nextMonth = selectedMonth === 11 ? 0 : selectedMonth + 1;
+      const nextYear = selectedMonth === 11 ? selectedYear + 1 : selectedYear;
+      const dStr = `${nextYear}-${String(nextMonth + 1).padStart(2, "0")}-${String(i).padStart(2, "0")}`;
+      cells.push({
+        day: i,
+        dateStr: dStr,
         isCurrentMonth: false,
-        dateStr: "",
         isToday: false,
         events: [],
       });
     }
 
-    return grid;
-  }, [selectedYear, selectedMonth, viewMode, filteredEvents, allEvents]);
+    return cells;
+  }, [selectedYear, selectedMonth, filteredEvents]);
 
-  // Year mode matrix: aggregate monthly totals
+  // Year breakdown for Matrix view
   const yearMonthlyTotals = useMemo(() => {
-    if (viewMode !== "year") return [];
-
     const months = Array.from({ length: 12 }, (_, i) => ({
-      monthIndex: i,
       name: monthNames[i],
+      monthIndex: i,
       received: 0,
       expected: 0,
       count: 0,
     }));
 
-    filteredEvents.forEach((e) => {
-      const dStr = e.payment_date || e.ex_dividend_date;
-      if (dStr) {
-        const d = new Date(dStr);
-        if (d.getFullYear() === selectedYear) {
-          const m = d.getMonth();
-          if (e.displayStatus === "RECEIVED") {
-            months[m].received += e.amount;
+    allEvents.forEach((ev) => {
+      const d = ev.payment_date || ev.ex_dividend_date;
+      if (!d) return;
+      const parts = d.split("-");
+      if (parts.length >= 2 && parseInt(parts[0], 10) === selectedYear) {
+        const mIdx = parseInt(parts[1], 10) - 1;
+        if (mIdx >= 0 && mIdx < 12) {
+          if (ev.displayStatus === "RECEIVED") {
+            months[mIdx].received += ev.amount;
           } else {
-            months[m].expected += e.amount;
+            months[mIdx].expected += ev.amount;
           }
-          months[m].count += 1;
+          months[mIdx].count += 1;
         }
       }
     });
 
     return months;
-  }, [viewMode, filteredEvents, selectedYear, monthNames]);
+  }, [allEvents, selectedYear]);
 
   return (
     <div className="space-y-6">
       {/* Top Banner Card */}
-      <div className="sketch-card bg-amber-50/70 p-5 rounded-2xl relative border-2 border-stone-800 shadow-sketch">
-        <div className="tape -top-2 left-8"></div>
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 relative">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-amber-200 border-2 border-stone-800 flex items-center justify-center font-hand text-2xl shadow-sketch-sm">
-              <CalendarIcon className="w-6 h-6 text-stone-800" />
+            <div className="w-11 h-11 rounded-xl bg-indigo-50 border border-indigo-200/60 flex items-center justify-center text-indigo-600">
+              <CalendarIcon className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="font-hand font-bold text-2xl text-stone-900 tracking-wide flex items-center gap-2">
+              <h2 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
                 Dividend Calendar & Schedule
-                <span className="text-xs font-mono font-normal bg-amber-200 border border-stone-800 px-2 py-0.5 rounded-full">
+                <span className="text-[11px] font-semibold bg-indigo-50 border border-indigo-200/70 text-indigo-700 px-2.5 py-0.5 rounded-full">
                   EUR
                 </span>
               </h2>
-              <p className="text-xs font-hand text-stone-600">
-                Track historical cash payouts from Trading 212 & upcoming declarations from EODHD with stock names.
+              <p className="text-xs text-slate-500 mt-0.5">
+                Track historical cash payouts from Trading 212 & upcoming declarations from EODHD with stock logos.
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2 self-start sm:self-auto">
             {/* View Mode Toggle */}
-            <div className="flex border-2 border-stone-800 rounded-xl overflow-hidden bg-white shadow-sketch-sm">
+            <div className="flex border border-slate-200 rounded-xl overflow-hidden bg-slate-50 p-0.5 shadow-sm">
               <button
                 onClick={() => setViewMode("month")}
-                className={`px-3 py-1.5 font-hand text-xs font-bold transition-colors ${
-                  viewMode === "month" ? "bg-amber-300 text-stone-900" : "text-stone-600 hover:bg-stone-100"
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                  viewMode === "month"
+                    ? "bg-white text-slate-900 shadow-sm"
+                    : "text-slate-600 hover:text-slate-900"
                 }`}
               >
                 Calendar Month
               </button>
               <button
                 onClick={() => setViewMode("list")}
-                className={`px-3 py-1.5 font-hand text-xs font-bold border-l-2 border-stone-800 transition-colors ${
-                  viewMode === "list" ? "bg-amber-300 text-stone-900" : "text-stone-600 hover:bg-stone-100"
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                  viewMode === "list"
+                    ? "bg-white text-slate-900 shadow-sm"
+                    : "text-slate-600 hover:text-slate-900"
                 }`}
               >
                 List View
               </button>
               <button
                 onClick={() => setViewMode("year")}
-                className={`px-3 py-1.5 font-hand text-xs font-bold border-l-2 border-stone-800 transition-colors ${
-                  viewMode === "year" ? "bg-amber-300 text-stone-900" : "text-stone-600 hover:bg-stone-100"
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                  viewMode === "year"
+                    ? "bg-white text-slate-900 shadow-sm"
+                    : "text-slate-600 hover:text-slate-900"
                 }`}
               >
-                Year
+                Year Matrix
               </button>
             </div>
           </div>
@@ -294,7 +304,7 @@ export const DividendCalendarView: React.FC<DividendCalendarViewProps> = ({
 
         {/* Date Selector for Month/Year mode */}
         {viewMode !== "list" && (
-          <div className="mt-4 pt-3 border-t-2 border-stone-800 border-dashed flex items-center justify-between">
+          <div className="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <button
                 onClick={() => {
@@ -309,12 +319,12 @@ export const DividendCalendarView: React.FC<DividendCalendarViewProps> = ({
                     setSelectedYear((y) => y - 1);
                   }
                 }}
-                className="sketch-btn p-1 bg-white hover:bg-stone-100 text-stone-800 rounded-lg"
+                className="p-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-lg border border-slate-200 transition-colors"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
 
-              <span className="font-hand font-bold text-base text-stone-900 px-2 min-w-[140px] text-center">
+              <span className="text-sm font-bold text-slate-900 px-3 min-w-[150px] text-center">
                 {viewMode === "month" ? `${monthNames[selectedMonth]} ${selectedYear}` : `${selectedYear}`}
               </span>
 
@@ -331,7 +341,7 @@ export const DividendCalendarView: React.FC<DividendCalendarViewProps> = ({
                     setSelectedYear((y) => y + 1);
                   }
                 }}
-                className="sketch-btn p-1 bg-white hover:bg-stone-100 text-stone-800 rounded-lg"
+                className="p-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-lg border border-slate-200 transition-colors"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
@@ -343,14 +353,14 @@ export const DividendCalendarView: React.FC<DividendCalendarViewProps> = ({
                     setSelectedMonth(now.getMonth());
                     setSelectedYear(now.getFullYear());
                   }}
-                  className="ml-2 text-[11px] font-hand font-bold text-stone-700 underline hover:text-stone-900"
+                  className="ml-2 text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors"
                 >
                   Jump to Today
                 </button>
               )}
             </div>
 
-            <span className="text-xs font-hand text-stone-500 hidden sm:inline">
+            <span className="text-xs text-slate-500 hidden sm:inline">
               Showing dividends for {viewMode === "month" ? `${monthNames[selectedMonth]} ${selectedYear}` : selectedYear}
             </span>
           </div>
@@ -359,87 +369,87 @@ export const DividendCalendarView: React.FC<DividendCalendarViewProps> = ({
 
       {/* Summary KPI Strip */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="sketch-card bg-emerald-50/70 p-4 rounded-xl border-2 border-stone-800 shadow-sketch relative">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 relative">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-hand font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
-              <ArrowDownCircle className="w-4 h-4 text-emerald-700" />
+            <span className="text-xs font-semibold text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
+              <ArrowDownCircle className="w-4 h-4 text-emerald-600" />
               Received In Period
             </span>
-            <span className="text-[10px] font-mono bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300">
+            <span className="text-[10px] font-medium bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full border border-emerald-200">
               T212 Cash
             </span>
           </div>
-          <div className="mt-2 text-2xl font-mono font-bold text-emerald-950">
+          <div className="mt-2 text-2xl font-bold text-emerald-950 font-mono">
             {formatCurrency(totalReceived, currency)}
           </div>
-          <div className="text-[11px] font-hand text-emerald-700 mt-1">
+          <div className="text-xs text-emerald-700 mt-1">
             Confirmed cash payouts deposited
           </div>
         </div>
 
-        <div className="sketch-card bg-blue-50/70 p-4 rounded-xl border-2 border-stone-800 shadow-sketch relative">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 relative">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-hand font-bold text-blue-800 uppercase tracking-wider flex items-center gap-1.5">
-              <Clock className="w-4 h-4 text-blue-700" />
+            <span className="text-xs font-semibold text-indigo-800 uppercase tracking-wider flex items-center gap-1.5">
+              <Clock className="w-4 h-4 text-indigo-600" />
               Scheduled / Expected
             </span>
-            <span className="text-[10px] font-mono bg-blue-100 px-2 py-0.5 rounded border border-blue-300">
+            <span className="text-[10px] font-medium bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full border border-indigo-200">
               EODHD Forecast
             </span>
           </div>
-          <div className="mt-2 text-2xl font-mono font-bold text-blue-950">
+          <div className="mt-2 text-2xl font-bold text-indigo-950 font-mono">
             {formatCurrency(totalExpected, currency)}
           </div>
-          <div className="text-[11px] font-hand text-blue-700 mt-1">
+          <div className="text-xs text-indigo-700 mt-1">
             Expected declarations converted to EUR
           </div>
         </div>
 
-        <div className="sketch-card bg-amber-50/70 p-4 rounded-xl border-2 border-stone-800 shadow-sketch relative">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 relative">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-hand font-bold text-amber-800 uppercase tracking-wider flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-amber-700" />
+            <span className="text-xs font-semibold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+              <Sparkles className="w-4 h-4 text-amber-500" />
               Total Period Dividend
             </span>
-            <span className="text-[10px] font-mono bg-amber-100 px-2 py-0.5 rounded border border-amber-300">
+            <span className="text-[10px] font-medium bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full border border-slate-200">
               Combined
             </span>
           </div>
-          <div className="mt-2 text-2xl font-mono font-bold text-stone-900">
+          <div className="mt-2 text-2xl font-bold text-slate-900 font-mono">
             {formatCurrency(totalReceived + totalExpected, currency)}
           </div>
-          <div className="text-[11px] font-hand text-stone-600 mt-1">
+          <div className="text-xs text-slate-500 mt-1">
             {filteredEvents.length} events matching current filters
           </div>
         </div>
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="sketch-card bg-white p-4 rounded-xl border-2 border-stone-800 shadow-sketch flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <div className="relative flex-1 sm:w-72">
-            <Search className="w-4 h-4 text-stone-400 absolute left-3 top-2.5" />
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
             <input
               type="text"
-              placeholder="Search ticker or name (e.g. ASML, Realty Income)..."
+              placeholder="Search ticker or name (e.g. ASML, Realty)..."
               value={tickerSearch}
               onChange={(e) => setTickerSearch(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 text-xs font-mono border-2 border-stone-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-300"
+              className="w-full pl-9 pr-3 py-1.5 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white bg-slate-50 transition-all"
             />
           </div>
         </div>
 
         <div className="flex items-center gap-2 self-start sm:self-auto">
-          <Filter className="w-3.5 h-3.5 text-stone-500" />
-          <span className="text-xs font-hand font-bold text-stone-700">Status:</span>
+          <Filter className="w-3.5 h-3.5 text-slate-400" />
+          <span className="text-xs font-semibold text-slate-600">Status:</span>
           {(["ALL", "RECEIVED", "EXPECTED"] as StatusFilter[]).map((st) => (
             <button
               key={st}
               onClick={() => setStatusFilter(st)}
-              className={`px-2.5 py-1 rounded-lg text-xs font-hand font-bold border transition-colors ${
+              className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
                 statusFilter === st
-                  ? "bg-stone-800 text-amber-300 border-stone-800"
-                  : "bg-stone-100 text-stone-600 hover:bg-stone-200 border-stone-300"
+                  ? "bg-slate-900 text-white shadow-sm"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
               }`}
             >
               {st}
@@ -450,34 +460,34 @@ export const DividendCalendarView: React.FC<DividendCalendarViewProps> = ({
 
       {/* VIEW MODE 1: VISUAL CALENDAR GRID */}
       {viewMode === "month" && (
-        <div className="sketch-card bg-white p-5 rounded-2xl border-2 border-stone-800 shadow-sketch">
-          <div className="flex items-center justify-between mb-4 pb-2 border-b-2 border-stone-800 border-dashed">
-            <div className="flex items-center gap-2">
-              <h3 className="font-hand font-bold text-xl text-stone-900">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6">
+          <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+            <div className="flex items-center gap-2.5">
+              <h3 className="text-base font-bold text-slate-900 tracking-tight">
                 {monthNames[selectedMonth]} {selectedYear}
               </h3>
-              <span className="text-xs font-hand bg-amber-100 border border-stone-400 px-2 py-0.5 rounded-full text-stone-700">
+              <span className="text-xs font-medium bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-full border border-slate-200">
                 {filteredEvents.length} events
               </span>
             </div>
-            <div className="flex items-center gap-3 text-xs font-hand">
-              <span className="flex items-center gap-1">
-                <span className="w-3 h-3 rounded-full bg-emerald-400 border border-stone-800 inline-block"></span>
+            <div className="flex items-center gap-3 text-xs">
+              <span className="flex items-center gap-1.5 text-slate-600">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span>
                 Received
               </span>
-              <span className="flex items-center gap-1">
-                <span className="w-3 h-3 rounded-full bg-blue-400 border border-stone-800 inline-block"></span>
+              <span className="flex items-center gap-1.5 text-slate-600">
+                <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 inline-block"></span>
                 Expected
               </span>
             </div>
           </div>
 
           {/* Weekday headers */}
-          <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-2">
+          <div className="grid grid-cols-7 gap-1.5 sm:gap-2 mb-2">
             {weekdayNames.map((wd) => (
               <div
                 key={wd}
-                className="text-center font-hand font-bold text-xs uppercase tracking-wider text-stone-600 py-1 bg-stone-50 border border-stone-300 rounded-lg"
+                className="text-center font-semibold text-[11px] uppercase tracking-wider text-slate-400 py-1.5 bg-slate-50 rounded-lg"
               >
                 {wd}
               </div>
@@ -485,7 +495,7 @@ export const DividendCalendarView: React.FC<DividendCalendarViewProps> = ({
           </div>
 
           {/* 7-column Calendar Cells */}
-          <div className="grid grid-cols-7 gap-1 sm:gap-2">
+          <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
             {calendarGrid.map((cell, idx) => {
               const dayTotal = cell.events.reduce((acc, ev) => acc + ev.amount, 0);
               const hasEvents = cell.events.length > 0;
@@ -501,32 +511,32 @@ export const DividendCalendarView: React.FC<DividendCalendarViewProps> = ({
                       });
                     }
                   }}
-                  className={`min-h-[85px] sm:min-h-[105px] p-1.5 sm:p-2 rounded-xl border-2 transition-all flex flex-col justify-between ${
+                  className={`min-h-[85px] sm:min-h-[105px] p-2 rounded-xl border transition-all flex flex-col justify-between ${
                     !cell.isCurrentMonth
-                      ? "bg-stone-50/50 border-stone-200 opacity-40 select-none cursor-default"
+                      ? "bg-slate-50/40 border-slate-100 opacity-40 select-none cursor-default"
                       : cell.isToday
-                      ? "bg-amber-50/60 border-amber-500 shadow-sm ring-2 ring-amber-300 ring-offset-1"
+                      ? "bg-indigo-50/40 border-indigo-400 shadow-sm ring-2 ring-indigo-200"
                       : hasEvents
-                      ? "bg-white border-stone-800 hover:border-amber-500 hover:bg-amber-50/20 cursor-pointer shadow-sketch-sm"
-                      : "bg-white border-stone-300 hover:border-stone-400"
+                      ? "bg-white border-slate-200 hover:border-indigo-400 hover:shadow-md cursor-pointer"
+                      : "bg-white border-slate-200/80 hover:border-slate-300"
                   }`}
                 >
                   {/* Cell Header: Day Number and Total */}
                   <div className="flex items-center justify-between mb-1">
                     <span
-                      className={`text-xs font-mono font-bold w-5 h-5 flex items-center justify-center rounded-full ${
+                      className={`text-xs font-semibold w-5 h-5 flex items-center justify-center rounded-full ${
                         cell.isToday
-                          ? "bg-amber-400 text-stone-900 border border-stone-800"
+                          ? "bg-indigo-600 text-white"
                           : cell.isCurrentMonth
-                          ? "text-stone-800"
-                          : "text-stone-400"
+                          ? "text-slate-800"
+                          : "text-slate-400"
                       }`}
                     >
                       {cell.day}
                     </span>
 
                     {hasEvents && (
-                      <span className="text-[10px] font-mono font-bold text-stone-900 bg-amber-100 border border-amber-300 px-1 py-0.2 rounded">
+                      <span className="text-[10px] font-mono font-bold text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded">
                         +{formatCurrency(dayTotal, currency)}
                       </span>
                     )}
@@ -540,14 +550,14 @@ export const DividendCalendarView: React.FC<DividendCalendarViewProps> = ({
                         <div
                           key={eIdx}
                           title={`${ev.ticker}: ${ev.companyName} (${formatCurrency(ev.amount, currency)})`}
-                          className={`text-[10px] font-sans px-1.5 py-0.5 rounded border truncate flex items-center justify-between ${
+                          className={`text-[10px] px-1.5 py-0.5 rounded truncate flex items-center justify-between border ${
                             isRec
-                              ? "bg-emerald-100/90 text-emerald-950 border-emerald-300"
-                              : "bg-blue-100/90 text-blue-950 border-blue-300"
+                              ? "bg-emerald-50 text-emerald-900 border-emerald-200/80"
+                              : "bg-indigo-50 text-indigo-900 border-indigo-200/80"
                           }`}
                         >
-                          <span className="font-bold font-mono mr-1">{ev.ticker}</span>
-                          <span className="truncate text-[9px] opacity-80 mr-1 hidden sm:inline">
+                          <span className="font-bold mr-1">{ev.ticker}</span>
+                          <span className="truncate text-[9px] opacity-75 mr-1 hidden sm:inline">
                             {ev.companyName}
                           </span>
                           <span className="font-mono font-semibold ml-auto">
@@ -558,7 +568,7 @@ export const DividendCalendarView: React.FC<DividendCalendarViewProps> = ({
                     })}
 
                     {cell.events.length > 2 && (
-                      <div className="text-[9px] font-hand font-bold text-center text-stone-600 bg-stone-100 rounded border border-stone-300 py-0.5">
+                      <div className="text-[9px] font-medium text-center text-slate-500 bg-slate-100 rounded py-0.5">
                         +{cell.events.length - 2} more
                       </div>
                     )}
@@ -572,21 +582,21 @@ export const DividendCalendarView: React.FC<DividendCalendarViewProps> = ({
 
       {/* SELECTED DAY POPUP / DRAWER */}
       {selectedDayEvents && (
-        <div className="sketch-card bg-amber-50/90 p-5 rounded-2xl border-2 border-stone-800 shadow-sketch relative">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-md p-6 relative">
           <button
             onClick={() => setSelectedDayEvents(null)}
-            className="absolute top-4 right-4 p-1 rounded-lg border border-stone-800 bg-white hover:bg-stone-100 text-stone-800"
+            className="absolute top-5 right-5 p-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-500 transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
 
-          <div className="flex items-center gap-2 mb-3">
-            <CalendarIcon className="w-5 h-5 text-stone-800" />
-            <h4 className="font-hand font-bold text-lg text-stone-900">
+          <div className="flex items-center gap-2.5 mb-4">
+            <CalendarIcon className="w-5 h-5 text-indigo-600" />
+            <h4 className="text-base font-bold text-slate-900">
               Dividends on {selectedDayEvents.dateStr}
             </h4>
-            <span className="text-xs font-mono font-bold text-stone-700 bg-white border border-stone-400 px-2 py-0.5 rounded-full">
-              {selectedDayEvents.events.length} events
+            <span className="text-xs font-semibold text-slate-700 bg-slate-100 px-2.5 py-0.5 rounded-full border border-slate-200">
+              {selectedDayEvents.events.length} payouts
             </span>
           </div>
 
@@ -594,31 +604,34 @@ export const DividendCalendarView: React.FC<DividendCalendarViewProps> = ({
             {selectedDayEvents.events.map((ev, i) => (
               <div
                 key={i}
-                className="bg-white p-3 rounded-xl border-2 border-stone-800 shadow-sketch-sm flex flex-col justify-between"
+                className="bg-slate-50/70 p-3.5 rounded-xl border border-slate-200 flex flex-col justify-between"
               >
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-mono font-bold text-base text-stone-900">
-                      {ev.ticker}
-                    </span>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center gap-2">
+                      <StockLogo ticker={ev.ticker} size="sm" />
+                      <span className="font-bold text-sm text-slate-900">
+                        {ev.ticker}
+                      </span>
+                    </div>
                     <span
-                      className={`text-[10px] font-sans font-bold px-2 py-0.5 rounded-full border ${
+                      className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
                         ev.displayStatus === "RECEIVED"
-                          ? "bg-emerald-100 text-emerald-900 border-emerald-300"
-                          : "bg-blue-100 text-blue-900 border-blue-300"
+                          ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                          : "bg-indigo-50 text-indigo-800 border-indigo-200"
                       }`}
                     >
                       {ev.displayStatus}
                     </span>
                   </div>
-                  <div className="text-xs font-sans text-stone-600 line-clamp-1 mb-2" title={ev.companyName}>
+                  <div className="text-xs text-slate-500 truncate mb-2" title={ev.companyName}>
                     {ev.companyName}
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-2 border-t border-stone-200 text-xs">
-                  <span className="font-hand text-stone-500">Payout</span>
-                  <span className="font-mono font-bold text-sm text-stone-900">
+                <div className="flex items-center justify-between pt-2 border-t border-slate-200 text-xs">
+                  <span className="text-slate-500 font-medium">Payout</span>
+                  <span className="font-mono font-bold text-sm text-slate-900">
                     {formatCurrency(ev.amount, currency)}
                   </span>
                 </div>
@@ -630,12 +643,12 @@ export const DividendCalendarView: React.FC<DividendCalendarViewProps> = ({
 
       {/* VIEW MODE 3: YEAR OVERVIEW MATRIX */}
       {viewMode === "year" && (
-        <div className="sketch-card bg-white p-5 rounded-2xl border-2 border-stone-800 shadow-sketch">
-          <div className="flex items-center justify-between mb-4 pb-2 border-b-2 border-stone-800 border-dashed">
-            <h3 className="font-hand font-bold text-xl text-stone-900">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6">
+          <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+            <h3 className="text-base font-bold text-slate-900 tracking-tight">
               {selectedYear} Annual Dividend Matrix
             </h3>
-            <span className="text-xs font-hand text-stone-500">
+            <span className="text-xs text-slate-500">
               12-Month distribution in {currency}
             </span>
           </div>
@@ -650,25 +663,25 @@ export const DividendCalendarView: React.FC<DividendCalendarViewProps> = ({
                     setSelectedMonth(m.monthIndex);
                     setViewMode("month");
                   }}
-                  className="p-4 rounded-xl border-2 border-stone-800 hover:border-amber-500 hover:bg-amber-50/30 transition-all cursor-pointer shadow-sketch-sm bg-white flex flex-col justify-between"
+                  className="p-4 rounded-xl border border-slate-200 hover:border-indigo-400 hover:shadow-md transition-all cursor-pointer bg-white flex flex-col justify-between"
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <span className="font-hand font-bold text-base text-stone-900">
+                    <span className="font-bold text-sm text-slate-900">
                       {m.name}
                     </span>
-                    <span className="text-[11px] font-mono text-stone-500 bg-stone-100 border border-stone-300 px-1.5 py-0.2 rounded">
+                    <span className="text-[11px] font-mono text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
                       {m.count} divs
                     </span>
                   </div>
 
                   <div className="space-y-1">
-                    <div className="flex justify-between text-xs font-hand text-emerald-800">
+                    <div className="flex justify-between text-xs text-emerald-700">
                       <span>Received:</span>
                       <span className="font-mono font-bold">
                         {formatCurrency(m.received, currency)}
                       </span>
                     </div>
-                    <div className="flex justify-between text-xs font-hand text-blue-800">
+                    <div className="flex justify-between text-xs text-indigo-700">
                       <span>Expected:</span>
                       <span className="font-mono font-bold">
                         {formatCurrency(m.expected, currency)}
@@ -676,9 +689,9 @@ export const DividendCalendarView: React.FC<DividendCalendarViewProps> = ({
                     </div>
                   </div>
 
-                  <div className="mt-3 pt-2 border-t-2 border-stone-800 border-dashed flex justify-between items-center">
-                    <span className="text-xs font-hand font-bold text-stone-700">Total:</span>
-                    <span className="font-mono font-bold text-sm text-stone-900">
+                  <div className="mt-3 pt-2 border-t border-slate-100 flex justify-between items-center">
+                    <span className="text-xs font-semibold text-slate-600">Total:</span>
+                    <span className="font-mono font-bold text-sm text-slate-900">
                       {formatCurrency(combined, currency)}
                     </span>
                   </div>
@@ -689,97 +702,100 @@ export const DividendCalendarView: React.FC<DividendCalendarViewProps> = ({
         </div>
       )}
 
-      {/* EVENTS TABLE (Visible in List Mode, or as detailed breakdown below Calendar) */}
-      <div className="sketch-card bg-white p-5 rounded-2xl border-2 border-stone-800 shadow-sketch">
-        <div className="flex items-center justify-between mb-4 pb-2 border-b-2 border-stone-800 border-dashed">
+      {/* EVENTS TABLE */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6">
+        <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
           <div>
-            <h3 className="font-hand font-bold text-lg text-stone-900">
+            <h3 className="text-base font-bold text-slate-900 tracking-tight">
               Detailed Dividend Records ({filteredEvents.length})
             </h3>
-            <p className="text-xs font-hand text-stone-500">
+            <p className="text-xs text-slate-500 mt-0.5">
               Showing both stock name and ticker for all cash distributions
             </p>
           </div>
-          <span className="text-xs font-hand text-stone-500 hidden sm:inline">
+          <span className="text-xs text-slate-400 hidden sm:inline">
             Source: Trading 212 & EODHD
           </span>
         </div>
 
         {filteredEvents.length === 0 ? (
           <div className="py-16 text-center">
-            <CalendarIcon className="w-10 h-10 text-stone-300 mx-auto mb-2" />
-            <p className="font-hand text-sm text-stone-500">
+            <CalendarIcon className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+            <p className="text-sm text-slate-500">
               No dividend events found matching current criteria.
             </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs font-hand">
+            <table className="w-full text-left text-xs">
               <thead>
-                <tr className="border-b-2 border-stone-800 text-stone-600 font-bold uppercase tracking-wider text-[11px]">
-                  <th className="py-2.5 px-3">Stock / Company</th>
-                  <th className="py-2.5 px-3">Status</th>
-                  <th className="py-2.5 px-3">Payment Date</th>
-                  <th className="py-2.5 px-3">Ex-Dividend Date</th>
-                  <th className="py-2.5 px-3">Record Date</th>
-                  <th className="py-2.5 px-3 text-right">Amount ({currency})</th>
-                  <th className="py-2.5 px-3 text-center">Source</th>
+                <tr className="border-b border-slate-200 text-slate-400 font-semibold uppercase tracking-wider text-[11px]">
+                  <th className="py-3 px-3">Stock / Company</th>
+                  <th className="py-3 px-3">Status</th>
+                  <th className="py-3 px-3">Payment Date</th>
+                  <th className="py-3 px-3">Ex-Dividend Date</th>
+                  <th className="py-3 px-3">Record Date</th>
+                  <th className="py-3 px-3 text-right">Amount ({currency})</th>
+                  <th className="py-3 px-3 text-center">Source</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-stone-200">
+              <tbody className="divide-y divide-slate-100">
                 {filteredEvents.map((e, idx) => {
                   const isReceived = e.displayStatus === "RECEIVED";
                   return (
                     <tr
                       key={e.id || idx}
-                      className="hover:bg-amber-50/50 transition-colors"
+                      className="hover:bg-slate-50/70 transition-colors"
                     >
-                      {/* Ticker AND Company Name */}
+                      {/* Ticker AND Company Name with Logo */}
                       <td className="py-3 px-3">
-                        <div className="flex flex-col">
-                          <span className="font-mono font-bold text-stone-900 text-sm">
-                            {e.ticker}
-                          </span>
-                          <span className="font-sans text-[11px] text-stone-500 truncate max-w-[220px]" title={e.companyName}>
-                            {e.companyName}
-                          </span>
+                        <div className="flex items-center gap-2.5">
+                          <StockLogo ticker={e.ticker} size="sm" />
+                          <div className="flex flex-col">
+                            <span className="font-bold text-slate-900 text-xs">
+                              {e.ticker}
+                            </span>
+                            <span className="text-[11px] text-slate-500 truncate max-w-[220px]" title={e.companyName}>
+                              {e.companyName}
+                            </span>
+                          </div>
                         </div>
                       </td>
 
                       <td className="py-3 px-3">
                         <span
-                          className={`inline-block px-2.5 py-0.5 rounded-full border text-[10px] font-sans font-bold ${
+                          className={`inline-block px-2.5 py-0.5 rounded-full border text-[10px] font-semibold ${
                             isReceived
-                              ? "bg-emerald-100 text-emerald-900 border-emerald-300"
-                              : "bg-blue-100 text-blue-900 border-blue-300"
+                              ? "bg-emerald-50 text-emerald-800 border-emerald-200/80"
+                              : "bg-indigo-50 text-indigo-800 border-indigo-200/80"
                           }`}
                         >
                           {isReceived ? "RECEIVED" : "EXPECTED"}
                         </span>
                       </td>
 
-                      <td className="py-3 px-3 font-mono text-stone-800">
+                      <td className="py-3 px-3 font-medium text-slate-700">
                         {e.payment_date || "—"}
                       </td>
 
-                      <td className="py-3 px-3 font-mono text-stone-600">
+                      <td className="py-3 px-3 text-slate-500">
                         {e.ex_dividend_date || "—"}
                       </td>
 
-                      <td className="py-3 px-3 font-mono text-stone-500 text-[11px]">
+                      <td className="py-3 px-3 text-slate-400 text-[11px]">
                         {e.record_date || "—"}
                       </td>
 
-                      <td className="py-3 px-3 text-right font-mono font-bold">
+                      <td className="py-3 px-3 text-right font-mono font-bold text-sm">
                         <span
-                          className={isReceived ? "text-emerald-700" : "text-blue-700"}
+                          className={isReceived ? "text-emerald-600" : "text-indigo-600"}
                         >
                           {formatCurrency(e.amount, currency)}
                         </span>
                       </td>
 
                       <td className="py-3 px-3 text-center">
-                        <span className="text-[10px] font-mono text-stone-500 bg-stone-100 px-2 py-0.5 rounded border border-stone-300">
+                        <span className="text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
                           {e.source || (isReceived ? "TRADING212" : "EODHD")}
                         </span>
                       </td>

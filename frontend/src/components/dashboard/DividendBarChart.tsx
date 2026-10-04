@@ -9,7 +9,7 @@ import {
   CartesianGrid,
 } from "recharts";
 import { MonthlyDividend } from "@/types";
-import { SketchSparkle, SketchWavyLine } from "../ui/SketchIcons";
+import { BarChart3 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
 interface DividendBarChartProps {
@@ -18,35 +18,34 @@ interface DividendBarChartProps {
 
 export const DividendBarChart: React.FC<DividendBarChartProps> = ({ data }) => {
   return (
-    <div className="sketch-card p-5 bg-white flex flex-col justify-between h-full">
+    <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 flex flex-col justify-between h-full transition-all duration-200">
       {/* Header */}
       <div>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-1">
           <div className="flex items-center gap-2">
-            <span className="font-sketch text-xl font-bold text-ink-900">
+            <h3 className="text-lg font-bold text-slate-900 tracking-tight">
               Monthly Dividend Stream
-            </span>
-            <SketchSparkle className="w-4 h-4 text-emerald-500" />
+            </h3>
+            <BarChart3 className="w-4 h-4 text-emerald-600" />
           </div>
-          <div className="flex items-center gap-2 text-xs font-mono">
-            <span className="flex items-center gap-1 text-emerald-800">
-              <span className="w-2.5 h-2.5 bg-emerald-500 border border-ink-900 rounded-sm inline-block" />
+          <div className="flex items-center gap-3 text-xs">
+            <span className="flex items-center gap-1.5 font-medium text-slate-700">
+              <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full inline-block" />
               Received
             </span>
-            <span className="flex items-center gap-1 text-amber-800">
-              <span className="w-2.5 h-2.5 bg-amber-300 border border-ink-900 rounded-sm inline-block" />
+            <span className="flex items-center gap-1.5 font-medium text-slate-700">
+              <span className="w-2.5 h-2.5 bg-indigo-400 rounded-full inline-block" />
               Expected
             </span>
           </div>
         </div>
-        <p className="text-xs font-hand text-ink-muted -mt-0.5">
-          actual cash received vs forecasted future dividend payouts
+        <p className="text-xs text-slate-500 font-normal">
+          Actual cash received vs forecasted future dividend payouts
         </p>
-        <SketchWavyLine className="w-36 h-2 text-ink-900/30 my-2" />
       </div>
 
       {/* Bar Chart */}
-      <div className="h-64 my-2">
+      <div className="h-64 my-4">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={data}
@@ -54,21 +53,21 @@ export const DividendBarChart: React.FC<DividendBarChartProps> = ({ data }) => {
           >
             <CartesianGrid
               strokeDasharray="3 3"
-              stroke="#e4e4e7"
+              stroke="#f1f5f9"
               vertical={false}
             />
             <XAxis
               dataKey="month"
-              stroke="#71717a"
+              stroke="#94a3b8"
               fontSize={11}
-              fontFamily="'Patrick Hand', cursive, sans-serif"
               tickLine={false}
+              axisLine={false}
             />
             <YAxis
-              stroke="#71717a"
+              stroke="#94a3b8"
               fontSize={11}
-              fontFamily="monospace"
               tickLine={false}
+              axisLine={false}
               tickFormatter={(v) => `€${v}`}
             />
             <Tooltip
@@ -77,20 +76,20 @@ export const DividendBarChart: React.FC<DividendBarChartProps> = ({ data }) => {
                   const received = Number(payload[0]?.value || 0);
                   const expected = Number(payload[1]?.value || 0);
                   return (
-                    <div className="bg-white border-2 border-ink-900 rounded-sketch p-2.5 shadow-sketch text-xs font-mono">
-                      <p className="font-bold text-ink-900 border-b border-ink-900/20 pb-1 mb-1 font-sketch text-sm">
+                    <div className="bg-slate-900/95 backdrop-blur-sm text-white rounded-xl p-3 shadow-xl text-xs min-w-[170px]">
+                      <p className="font-semibold text-white border-b border-slate-700 pb-1.5 mb-2">
                         {label} Payouts
                       </p>
-                      <div className="flex items-center justify-between gap-3 text-emerald-700">
-                        <span>Received (T212):</span>
+                      <div className="flex items-center justify-between gap-3 text-emerald-400 mb-1">
+                        <span className="text-slate-400">Received (T212):</span>
                         <span className="font-bold">{formatCurrency(received)}</span>
                       </div>
-                      <div className="flex items-center justify-between gap-3 text-amber-700">
-                        <span>Expected (EODHD):</span>
+                      <div className="flex items-center justify-between gap-3 text-indigo-300 mb-1.5">
+                        <span className="text-slate-400">Expected (EODHD):</span>
                         <span className="font-bold">{formatCurrency(expected)}</span>
                       </div>
-                      <div className="flex items-center justify-between gap-3 pt-1 border-t border-dashed border-ink-900/20 font-bold text-ink-900">
-                        <span>Total Month:</span>
+                      <div className="flex items-center justify-between gap-3 pt-1.5 border-t border-slate-700 font-bold text-white">
+                        <span>Total:</span>
                         <span>{formatCurrency(received + expected)}</span>
                       </div>
                     </div>
@@ -103,27 +102,24 @@ export const DividendBarChart: React.FC<DividendBarChartProps> = ({ data }) => {
               dataKey="received"
               name="Received"
               fill="#10b981"
-              stroke="#18181b"
-              strokeWidth={1.5}
               radius={[4, 4, 0, 0]}
+              maxBarSize={28}
             />
             <Bar
               dataKey="expected"
               name="Expected"
-              fill="#fcd34d"
-              stroke="#18181b"
-              strokeWidth={1.5}
-              strokeDasharray="2 1"
+              fill="#818cf8"
               radius={[4, 4, 0, 0]}
+              maxBarSize={28}
             />
           </BarChart>
         </ResponsiveContainer>
       </div>
 
       {/* Footer Note */}
-      <div className="flex items-center justify-between text-[11px] font-hand text-ink-700 pt-2 border-t-2 border-dashed border-ink-900/20">
-        <span>* Expected dividends derived from EODHD declaration events</span>
-        <span className="font-mono text-ink-900 font-bold">2026 Forecast</span>
+      <div className="flex items-center justify-between text-[11px] text-slate-400 pt-3 border-t border-slate-100">
+        <span>* Forecasted dividends based on declared EODHD events and historical cadence</span>
+        <span className="font-semibold text-slate-700">Live Forecast</span>
       </div>
     </div>
   );

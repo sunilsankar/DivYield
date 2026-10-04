@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS transactions (
 );
 CREATE INDEX IF NOT EXISTS idx_transactions_ticker ON transactions(ticker);
 CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date);
+CREATE INDEX IF NOT EXISTS idx_transactions_type_date ON transactions(type, date DESC);
 
 CREATE TABLE IF NOT EXISTS dividend_events (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -63,6 +64,8 @@ CREATE TABLE IF NOT EXISTS dividend_events (
 );
 CREATE INDEX IF NOT EXISTS idx_dividend_events_ticker ON dividend_events(ticker);
 CREATE INDEX IF NOT EXISTS idx_dividend_events_payment_date ON dividend_events(payment_date);
+CREATE INDEX IF NOT EXISTS idx_dividend_events_status_date ON dividend_events(status, payment_date DESC);
+CREATE INDEX IF NOT EXISTS idx_holdings_qty_market_val ON holdings(quantity, market_value DESC);
 
 CREATE TABLE IF NOT EXISTS instrument_mappings (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
