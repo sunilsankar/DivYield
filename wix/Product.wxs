@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+    <Product Id="*" 
+             Name="DivYield" 
+             Language="1033" 
+             Version="0.1.0" 
+             Manufacturer="DivYield" 
+             UpgradeCode="82e70c5e-859a-4c91-9e79-8d4a6136be0a">
+             
+        <Package InstallerVersion="301" 
+                 Compressed="yes" 
+                 InstallScope="perMachine" 
+                 Description="DivYield - Fast, Smooth Portfolio and Dividend Tracker" />
+
+        <MajorUpgrade DowngradeErrorMessage="A newer version of DivYield is already installed." />
+        <MediaTemplate EmbedCab="yes" />
+
+        <!-- Directory Structure -->
+        <Directory Id="TARGETDIR" Name="SourceDir">
+            <!-- Program Files Folder -->
+            <Directory Id="ProgramFilesFolder">
+                <Directory Id="INSTALLFOLDER" Name="DivYield" />
+            </Directory>
+            <!-- Start Menu Programs Folder -->
+            <Directory Id="ProgramMenuFolder">
+                <Directory Id="ApplicationProgramsFolder" Name="DivYield" />
+            </Directory>
+        </Directory>
+
+        <!-- Start Menu Shortcut Component -->
+        <DirectoryRef Id="ApplicationProgramsFolder">
+            <Component Id="ApplicationShortcut" Guid="f319207e-0be5-4cf5-b16f-87030232490b">
+                <Shortcut Id="ApplicationStartMenuShortcut"
+                          Name="DivYield"
+                          Description="DivYield - Fast, smooth portfolio and dividend tracker"
+                          Target="[INSTALLFOLDER]DivYield.exe"
+                          WorkingDirectory="INSTALLFOLDER" />
+                <RemoveFolder Id="CleanUpShortCut" On="uninstall" />
+                <RegistryValue Root="HKCU" 
+                               Key="Software\DivYield" 
+                               Name="installed" 
+                               Type="integer" 
+                               Value="1" 
+                               KeyPath="yes" />
+            </Component>
+        </DirectoryRef>
+
+        <!-- Features -->
+        <Feature Id="ProductFeature" Title="DivYield" Level="1">
+            <ComponentGroupRef Id="DivYieldComponents" />
+            <ComponentRef Id="ApplicationShortcut" />
+        </Feature>
+
+        <!-- UI -->
+        <UIRef Id="WixUI_Minimal" />
+        <WixVariable Id="WixUILicenseRtf" Value="wix/license.rtf" />
+    </Product>
+</Wix>

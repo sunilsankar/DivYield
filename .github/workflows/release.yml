@@ -92,11 +92,21 @@ jobs:
         run: npx tsc --noEmit
 
   build:
-    name: Build DivYield
+    name: Build DivYield (${{ matrix.platform }})
     needs: [security-scan, test]
     strategy:
+      fail-fast: false
       matrix:
-        os: [macos-latest, windows-latest]
+        include:
+          - os: macos-latest
+            platform: macos-arm64
+            artifact_name: DivYield-macOS-AppleSilicon.dmg
+          - os: macos-13
+            platform: macos-x86_64
+            artifact_name: DivYield-macOS-Intel.dmg
+          - os: windows-latest
+            platform: windows-x64
+            artifact_name: DivYield-Windows.msi
     runs-on: ${{ matrix.os }}
     
     steps:
@@ -131,23 +141,44 @@ jobs:
         run: pyinstaller DivYield.spec --clean
         
       - name: Create DMG (macOS)
-        if: matrix.os == 'macos-latest'
+        if: runner.os == 'macOS'
         run: |
           if [ -d "dist/DivYield.app" ]; then
-            hdiutil create -volname "DivYield" -srcfolder "dist/DivYield.app" -ov -format UDZO "DivYield-macOS.dmg"
+            hdiutil create -volname "DivYield" -srcfolder "dist/DivYield.app" -ov -format UDZO "${{ matrix.artifact_name }}"
           fi
           
-      - name: Zip Windows Build
-        if: matrix.os == 'windows-latest'
+      - name: Build Windows MSI (WiX Toolset)
+        if: runner.os == 'Windows'
+        shell: powershell
         run: |
+          # Ensure WiX toolset is in PATH
+          $wixPath = "C:\Program Files (x86)\WiX Toolset v3.11\bin"
+          if (Test-Path $wixPath) {
+              $env:PATH = "$wixPath;$env:PATH"
+          } else {
+              choco install wixtoolset -y
+              $env:PATH = "C:\Program Files (x86)\WiX Toolset v3.11\bin;$env:PATH"
+          }
+
+          # 1. Harvest files from PyInstaller dist
+          heat dir "dist\DivYield" -cg DivYieldComponents -dr INSTALLFOLDER -scom -sreg -srd -var var.SourceDir -gg -out "dist\HarvestedComponents.wxs"
+
+          # 2. Compile WiX sources
+          candle -dSourceDir="dist\DivYield" -out "dist\" wix\Product.wxs dist\HarvestedComponents.wxs
+
+          # 3. Link MSI installer
+          light -ext WixUIExtension -sice:ICE69 -sice:ICE91 -out "DivYield-Windows.msi" dist\Product.wixobj dist\HarvestedComponents.wixobj
+
+          # Also create portable zip archive as optional backup
           Compress-Archive -Path dist/DivYield/* -DestinationPath DivYield-Windows.zip
           
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: divyield-${{ matrix.os }}
+          name: divyield-${{ matrix.platform }}
           path: |
-            DivYield-macOS.dmg
+            DivYield-*.dmg
+            DivYield-Windows.msi
             DivYield-Windows.zip
 
   release:
@@ -170,7 +201,9 @@ jobs:
           name: DivYield ${{ github.ref_name }}
           prerelease: true
           files: |
-            DivYield-macOS.dmg
+            DivYield-macOS-AppleSilicon.dmg
+            DivYield-macOS-Intel.dmg
+            DivYield-Windows.msi
             DivYield-Windows.zip
           draft: false
           generate_release_notes: true

@@ -45,15 +45,25 @@ app.include_router(data_tools.router, prefix=settings.api_v1_prefix)
 app.include_router(export.router, prefix=settings.api_v1_prefix)
 
 # Serve React frontend if running in packaged desktop mode or dist exists
+frontend_dist = None
 if getattr(sys, 'frozen', False):
-    # PyInstaller creates a temp folder and stores path in _MEIPASS
-    base_dir = Path(sys._MEIPASS)
+    # PyInstaller onedir/onefile mode
+    candidates = [
+        Path(getattr(sys, '_MEIPASS', '')) / "frontend" / "dist",
+        Path(sys.executable).parent / "frontend" / "dist",
+        Path(sys.executable).parent / "_internal" / "frontend" / "dist",
+    ]
+    for c in candidates:
+        if c.exists() and c.is_dir():
+            frontend_dist = c
+            break
 else:
     base_dir = Path(__file__).resolve().parent.parent.parent
+    dev_dist = base_dir / "frontend" / "dist"
+    if dev_dist.exists() and dev_dist.is_dir():
+        frontend_dist = dev_dist
 
-frontend_dist = base_dir / "frontend" / "dist"
-
-if frontend_dist.exists() and frontend_dist.is_dir():
+if frontend_dist and frontend_dist.exists() and frontend_dist.is_dir():
     app.mount("/assets", StaticFiles(directory=frontend_dist / "assets"), name="assets")
     
     @app.get("/")

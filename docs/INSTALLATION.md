@@ -11,6 +11,18 @@ This document provides complete instructions for installing, configuring, and de
 
 ---
 
+## Pre-Compiled Desktop Installers (Recommended)
+
+If you just want to run DivYield without compiling from source, download the pre-compiled installer for your operating system from the latest [GitHub Releases](https://github.com/sunilsankar/DivYield/releases):
+
+| Platform | Recommended Installer | Details |
+|---|---|---|
+| **Windows 10 / 11** | `DivYield-Windows.msi` | Native Windows Installer. Installs to Program Files with Start Menu shortcut and uninstaller. *(Portable `DivYield-Windows.zip` also available)* |
+| **macOS (Apple Silicon)** | `DivYield-macOS-AppleSilicon.dmg` | Native ARM64 disk image for Apple Silicon (M1, M2, M3, M4) Macs. Drag to Applications. |
+| **macOS (Intel)** | `DivYield-macOS-Intel.dmg` | Native x86_64 disk image for Intel Core-based Macs. Drag to Applications. |
+
+---
+
 ## Prerequisites & System Requirements
 
 ### Hardware Requirements
@@ -153,13 +165,19 @@ pyinstaller DivYield.spec --clean
   - Standalone macOS Application Bundle.
   - To package into a distributable DMG on macOS:
     ```bash
-    npm install -g create-dmg
-    create-dmg dist/DivYield.app
-    mv *.dmg DivYield-macOS.dmg
+    hdiutil create -volname "DivYield" -srcfolder "dist/DivYield.app" -ov -format UDZO "DivYield-macOS.dmg"
     ```
 - **Windows (`dist/DivYield/DivYield.exe`)**:
-  - Standalone Windows application folder containing `DivYield.exe`.
-  - Can be compressed into `DivYield-Windows.zip` or wrapped in an Inno Setup / WiX MSI installer.
+  - Standalone Windows application directory containing `DivYield.exe`.
+  - Can be built into a native `DivYield-Windows.msi` installer using the included WiX configuration:
+    ```powershell
+    # 1. Harvest files from PyInstaller dist
+    heat dir "dist\DivYield" -cg DivYieldComponents -dr INSTALLFOLDER -scom -sreg -srd -var var.SourceDir -gg -out "dist\HarvestedComponents.wxs"
+    # 2. Compile WiX sources
+    candle -dSourceDir="dist\DivYield" -out "dist\" wix\Product.wxs dist\HarvestedComponents.wxs
+    # 3. Link MSI installer with standard UI
+    light -ext WixUIExtension -sice:ICE69 -sice:ICE91 -out "DivYield-Windows.msi" dist\Product.wixobj dist\HarvestedComponents.wixobj
+    ```
 
 ### How the Desktop App Operates
 - It imports `desktop.py`.
