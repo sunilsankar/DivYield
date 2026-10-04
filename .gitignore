@@ -1,0 +1,59 @@
+# Dependencies & Virtualenvs
+node_modules/
+frontend/node_modules/
+.venv
+.venv/
+backend/.venv
+backend/.venv/
+env/
+venv/
+
+# Local agent / editor workspaces
+.opencode/
+
+# Build artifacts
+dist/
+frontend/dist/
+build/
+*.egg-info/
+
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+backend/.pytest_cache/
+coverage/
+.coverage
+htmlcov/
+
+# Sensitive data and encryption keys (NEVER commit)
+.env
+.env.*
+!.env.example
+data/.secret*
+data/*.key
+data/*.enc
+data/*.db
+data/*.db-wal
+data/*.db-shm
+data/*.sqlite*
+*.db
+*.sqlite
+*.sqlite3
+
+# Operating System & IDE
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Test runners
+.playwright/

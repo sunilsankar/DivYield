@@ -1,0 +1,92 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --paper-bg: #faf7f2;
+    --paper-grid: rgba(24, 24, 27, 0.04);
+  }
+
+  body {
+    background-color: var(--paper-bg);
+    background-image: 
+      linear-gradient(var(--paper-grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--paper-grid) 1px, transparent 1px);
+    background-size: 24px 24px;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+}
+
+/* Hand-drawn sketch aesthetic classes */
+.font-sketch {
+  font-family: 'Architects Daughter', cursive, sans-serif;
+}
+
+.font-hand {
+  font-family: 'Patrick Hand', 'Comic Neue', cursive, sans-serif;
+}
+
+.sketch-card {
+  background-color: #ffffff;
+  border: 2px solid #18181b;
+  border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
+  box-shadow: 3px 3px 0px 0px #18181b;
+  transition: all 0.15s ease-in-out;
+}
+
+.sketch-card:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0px 0px #18181b;
+}
+
+.sketch-card-flat {
+  background-color: #ffffff;
+  border: 2px solid #18181b;
+  border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
+  box-shadow: 2px 2px 0px 0px #18181b;
+}
+
+.sketch-badge {
+  border: 1.5px solid #18181b;
+  border-radius: 120px 8px 110px 8px/8px 110px 8px 120px;
+  box-shadow: 1.5px 1.5px 0px 0px #18181b;
+}
+
+.sketch-btn {
+  border: 2px solid #18181b;
+  border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
+  box-shadow: 3px 3px 0px 0px #18181b;
+  transition: all 0.1s ease;
+}
+
+.sketch-btn:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0px 0px #18181b;
+}
+
+.sketch-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0px 0px #18181b;
+}
+
+.sketch-divider {
+  border: none;
+  height: 2px;
+  background-image: radial-gradient(circle, #18181b 1px, transparent 1px);
+  background-size: 6px 2px;
+  background-repeat: repeat-x;
+}
+
+/* Custom scrollbar for sketch UI */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #f5f0e6;
+}
+::-webkit-scrollbar-thumb {
+  background: #18181b;
+  border-radius: 4px;
+}
