@@ -101,9 +101,9 @@ jobs:
           - os: macos-latest
             platform: macos-arm64
             artifact_name: DivYield-macOS-AppleSilicon.dmg
-          - os: macos-13
-            platform: macos-x86_64
-            artifact_name: DivYield-macOS-Intel.dmg
+          # - os: macos-13
+          #   platform: macos-x86_64
+          #   artifact_name: DivYield-macOS-Intel.dmg
           - os: windows-latest
             platform: windows-x64
             artifact_name: DivYield-Windows.msi
@@ -202,7 +202,6 @@ jobs:
           prerelease: true
           files: |
             DivYield-macOS-AppleSilicon.dmg
-            DivYield-macOS-Intel.dmg
             DivYield-Windows.msi
             DivYield-Windows.zip
           draft: false

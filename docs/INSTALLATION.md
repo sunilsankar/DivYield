@@ -19,7 +19,7 @@ If you just want to run DivYield without compiling from source, download the pre
 |---|---|---|
 | **Windows 10 / 11** | `DivYield-Windows.msi` | Native Windows Installer. Installs to Program Files with Start Menu shortcut and uninstaller. *(Portable `DivYield-Windows.zip` also available)* |
 | **macOS (Apple Silicon)** | `DivYield-macOS-AppleSilicon.dmg` | Native ARM64 disk image for Apple Silicon (M1, M2, M3, M4) Macs. Drag to Applications. |
-| **macOS (Intel)** | `DivYield-macOS-Intel.dmg` | Native x86_64 disk image for Intel Core-based Macs. Drag to Applications. |
+| **macOS (Intel Core)** | Build from source | Supported via `npm run build && pyinstaller DivYield.spec`. |
 
 ---
 
