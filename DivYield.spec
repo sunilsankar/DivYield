@@ -1,10 +1,19 @@
 # -*- mode: python ; coding: utf-8 -*-
+import os
+import sys
 
 block_cipher = None
 
+# Detect platform icon if available
+icon_file = None
+if sys.platform == 'darwin' and os.path.exists('assets/icon.icns'):
+    icon_file = 'assets/icon.icns'
+elif sys.platform.startswith('win') and os.path.exists('assets/icon.ico'):
+    icon_file = 'assets/icon.ico'
+
 a = Analysis(
     ['desktop.py'],
-    pathex=['.'],
+    pathex=['.', 'backend'],
     binaries=[],
     datas=[
         ('frontend/dist', 'frontend/dist'),
@@ -20,18 +29,32 @@ a = Analysis(
         'uvicorn.protocols.websockets.auto',
         'uvicorn.lifespan',
         'uvicorn.lifespan.on',
-        'backend.app.main',
-        'backend.app.routers.health',
-        'backend.app.routers.credentials',
-        'backend.app.routers.portfolio',
-        'backend.app.routers.transactions',
-        'backend.app.routers.dividends',
-        'backend.app.routers.sync',
-        'backend.app.routers.eodhd',
-        'backend.app.routers.analytics',
-        'backend.app.routers.tax',
-        'backend.app.routers.data_tools',
-        'backend.app.routers.export',
+        'app.main',
+        'app.config',
+        'app.database',
+        'app.credentials',
+        'app.schemas',
+        'app.routers.health',
+        'app.routers.credentials',
+        'app.routers.portfolio',
+        'app.routers.transactions',
+        'app.routers.dividends',
+        'app.routers.sync',
+        'app.routers.eodhd',
+        'app.routers.analytics',
+        'app.routers.tax',
+        'app.routers.data_tools',
+        'app.routers.export',
+        'app.services.combined_sync',
+        'app.services.trading212_sync',
+        'app.services.eodhd_enrichment',
+        'app.services.tax_engine',
+        'app.services.cash_interest',
+        'app.services.manual_entries',
+        'app.services.csv_io',
+        'app.providers.trading212',
+        'app.providers.trading212_allowlist',
+        'app.providers.eodhd',
         'sqlite3',
         'keyring.backends.macOS',
         'keyring.backends.Windows',
@@ -65,7 +88,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='frontend/public/vite.svg', # Change if icon is available
+    icon=icon_file,
 )
 
 coll = COLLECT(
@@ -79,9 +102,10 @@ coll = COLLECT(
     name='DivYield',
 )
 
-app = BUNDLE(
-    coll,
-    name='DivYield.app',
-    icon='frontend/public/vite.svg',
-    bundle_identifier='com.divyield.app',
-)
+if sys.platform == 'darwin':
+    app = BUNDLE(
+        coll,
+        name='DivYield.app',
+        icon=icon_file,
+        bundle_identifier='com.divyield.app',
+    )
