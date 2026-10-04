@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import { RefreshCw, ShieldCheck, Database, KeyRound, CheckCircle2, TrendingUp, Palette, PenTool } from "lucide-react";
-import { HealthStatus, ConnectionsResponse } from "@/types";
+import { RefreshCw, ShieldCheck, Database, KeyRound, CheckCircle2, TrendingUp, Palette, PenTool, ArrowUpCircle } from "lucide-react";
+import { HealthStatus, ConnectionsResponse, UpdateCheckResult } from "@/types";
 import { useTheme } from "@/context/ThemeContext";
 import { DisplayPreferencesModal } from "@/components/settings/DisplayPreferencesModal";
 
@@ -13,6 +13,7 @@ interface NavbarProps {
   lastSyncedText: string;
   connections?: ConnectionsResponse | null;
   onOpenConnections?: () => void;
+  updateInfo?: UpdateCheckResult | null;
   syncProgress?: {
     currentStep: number;
     totalSteps: number;
@@ -29,6 +30,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   lastSyncedText,
   connections,
   onOpenConnections,
+  updateInfo,
   syncProgress,
 }) => {
   const { styleTheme, setStyleTheme } = useTheme();
@@ -49,8 +51,20 @@ export const Navbar: React.FC<NavbarProps> = ({
                   DivYield
                 </span>
                 <span className="text-[10px] font-semibold tracking-wide px-1.5 py-0.5 bg-emerald-500/10 text-emerald-700 rounded-md font-sans">
-                  v1.0
+                  {health?.version ? `v${health.version}` : "v0.1.0-beta"}
                 </span>
+                {updateInfo?.update_available && (
+                  <a
+                    href={updateInfo.release_url || "https://github.com/sunilsankar/DivYield/releases"}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-800 border border-amber-500/20 rounded-md transition-colors animate-pulse"
+                    title={`Update ${updateInfo.latest_version} available`}
+                  >
+                    <ArrowUpCircle className="w-3 h-3 text-amber-600" />
+                    <span>Update {updateInfo.latest_version}</span>
+                  </a>
+                )}
               </div>
               <p className="text-[11px] text-slate-500 hidden sm:block font-medium -mt-0.5">
                 Portfolio Overview & Dividend Tracker

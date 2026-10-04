@@ -151,7 +151,24 @@ jobs:
         if: runner.os == 'Windows'
         shell: powershell
         run: |
-          # Ensure WiX toolset is in PATH
+          # 1. Create self-signed code-signing certificate for binary authenticity
+          $cert = New-SelfSignedCertificate -Type CodeSigningCert -Subject "CN=DivYield, O=DivYield" -CertStoreLocation Cert:\CurrentUser\My -NotAfter (Get-Date).AddYears(5)
+          $certPassword = ConvertTo-SecureString -String "DivYieldSigningKey2026" -Force -AsPlainText
+          $certPath = "$pwd\DivYieldCert.pfx"
+          Export-PfxCertificate -Cert $cert -FilePath $certPath -Password $certPassword
+
+          # Locate signtool in Windows SDK
+          $signtool = (Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits" -Filter signtool.exe -Recurse -ErrorAction SilentlyContinue | Where-Object { $_.FullName -like "*x64*" } | Select-Object -First 1).FullName
+          if (-not $signtool) {
+              $signtool = (Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits" -Filter signtool.exe -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
+          }
+
+          if ($signtool -and (Test-Path "dist\DivYield\DivYield.exe")) {
+              Write-Host "Signing DivYield.exe with $signtool..."
+              & $signtool sign /f $certPath /p "DivYieldSigningKey2026" /fd SHA256 "dist\DivYield\DivYield.exe"
+          }
+
+          # 2. Ensure WiX toolset is in PATH
           $wixPath = "C:\Program Files (x86)\WiX Toolset v3.11\bin"
           if (Test-Path $wixPath) {
               $env:PATH = "$wixPath;$env:PATH"
@@ -160,14 +177,25 @@ jobs:
               $env:PATH = "C:\Program Files (x86)\WiX Toolset v3.11\bin;$env:PATH"
           }
 
-          # 1. Harvest files from PyInstaller dist
+          # 3. Harvest files from PyInstaller dist
           heat dir "dist\DivYield" -cg DivYieldComponents -dr INSTALLFOLDER -scom -sreg -srd -var var.SourceDir -gg -out "dist\HarvestedComponents.wxs"
 
-          # 2. Compile WiX sources
+          # 4. Compile WiX sources
           candle -dSourceDir="dist\DivYield" -out "dist\" wix\Product.wxs dist\HarvestedComponents.wxs
 
-          # 3. Link MSI installer
+          # 5. Link MSI installer with WixUI_InstallDir dialogs
           light -ext WixUIExtension -sice:ICE69 -sice:ICE91 -out "DivYield-Windows.msi" dist\Product.wixobj dist\HarvestedComponents.wixobj
+
+          # 6. Sign the MSI installer
+          if ($signtool -and (Test-Path "DivYield-Windows.msi")) {
+              Write-Host "Signing DivYield-Windows.msi with $signtool..."
+              & $signtool sign /f $certPath /p "DivYieldSigningKey2026" /fd SHA256 "DivYield-Windows.msi"
+          }
+
+          # Clean up certificate file
+          if (Test-Path $certPath) {
+              Remove-Item -Force $certPath
+          }
 
           # Also create portable zip archive as optional backup
           Compress-Archive -Path dist/DivYield/* -DestinationPath DivYield-Windows.zip

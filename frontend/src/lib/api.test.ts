@@ -381,4 +381,25 @@ describe("API Client Tests", () => {
     expect(res.events[0].company_name).toBe("Realty Income Corp");
     expect(res.events[0].amount).toBe(12.50);
   });
+
+  it("fetchUpdateCheck queries /api/v1/updates and returns update metadata", async () => {
+    const mockUpdateResponse = {
+      current_version: "0.1.0-beta",
+      latest_version: "v0.2.0-beta",
+      update_available: true,
+      release_url: "https://github.com/sunilsankar/DivYield/releases/tag/v0.2.0-beta",
+      release_name: "v0.2.0-beta",
+    };
+
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => mockUpdateResponse,
+    } as unknown as Response);
+
+    const { fetchUpdateCheck } = await import("./api");
+    const res = await fetchUpdateCheck();
+    expect(res.current_version).toBe("0.1.0-beta");
+    expect(res.update_available).toBe(true);
+    expect(res.latest_version).toBe("v0.2.0-beta");
+  });
 });

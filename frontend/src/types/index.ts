@@ -1,9 +1,18 @@
 export interface HealthStatus {
   status: "ok" | "degraded" | "error";
   app: string;
+  version?: string;
   database: string;
   timestamp: string;
   latencyMs?: number;
+}
+
+export interface UpdateCheckResult {
+  current_version: string;
+  latest_version?: string | null;
+  update_available: boolean;
+  release_url?: string | null;
+  release_name?: string | null;
 }
 
 export interface Holding {

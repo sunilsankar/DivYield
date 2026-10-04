@@ -1,5 +1,6 @@
 import {
   HealthStatus,
+  UpdateCheckResult,
   ConnectionsResponse,
   ConnectionTestResult,
   PortfolioSummary,
@@ -22,6 +23,14 @@ export async function fetchHealth(): Promise<HealthStatus> {
   const res = await fetch(`${API_BASE}/health`);
   if (!res.ok) {
     throw new Error(`Health check failed with status ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function fetchUpdateCheck(): Promise<UpdateCheckResult> {
+  const res = await fetch(`${API_BASE}/updates`);
+  if (!res.ok) {
+    throw new Error(`Update check failed with status ${res.status}`);
   }
   return res.json();
 }

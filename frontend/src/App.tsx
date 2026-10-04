@@ -27,6 +27,7 @@ import {
   PortfolioSummary,
   HoldingItem,
   ApiDividendItem,
+  UpdateCheckResult,
 } from "./types";
 import {
   fetchConnections,
@@ -36,6 +37,7 @@ import {
   fetchExpectedDividends,
   triggerSync,
   fetchSyncStatus,
+  fetchUpdateCheck,
 } from "./lib/api";
 
 const SECTOR_COLORS = [
@@ -139,6 +141,7 @@ export function App() {
     totalSteps: number;
     stepMessage: string;
   } | null>(null);
+  const [updateInfo, setUpdateInfo] = useState<UpdateCheckResult | null>(null);
 
   // Health fetch function connecting to FastAPI
   const checkHealth = async () => {
@@ -208,6 +211,7 @@ export function App() {
     checkHealth();
     loadConnections();
     loadLiveData();
+    fetchUpdateCheck().then(setUpdateInfo).catch(() => {});
     const interval = setInterval(() => {
       checkHealth();
       loadConnections();
@@ -336,8 +340,40 @@ export function App() {
         lastSyncedText={lastSyncedText}
         connections={connections}
         onOpenConnections={() => setCurrentTab("connections")}
+        updateInfo={updateInfo}
         syncProgress={syncProgress}
       />
+
+      {/* New Version Available Banner */}
+      {updateInfo?.update_available && (
+        <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 text-xs text-amber-900 transition-all duration-200">
+          <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+              <span>
+                A new version of DivYield (<strong>{updateInfo.latest_version}</strong>) is available.
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <a
+                href={updateInfo.release_url || "https://github.com/sunilsankar/DivYield/releases"}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold underline hover:text-amber-700"
+              >
+                Download Update
+              </a>
+              <button
+                onClick={() => setUpdateInfo(null)}
+                className="text-amber-700 hover:text-amber-950 font-bold ml-1 cursor-pointer"
+                title="Dismiss banner"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Sync Progress Banner in Modern style */}
       {isSyncing && (
