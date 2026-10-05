@@ -93,7 +93,7 @@ export const StatCards: React.FC<StatCardsProps> = ({
 
         <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
           <span className="font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
-            {hasForwardDividend ? "Yahoo Projected" : "Trading 212"}
+            {hasForwardDividend ? "Forecast" : "Trading 212"}
           </span>
           <span className="text-slate-500 font-medium">
             {hasForwardDividend ? `All-time: ${formatCurrency(totalReceivedAllTime)}` : "Cash Credited"}

@@ -52,6 +52,7 @@
                           Description="DivYield - Fast, smooth portfolio and dividend tracker"
                           Target="[INSTALLFOLDER]DivYield.exe"
                           WorkingDirectory="INSTALLFOLDER"
+                          Advertise="no"
                           Icon="AppIcon" />
 
                 <!-- Uninstaller Shortcut -->
@@ -60,10 +61,11 @@
                           Description="Uninstalls DivYield from your computer"
                           Target="[SystemFolder]msiexec.exe"
                           Arguments="/x [ProductCode]"
+                          Advertise="no"
                           Icon="AppIcon" />
 
                 <RemoveFolder Id="CleanUpShortCut" On="uninstall" />
-                <RegistryValue Root="HKCU" 
+                <RegistryValue Root="HKLM" 
                                Key="Software\DivYield" 
                                Name="installed" 
                                Type="integer" 
@@ -80,9 +82,9 @@
                           Description="DivYield - Fast, smooth portfolio and dividend tracker"
                           Target="[INSTALLFOLDER]DivYield.exe"
                           WorkingDirectory="INSTALLFOLDER"
+                          Advertise="no"
                           Icon="AppIcon" />
-                <RemoveFolder Id="CleanUpDesktopShortcut" On="uninstall" />
-                <RegistryValue Root="HKCU" 
+                <RegistryValue Root="HKLM" 
                                Key="Software\DivYield" 
                                Name="desktop_shortcut" 
                                Type="integer" 

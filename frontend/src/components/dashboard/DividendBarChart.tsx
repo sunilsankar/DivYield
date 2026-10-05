@@ -40,14 +40,14 @@ export const DividendBarChart: React.FC<DividendBarChartProps> = ({ data }) => {
             {hasExpected && (
               <span className="flex items-center gap-1.5 font-medium text-slate-700">
                 <span className="w-2.5 h-2.5 bg-indigo-500 rounded-full inline-block" />
-                Projected: <strong>{formatCurrency(totalExpectedInChart)}</strong>
+                Forecast: <strong>{formatCurrency(totalExpectedInChart)}</strong>
               </span>
             )}
           </div>
         </div>
         <p className="text-xs text-slate-500 font-normal">
           {hasExpected
-            ? "Actual cash dividends credited (Trading 212) alongside upcoming scheduled payouts (Yahoo Finance)"
+            ? "Actual cash dividends credited (Trading 212) alongside upcoming scheduled payouts (Forecast)"
             : "Actual cash dividends credited to your Trading 212 account by month"}
         </p>
       </div>
@@ -98,7 +98,7 @@ export const DividendBarChart: React.FC<DividendBarChartProps> = ({ data }) => {
                       </div>
                       {expectedVal > 0 && (
                         <div className="flex items-center justify-between gap-3 text-indigo-400 mb-1">
-                          <span className="text-slate-400">Projected (Yahoo):</span>
+                          <span className="text-slate-400">Forecast:</span>
                           <span className="font-bold">{formatCurrency(expectedVal)}</span>
                         </div>
                       )}
@@ -123,7 +123,7 @@ export const DividendBarChart: React.FC<DividendBarChartProps> = ({ data }) => {
             />
             <Bar
               dataKey="expected"
-              name="Projected"
+              name="Forecast"
               fill="#6366f1"
               radius={[4, 4, 0, 0]}
               maxBarSize={28}
