@@ -1,6 +1,7 @@
 # Dependencies & Virtualenvs
 node_modules/
 frontend/node_modules/
+mobile/node_modules/
 .venv
 .venv/
 backend/.venv
@@ -14,6 +15,8 @@ venv/
 # Build artifacts
 dist/
 frontend/dist/
+mobile/dist/
+mobile/.expo/
 build/
 *.egg-info/
 

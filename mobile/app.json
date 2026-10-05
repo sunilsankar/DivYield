@@ -1,0 +1,36 @@
+{
+  "expo": {
+    "name": "DivYield",
+    "slug": "divyield",
+    "scheme": "divyield",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0f172a"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.divyield.app"
+    },
+    "android": {
+      "package": "com.divyield.app",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "backgroundColor": "#0f172a",
+        "foregroundImage": "./assets/android-icon-foreground.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-sqlite",
+      "expo-secure-store"
+    ]
+  }
+}
