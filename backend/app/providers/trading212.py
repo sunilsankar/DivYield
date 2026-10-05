@@ -8,8 +8,11 @@ Automated checks enforce read allowlist and forbid any mutation operations.
 from typing import Dict, Any, Optional, List
 import asyncio
 import base64
+import logging
 import httpx
 from app.providers.trading212_allowlist import TRADING212_READ_ALLOWLIST, FORBIDDEN_OPERATIONS
+
+logger = logging.getLogger(__name__)
 
 LIVE_BASE_URL = "https://live.trading212.com"
 DEMO_BASE_URL = "https://demo.trading212.com"
@@ -116,28 +119,39 @@ class Trading212Client:
 
         while True:
             try:
+                logger.info("Connecting to Trading 212 [GET %s] (attempt %d/%d)...", url, retries + 1, self.max_retries + 1)
                 async with httpx.AsyncClient(timeout=self.timeout) as client:
                     response = await client.get(url, headers=self._headers(), params=params)
 
                 if response.status_code == 429:
                     retries += 1
                     if retries > self.max_retries:
+                        logger.error("Trading 212 rate limit (HTTP 429) exceeded max retries (%d) on %s", self.max_retries, url)
                         response.raise_for_status()
                     retry_hdr = response.headers.get("Retry-After")
                     try:
                         retry_after = float(retry_hdr) if retry_hdr else 2.0 * retries
                     except (ValueError, TypeError):
                         retry_after = 2.0 * retries
-                    await asyncio.sleep(max(1.5, min(retry_after, 10.0)))
+                    backoff = max(1.5, min(retry_after, 10.0))
+                    logger.warning("Trading 212 rate limited (HTTP 429) on %s. Backing off for %.1fs...", url, backoff)
+                    await asyncio.sleep(backoff)
                     continue
 
                 response.raise_for_status()
+                logger.info("Trading 212 responded [HTTP %d] for %s", response.status_code, url)
                 return response.json() if response.content else {}
 
-            except httpx.HTTPStatusError:
+            except httpx.HTTPStatusError as exc:
+                logger.error("Trading 212 HTTP %d error on %s: %s", exc.response.status_code, url, exc.response.text[:300])
                 raise
-            except (httpx.ConnectError, httpx.TimeoutException):
+            except (httpx.ConnectError, httpx.TimeoutException) as exc:
                 retries += 1
+                logger.error(
+                    "Trading 212 Network/Firewall Connection Failed on %s (attempt %d/%d): %s. "
+                    "Possible firewall block, proxy issue, or network timeout.",
+                    url, retries, self.max_retries + 1, exc
+                )
                 if retries > self.max_retries:
                     raise
                 await asyncio.sleep(1.0 * retries)
@@ -150,16 +164,21 @@ class Trading212Client:
         candidates = self._build_auth_candidates()
         last_status = None
 
+        logger.info("Initiating connection test to Trading 212 [%s] at %s...", self.environment.upper(), url)
+
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 for candidate in candidates:
                     try:
+                        logger.info("Sending connection probe with auth header to %s...", url)
                         response = await client.get(url, headers=self._headers(token=candidate))
                         last_status = response.status_code
+                        logger.info("Connection probe returned HTTP %d from %s", last_status, url)
 
                         if response.status_code == 200:
                             self._active_auth_token = candidate
                             data = response.json() if response.content else {}
+                            logger.info("Trading 212 connection verified successfully (%s)", self.environment.upper())
                             return {
                                 "status": "connected",
                                 "environment": self.environment,
@@ -172,14 +191,19 @@ class Trading212Client:
                                 "message": f"Successfully connected to Trading 212 ({self.environment.upper()})! Read-only mode verified.",
                             }
                         elif response.status_code == 403:
+                            logger.warning("Trading 212 returned HTTP 403 Access Denied. Check API permissions and IP restrictions.")
                             break  # credentials recognized but access forbidden (IP or permissions)
                         elif response.status_code == 401:
+                            logger.warning("Trading 212 returned HTTP 401 with candidate auth header. Trying next header candidate...")
                             continue  # try other header format
                         else:
+                            logger.warning("Trading 212 returned unexpected HTTP %d during probe.", response.status_code)
                             break
-                    except (httpx.ConnectError, httpx.TimeoutException):
+                    except (httpx.ConnectError, httpx.TimeoutException) as exc:
+                        logger.error("Connection probe failed due to network/firewall error on %s: %s", url, exc)
                         raise
-                    except Exception:
+                    except Exception as exc:
+                        logger.warning("Probe exception with candidate auth: %s", exc)
                         continue
 
             if last_status == 401:
@@ -219,12 +243,22 @@ class Trading212Client:
                     "message": f"Trading 212 returned HTTP {last_status or 'unknown'}",
                 }
         except (httpx.ConnectError, httpx.TimeoutException) as exc:
+            logger.error(
+                "Trading 212 Connection Test Failed: Unable to establish TCP/TLS connection to %s. "
+                "Error details: %s. This typically indicates a firewall block (Windows Defender, corporate firewall, or third-party AV) "
+                "or lack of internet access.",
+                self.base_host, exc
+            )
             return {
                 "status": "network_failure",
                 "environment": self.environment,
-                "message": f"Network failure connecting to Trading 212: {str(exc)}",
+                "message": (
+                    f"Network/firewall failure connecting to Trading 212 ({self.base_host}): {str(exc)}. "
+                    "Please check Windows Firewall or antivirus software allowing outbound HTTPS connections."
+                ),
             }
         except Exception as exc:
+            logger.error("Trading 212 unexpected error during connection test: %s", exc)
             return {
                 "status": "error",
                 "environment": self.environment,

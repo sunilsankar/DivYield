@@ -3,6 +3,7 @@
 Coordinates Trading 212 read-only sync into an idempotent, non-blocking pipeline.
 """
 import asyncio
+import logging
 from datetime import datetime, timezone
 from typing import Dict, Any
 
@@ -10,6 +11,8 @@ from app.credentials import get_trading212_credentials
 from app.services.trading212_sync import sync_trading212, _sync_lock as _t212_lock
 from app.services.yfinance_enrichment import YahooFinanceEnrichmentService
 from app.database import get_db_connection, set_setting, get_setting
+
+logger = logging.getLogger(__name__)
 
 _combined_sync_lock = asyncio.Lock()
 
@@ -51,12 +54,14 @@ async def run_combined_sync() -> Dict[str, Any]:
         }
 
     async with _combined_sync_lock:
+        logger.info("Combined sync pipeline started.")
         update_sync_progress(1, 8, "Initializing synchronization...")
         try:
             now_iso = datetime.now(timezone.utc).isoformat()
             t212_creds = get_trading212_credentials()
 
             if not t212_creds:
+                logger.warning("Combined sync skipped: Trading 212 API credentials are not configured.")
                 return {
                     "success": False,
                     "status": "not_configured",
@@ -80,13 +85,16 @@ async def run_combined_sync() -> Dict[str, Any]:
             if overall_success and t212_res.get("holdings_count", 0) > 0:
                 update_sync_progress(8, 8, "Enriching holdings & projecting upcoming dividends via Yahoo Finance...")
                 try:
+                    logger.info("Starting Yahoo Finance portfolio enrichment and dividend projections...")
                     yf_res = await YahooFinanceEnrichmentService.enrich_portfolio(
                         progress_callback=update_sync_progress,
                         max_workers=4,
                     )
                     enriched_count = yf_res.get("enriched_count", 0)
                     projected_count = yf_res.get("projected_events", 0)
+                    logger.info("Yahoo Finance enrichment finished: %d enriched, %d projected events", enriched_count, projected_count)
                 except Exception as e:
+                    logger.warning("Yahoo Finance enrichment encountered non-fatal issue: %s", e)
                     # Non-fatal if Yahoo Finance enrichment encounters an issue
                     update_sync_progress(8, 8, f"Yahoo Finance enrichment completed with notice: {e}")
 
@@ -119,6 +127,7 @@ async def run_combined_sync() -> Dict[str, Any]:
                 f"{t212_res.get('dividends_count', 0)} received dividends. "
                 f"Yahoo Finance: {projected_count} upcoming dividends projected."
             )
+            logger.info("Combined sync completed. %s", summary_msg)
 
             return {
                 "success": overall_success,

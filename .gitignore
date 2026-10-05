@@ -57,3 +57,7 @@ Thumbs.db
 
 # Test runners
 .playwright/
+
+# Logs
+*.log
+data/*.log

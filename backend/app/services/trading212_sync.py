@@ -7,9 +7,12 @@ Enforces idempotency, duplicate prevention via external_id, and single-execution
 from typing import Dict, Any, List, Optional, Callable
 from datetime import datetime, timezone
 import asyncio
+import logging
 from app.credentials import get_trading212_credentials
 from app.providers.trading212 import Trading212Client
 from app.database import get_db, set_setting
+
+logger = logging.getLogger(__name__)
 
 # Concurrency lock to prevent overlapping sync runs
 _sync_lock = asyncio.Lock()
@@ -91,6 +94,7 @@ async def sync_trading212(progress_cb: Optional[Callable[[int, int, str], None]]
 
         now_iso = datetime.now(timezone.utc).isoformat()
 
+        logger.info("Starting Trading 212 read-only synchronization (%s environment)...", creds.get("environment", "live"))
         try:
             # 1. Fetch cash balances and account info
             _notify(1, 8, "Checking Trading 212 account info & cash...")
@@ -390,6 +394,10 @@ async def sync_trading212(progress_cb: Optional[Callable[[int, int, str], None]]
                 )
                 conn.commit()
 
+            logger.info(
+                "Trading 212 sync completed: %d holdings, %d orders, %d transactions, %d dividends. Free cash: %.2f %s",
+                synced_holdings, synced_orders, synced_transactions, synced_dividends, free_cash, account_currency
+            )
             return {
                 "success": True,
                 "status": "completed",
@@ -405,6 +413,7 @@ async def sync_trading212(progress_cb: Optional[Callable[[int, int, str], None]]
             }
 
         except Exception as exc:
+            logger.error("Trading 212 synchronization failed with error: %s", exc, exc_info=True)
             set_setting("trading212_sync_status", "error")
             set_setting("trading212_sync_error", str(exc))
             return {

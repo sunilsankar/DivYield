@@ -16,7 +16,7 @@ import { DiversificationView } from "./components/diversification/Diversificatio
 import { TaxEstimatorView } from "./components/tax/TaxEstimatorView";
 import { DataToolsView } from "./components/data/DataToolsView";
 import { useBodyScrollLock } from "./hooks/useBodyScrollLock";
-import { KeyRound, Wallet, RefreshCw, Sparkles, Trash2, AlertTriangle } from "lucide-react";
+import { KeyRound, Wallet, RefreshCw, Sparkles, Trash2, AlertTriangle, FileText, Copy, Check } from "lucide-react";
 import {
   HealthStatus,
   Holding,
@@ -152,6 +152,7 @@ export function App() {
   const [isResetting, setIsResetting] = useState<boolean>(false);
   const [resetModalOpen, setResetModalOpen] = useState<boolean>(false);
   const [resetWipeCredentials, setResetWipeCredentials] = useState<boolean>(true);
+  const [copiedLogPath, setCopiedLogPath] = useState<boolean>(false);
 
   useBodyScrollLock(resetModalOpen);
 
@@ -715,6 +716,49 @@ export function App() {
                       Windows: <strong>Start Menu → DivYield → Uninstall DivYield</strong> or via <strong>Windows Settings → Installed Apps</strong>. macOS: Move DivYield from Applications to Trash.
                     </p>
                   </div>
+                </div>
+              </div>
+
+              {/* Application Logs & Network Diagnostics */}
+              <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-xl text-xs space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-indigo-600" />
+                    <span className="font-bold text-slate-900 text-xs">Application Logs & Network Diagnostics</span>
+                  </div>
+                  <span className="text-[11px] font-medium text-slate-500">Rotating log file</span>
+                </div>
+                <p className="text-slate-600 text-[11px] leading-relaxed">
+                  DivYield logs all outbound Trading 212 API connections, response codes, and network/firewall events to help diagnose connection problems.
+                </p>
+                <div className="flex items-center gap-2 pt-1">
+                  <div className="flex-1 bg-white border border-slate-200/80 rounded-lg px-3 py-2 font-mono text-[11px] text-slate-700 truncate select-all">
+                    {health?.log_path || "divyield.log"}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (health?.log_path) {
+                        navigator.clipboard.writeText(health.log_path);
+                        setCopiedLogPath(true);
+                        setTimeout(() => setCopiedLogPath(false), 2000);
+                      }
+                    }}
+                    className="px-3 py-2 bg-white hover:bg-slate-100 border border-slate-200/80 text-slate-700 rounded-lg font-medium text-xs flex items-center gap-1.5 transition-colors shrink-0"
+                    title="Copy Log File Path"
+                  >
+                    {copiedLogPath ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                        <span className="text-emerald-700 font-semibold">Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5 text-slate-500" />
+                        <span>Copy Path</span>
+                      </>
+                    )}
+                  </button>
                 </div>
               </div>
 

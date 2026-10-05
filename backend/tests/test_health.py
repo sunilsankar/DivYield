@@ -13,6 +13,8 @@ def test_health_endpoint():
     assert data["version"] == "0.1.0-beta"
     assert data["database"] == "ok"
     assert "timestamp" in data
+    assert "log_path" in data
+    assert "divyield.log" in data["log_path"]
 
 
 def test_updates_endpoint():

@@ -5,6 +5,7 @@ export interface HealthStatus {
   database: string;
   timestamp: string;
   latencyMs?: number;
+  log_path?: string;
 }
 
 export interface UpdateCheckResult {

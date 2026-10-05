@@ -8,15 +8,20 @@ import time
 import traceback
 from pathlib import Path
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
 # Ensure backend directory is in sys.path so app.* imports work properly
 base_dir = Path(__file__).resolve().parent
 backend_dir = base_dir / "backend"
 if backend_dir.exists() and str(backend_dir) not in sys.path:
     sys.path.insert(0, str(backend_dir))
+
+# Configure logging with rotating file handler
+try:
+    from app.logging_config import setup_logging
+    setup_logging()
+except Exception:
+    logging.basicConfig(level=logging.INFO)
+
+logger = logging.getLogger(__name__)
 
 def show_fatal_error(title: str, message: str):
     """Displays a native dialog or prints fatal error across platforms."""

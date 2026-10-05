@@ -16,6 +16,7 @@ class HealthResponse(BaseModel):
     version: str
     database: str
     timestamp: str
+    log_path: Optional[str] = None
 
 
 class UpdateCheckResponse(BaseModel):
@@ -46,6 +47,7 @@ def get_health() -> HealthResponse:
         version=settings.app_version,
         database=db_status,
         timestamp=datetime.now(timezone.utc).isoformat(),
+        log_path=str(settings.log_path.resolve()),
     )
 
 

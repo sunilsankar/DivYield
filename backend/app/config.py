@@ -45,5 +45,6 @@ class Settings(BaseSettings):
     base_dir: Path = Path(__file__).resolve().parent.parent.parent
     data_dir: Path = get_data_dir()
     db_path: Path = get_data_dir() / "divyield.db"
+    log_path: Path = get_data_dir() / "divyield.log"
 
 settings = Settings()

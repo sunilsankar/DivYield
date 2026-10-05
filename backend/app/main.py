@@ -8,11 +8,14 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from app.config import settings
 from app.database import init_db
+from app.logging_config import setup_logging
 from app.routers import health, credentials, portfolio, transactions, dividends, sync, analytics, tax, data_tools, export, mappings, system
 
+setup_logging()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    setup_logging()
     init_db()
     yield
 

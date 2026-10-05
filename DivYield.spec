@@ -32,6 +32,7 @@ a = Analysis(
         'uvicorn.lifespan.on',
         'app.main',
         'app.config',
+        'app.logging_config',
         'app.database',
         'app.credentials',
         'app.schemas',
