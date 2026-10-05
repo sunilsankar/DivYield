@@ -77,6 +77,7 @@
         <!-- Desktop Shortcut -->
         <DirectoryRef Id="DesktopFolder">
             <Component Id="ApplicationDesktopShortcut" Guid="7d192134-9271-4d1e-8e42-7c34b1239912">
+                <Condition>INSTALLDESKTOPSHORTCUT = 1</Condition>
                 <Shortcut Id="DesktopShortcut"
                           Name="DivYield"
                           Description="DivYield - Fast, smooth portfolio and dividend tracker"
@@ -101,9 +102,52 @@
             <ComponentRef Id="ApplicationDesktopShortcut" />
         </Feature>
 
-        <!-- UI with Selectable Install Directory -->
+        <!-- UI Configuration with Shortcut Selection & Launch Application -->
         <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
-        <UIRef Id="WixUI_InstallDir" />
+        <Property Id="INSTALLDESKTOPSHORTCUT" Value="1" />
+        <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="Launch DivYield" />
+        <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOX" Value="1" />
         <WixVariable Id="WixUILicenseRtf" Value="wix/license.rtf" />
+
+        <CustomAction Id="LaunchApplication" 
+                      Directory="INSTALLFOLDER" 
+                      ExeCommand="&quot;[INSTALLFOLDER]DivYield.exe&quot;" 
+                      Execute="immediate" 
+                      Impersonate="yes" 
+                      Return="asyncNoWait" />
+
+        <UI>
+            <UIRef Id="WixUI_InstallDir" />
+
+            <Dialog Id="ShortcutDlg" Width="370" Height="270" Title="[ProductName] Setup">
+                <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="44" TabSkip="no" Text="WixUI_Bmp_Banner" />
+                <Control Id="BannerLine" Type="Line" X="0" Y="44" Width="370" Height="0" />
+                <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
+                <Control Id="Title" Type="Text" X="15" Y="6" Width="200" Height="15" Transparent="yes" NoPrefix="yes" Text="{\WixUI_Font_Title}Additional Shortcuts" />
+                <Control Id="Description" Type="Text" X="25" Y="23" Width="280" Height="15" Transparent="yes" NoPrefix="yes" Text="Select whether to create a desktop shortcut." />
+
+                <Control Id="DesktopShortcutCheckbox" Type="CheckBox" X="25" Y="80" Width="320" Height="18" Property="INSTALLDESKTOPSHORTCUT" CheckBoxValue="1" Text="Create a &amp;desktop shortcut" />
+                <Control Id="DetailsText" Type="Text" X="45" Y="105" Width="290" Height="30" Text="Place a shortcut for DivYield on your Desktop for quick access." />
+
+                <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="&amp;Back">
+                    <Publish Event="NewDialog" Value="InstallDirDlg">1</Publish>
+                </Control>
+                <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Default="yes" Text="&amp;Next">
+                    <Publish Event="NewDialog" Value="VerifyReadyDlg">1</Publish>
+                </Control>
+                <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Cancel="yes" Text="Cancel">
+                    <Publish Event="SpawnDialog" Value="CancelDlg">1</Publish>
+                </Control>
+            </Dialog>
+
+            <!-- Route InstallDirDlg Next to ShortcutDlg -->
+            <Publish Dialog="InstallDirDlg" Control="Next" Event="NewDialog" Value="ShortcutDlg" Order="4">WIXUI_DONTVALIDATEPATH OR WIXUI_INSTALLDIR_VALID=&quot;1&quot;</Publish>
+
+            <!-- Route VerifyReadyDlg Back to ShortcutDlg -->
+            <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="ShortcutDlg" Order="1">NOT Installed</Publish>
+
+            <!-- Launch DivYield on Finish if checkbox is checked -->
+            <Publish Dialog="ExitDialog" Control="Finish" Event="DoAction" Value="LaunchApplication">WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 and NOT Installed</Publish>
+        </UI>
     </Product>
 </Wix>
