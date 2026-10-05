@@ -17,7 +17,7 @@ env:
 jobs:
   security-scan:
     name: Security Scans
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
@@ -53,7 +53,7 @@ jobs:
 
   test:
     name: Test Suites (Backend & Frontend)
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -212,7 +212,7 @@ jobs:
   build-android:
     name: Build Android APK
     needs: [security-scan, test]
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
