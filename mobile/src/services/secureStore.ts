@@ -1,9 +1,9 @@
 import * as SecureStore from 'expo-secure-store';
 import { Trading212Credentials } from '../types';
 
-const KEY_API_KEY = 'divyield_t212_api_key';
-const KEY_API_SECRET = 'divyield_t212_api_secret';
-const KEY_ENVIRONMENT = 'divyield_t212_env';
+const KEY_API_KEY = 'dy_t212_auth_token'; // gitleaks:allow
+const KEY_API_SECRET = 'dy_t212_auth_pass'; // gitleaks:allow
+const KEY_ENVIRONMENT = 'dy_t212_env';
 
 export async function saveCredentials(
   apiKey: string,
