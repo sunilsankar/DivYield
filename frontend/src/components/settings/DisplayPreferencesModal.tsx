@@ -1,6 +1,7 @@
 import React from "react";
 import { X, Sparkles, Palette, Check } from "lucide-react";
 import { useTheme, COLOR_GRADING_OPTIONS, ColorGrading } from "@/context/ThemeContext";
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 
 interface DisplayPreferencesModalProps {
   isOpen: boolean;
@@ -13,16 +14,21 @@ export const DisplayPreferencesModal: React.FC<DisplayPreferencesModalProps> = (
 }) => {
   const { styleTheme, colorGrading, setStyleTheme, setColorGrading } = useTheme();
 
+  useBodyScrollLock(isOpen);
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in-up">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in-up"
+      onClick={onClose}
+    >
       <div 
-        className="bg-white rounded-2xl max-w-md w-full border border-slate-200/80 shadow-2xl p-6 relative"
+        className="bg-white rounded-2xl max-w-md w-full border border-slate-200/80 shadow-2xl flex flex-col max-h-[85vh] relative overflow-hidden overscroll-contain"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+        <div className="flex items-center justify-between p-5 pb-4 border-b border-slate-100 shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-primary-light flex items-center justify-center text-primary font-bold">
               <Palette className="w-4 h-4" />
@@ -40,7 +46,8 @@ export const DisplayPreferencesModal: React.FC<DisplayPreferencesModalProps> = (
           </button>
         </div>
 
-        <div className="space-y-6 pt-5">
+        {/* Content with smooth internal scrolling */}
+        <div className="space-y-6 p-5 overflow-y-auto custom-scrollbar flex-1 min-h-0">
           {/* 1. Style Theme Switch (Modern vs Sketch) */}
           <div>
             <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2.5">
@@ -138,7 +145,7 @@ export const DisplayPreferencesModal: React.FC<DisplayPreferencesModalProps> = (
         </div>
 
         {/* Footer */}
-        <div className="mt-6 pt-4 border-t border-slate-100 flex justify-end">
+        <div className="p-4 border-t border-slate-100 flex justify-end shrink-0 bg-white">
           <button
             type="button"
             onClick={onClose}

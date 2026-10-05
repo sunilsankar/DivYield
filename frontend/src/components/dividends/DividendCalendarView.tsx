@@ -16,6 +16,7 @@ import {
 import { ApiDividendItem, ApiHolding, Holding } from "../../types";
 import { formatCurrency } from "../../lib/utils";
 import { StockLogo } from "../ui/StockLogo";
+import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
 
 interface DividendCalendarViewProps {
   receivedDividends: ApiDividendItem[];
@@ -46,6 +47,8 @@ export const DividendCalendarView: React.FC<DividendCalendarViewProps> = ({
     displayStatus: "RECEIVED" | "EXPECTED";
     companyName: string;
   }) | null>(null);
+
+  useBodyScrollLock(Boolean(selectedDayEvents || expandedStockEvent));
 
   // Map holdings for fast company name resolution
   const holdingsNameMap = useMemo(() => {
@@ -672,7 +675,7 @@ export const DividendCalendarView: React.FC<DividendCalendarViewProps> = ({
           onClick={() => setSelectedDayEvents(null)}
         >
           <div
-            className="bg-white rounded-2xl w-[94vw] max-w-4xl max-h-[85vh] flex flex-col border border-slate-200 shadow-2xl p-5 sm:p-6 relative overflow-hidden"
+            className="bg-white rounded-2xl w-[94vw] max-w-4xl max-h-[85vh] flex flex-col border border-slate-200 shadow-2xl p-5 sm:p-6 relative overflow-hidden overscroll-contain"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
@@ -955,7 +958,7 @@ export const DividendCalendarView: React.FC<DividendCalendarViewProps> = ({
           onClick={() => setExpandedStockEvent(null)}
         >
           <div
-            className="bg-white rounded-2xl w-[94vw] max-w-lg max-h-[90vh] flex flex-col border border-slate-200 shadow-2xl p-5 sm:p-6 relative overflow-hidden"
+            className="bg-white rounded-2xl w-[94vw] max-w-lg max-h-[90vh] flex flex-col border border-slate-200 shadow-2xl p-5 sm:p-6 relative overflow-hidden overscroll-contain"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header / Identity */}

@@ -15,6 +15,7 @@ import { AnalyticsView } from "./components/analytics/AnalyticsView";
 import { DiversificationView } from "./components/diversification/DiversificationView";
 import { TaxEstimatorView } from "./components/tax/TaxEstimatorView";
 import { DataToolsView } from "./components/data/DataToolsView";
+import { useBodyScrollLock } from "./hooks/useBodyScrollLock";
 import { KeyRound, Wallet, RefreshCw, Sparkles, Trash2, AlertTriangle } from "lucide-react";
 import {
   HealthStatus,
@@ -151,6 +152,8 @@ export function App() {
   const [isResetting, setIsResetting] = useState<boolean>(false);
   const [resetModalOpen, setResetModalOpen] = useState<boolean>(false);
   const [resetWipeCredentials, setResetWipeCredentials] = useState<boolean>(true);
+
+  useBodyScrollLock(resetModalOpen);
 
   const handleFactoryReset = async () => {
     setIsResetting(true);
@@ -757,8 +760,14 @@ export function App() {
 
       {/* Factory Reset Confirmation Modal */}
       {resetModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4 animate-fade-in-up">
+        <div 
+          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in-up"
+          onClick={() => setResetModalOpen(false)}
+        >
+          <div 
+            className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4 overscroll-contain max-h-[90vh] overflow-y-auto custom-scrollbar"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center gap-3 text-rose-600">
               <div className="w-10 h-10 rounded-xl bg-rose-50 border border-rose-200/80 flex items-center justify-center">
                 <AlertTriangle className="w-5 h-5 text-rose-600" />
