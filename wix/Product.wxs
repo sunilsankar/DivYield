@@ -25,21 +25,43 @@
             <Directory Id="ProgramMenuFolder">
                 <Directory Id="ApplicationProgramsFolder" Name="DivYield" />
             </Directory>
+            <!-- Desktop Folder -->
+            <Directory Id="DesktopFolder" Name="Desktop" />
         </Directory>
 
-        <!-- Icon -->
+        <!-- Brand Icon -->
         <Icon Id="AppIcon" SourceFile="assets/icon.ico" />
         <Property Id="ARPPRODUCTICON" Value="AppIcon" />
+        <Property Id="ARPHELPLINK" Value="https://github.com/sunilsankar/DivYield" />
+        <Property Id="ARPURLINFOABOUT" Value="https://github.com/sunilsankar/DivYield" />
+        <Property Id="ARPNOREPAIR" Value="yes" />
 
-        <!-- Start Menu Shortcut Component -->
+        <!-- Permanent Icon File in Installation Folder -->
+        <DirectoryRef Id="INSTALLFOLDER">
+            <Component Id="AppIconComponent" Guid="e83a48e2-9b51-4e78-8319-3c97193b2184">
+                <File Id="AppIconFile" Source="assets/icon.ico" Name="icon.ico" KeyPath="yes" />
+            </Component>
+        </DirectoryRef>
+
+        <!-- Start Menu Shortcuts (App Launcher + Uninstaller) -->
         <DirectoryRef Id="ApplicationProgramsFolder">
             <Component Id="ApplicationShortcut" Guid="f319207e-0be5-4cf5-b16f-87030232490b">
+                <!-- Application Launcher -->
                 <Shortcut Id="ApplicationStartMenuShortcut"
                           Name="DivYield"
                           Description="DivYield - Fast, smooth portfolio and dividend tracker"
                           Target="[INSTALLFOLDER]DivYield.exe"
                           WorkingDirectory="INSTALLFOLDER"
                           Icon="AppIcon" />
+
+                <!-- Uninstaller Shortcut -->
+                <Shortcut Id="UninstallProductShortcut"
+                          Name="Uninstall DivYield"
+                          Description="Uninstalls DivYield from your computer"
+                          Target="[SystemFolder]msiexec.exe"
+                          Arguments="/x [ProductCode]"
+                          Icon="AppIcon" />
+
                 <RemoveFolder Id="CleanUpShortCut" On="uninstall" />
                 <RegistryValue Root="HKCU" 
                                Key="Software\DivYield" 
@@ -50,10 +72,31 @@
             </Component>
         </DirectoryRef>
 
+        <!-- Desktop Shortcut -->
+        <DirectoryRef Id="DesktopFolder">
+            <Component Id="ApplicationDesktopShortcut" Guid="7d192134-9271-4d1e-8e42-7c34b1239912">
+                <Shortcut Id="DesktopShortcut"
+                          Name="DivYield"
+                          Description="DivYield - Fast, smooth portfolio and dividend tracker"
+                          Target="[INSTALLFOLDER]DivYield.exe"
+                          WorkingDirectory="INSTALLFOLDER"
+                          Icon="AppIcon" />
+                <RemoveFolder Id="CleanUpDesktopShortcut" On="uninstall" />
+                <RegistryValue Root="HKCU" 
+                               Key="Software\DivYield" 
+                               Name="desktop_shortcut" 
+                               Type="integer" 
+                               Value="1" 
+                               KeyPath="yes" />
+            </Component>
+        </DirectoryRef>
+
         <!-- Features -->
         <Feature Id="ProductFeature" Title="DivYield" Level="1">
             <ComponentGroupRef Id="DivYieldComponents" />
+            <ComponentRef Id="AppIconComponent" />
             <ComponentRef Id="ApplicationShortcut" />
+            <ComponentRef Id="ApplicationDesktopShortcut" />
         </Feature>
 
         <!-- UI with Selectable Install Directory -->

@@ -13,6 +13,7 @@ import {
   DividendGrowthResponse,
   TaxRulesData,
   NetherlandsTaxData,
+  DiversificationResponse,
 } from "../types";
 
 const API_BASE = "/api/v1";
@@ -168,6 +169,14 @@ export async function fetchAnalyticsOverview(): Promise<AnalyticsOverview> {
   const res = await fetch(`${API_BASE}/analytics/overview`);
   if (!res.ok) {
     throw new Error(`Failed to load analytics overview (${res.status})`);
+  }
+  return res.json();
+}
+
+export async function fetchDiversification(): Promise<DiversificationResponse> {
+  const res = await fetch(`${API_BASE}/analytics/diversification`);
+  if (!res.ok) {
+    throw new Error(`Failed to load diversification analysis (${res.status})`);
   }
   return res.json();
 }

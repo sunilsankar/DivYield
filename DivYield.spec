@@ -7,9 +7,9 @@ block_cipher = None
 # Detect platform icon if available
 icon_file = None
 if sys.platform == 'darwin' and os.path.exists('assets/icon.icns'):
-    icon_file = 'assets/icon.icns'
+    icon_file = os.path.abspath('assets/icon.icns')
 elif sys.platform.startswith('win') and os.path.exists('assets/icon.ico'):
-    icon_file = 'assets/icon.ico'
+    icon_file = os.path.abspath('assets/icon.ico')
 
 a = Analysis(
     ['desktop.py'],
@@ -17,6 +17,7 @@ a = Analysis(
     binaries=[],
     datas=[
         ('frontend/dist', 'frontend/dist'),
+        ('assets', 'assets'),
     ],
     hiddenimports=[
         'uvicorn.logging',

@@ -13,6 +13,7 @@ import {
   fetchSyncStatus,
   fetchCalendar,
   fetchUpdateCheck,
+  fetchDiversification,
 } from "./api";
 
 describe("API Client Tests", () => {
@@ -275,5 +276,36 @@ describe("API Client Tests", () => {
     expect(res.current_version).toBe("0.1.0-beta");
     expect(res.update_available).toBe(true);
     expect(res.latest_version).toBe("v0.2.0-beta");
+  });
+
+  it("fetchDiversification queries /api/v1/analytics/diversification", async () => {
+    const mockDiversification = {
+      overall_score: 84,
+      rating: "Well Diversified",
+      hhi_index: 480.5,
+      effective_holdings: 20.8,
+      total_holdings_count: 25,
+      total_sectors_count: 8,
+      top1_concentration: 8.5,
+      top5_concentration: 32.1,
+      top10_concentration: 52.4,
+      metrics: [],
+      sectors: [],
+      geographic_exposure: [],
+      income_risks: [],
+      recommendations: [],
+    };
+
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => mockDiversification,
+    } as unknown as Response);
+
+    const res = await fetchDiversification();
+    expect(res.overall_score).toBe(84);
+    expect(res.rating).toBe("Well Diversified");
+    expect(res.hhi_index).toBe(480.5);
+    expect(res.effective_holdings).toBe(20.8);
+    expect(globalThis.fetch).toHaveBeenCalledWith("/api/v1/analytics/diversification");
   });
 });

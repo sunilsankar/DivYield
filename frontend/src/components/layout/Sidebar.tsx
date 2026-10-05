@@ -21,6 +21,7 @@ export type NavTab =
   | "dividends"
   | "calendar"
   | "analytics"
+  | "diversification"
   | "tax"
   | "data-tools"
   | "connections"
@@ -62,6 +63,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange }) => 
       id: "analytics",
       label: "Yield & Analytics",
       icon: <TrendingUp className="w-4 h-4" />,
+    },
+    {
+      id: "diversification",
+      label: "Diversification",
+      icon: <ShieldCheck className="w-4 h-4" />,
     },
     {
       id: "tax",

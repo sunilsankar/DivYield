@@ -12,6 +12,7 @@ import { HoldingsView } from "./components/holdings/HoldingsView";
 import { DividendsView } from "./components/dividends/DividendsView";
 import { DividendCalendarView } from "./components/dividends/DividendCalendarView";
 import { AnalyticsView } from "./components/analytics/AnalyticsView";
+import { DiversificationView } from "./components/diversification/DiversificationView";
 import { TaxEstimatorView } from "./components/tax/TaxEstimatorView";
 import { DataToolsView } from "./components/data/DataToolsView";
 import { KeyRound, Wallet, RefreshCw, Sparkles } from "lucide-react";
@@ -601,6 +602,13 @@ export function App() {
             <AnalyticsView />
           )}
 
+          {currentTab === "diversification" && (
+            <DiversificationView
+              onNavigateToHoldings={() => setCurrentTab("holdings")}
+              onNavigateToSync={() => setCurrentTab("connections")}
+            />
+          )}
+
           {currentTab === "tax" && (
             <TaxEstimatorView />
           )}
@@ -662,6 +670,28 @@ export function App() {
                 <p className="text-slate-600">✓ OS Keychain credential storage enabled (Fernet AES fallback)</p>
                 <p className="text-slate-600">✓ Trading 212 order execution strictly forbidden and disabled</p>
                 <p className="text-slate-600">✓ Zero secrets written to SQLite or browser storage</p>
+              </div>
+
+              {/* Application & Installation Info */}
+              <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-xl text-xs space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-900 text-xs">Application & System Integration</span>
+                  <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">v0.1.0-beta</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  <div className="p-3 bg-white rounded-lg border border-slate-200/60 flex flex-col gap-1">
+                    <span className="font-semibold text-slate-800">Shortcuts & Launchers</span>
+                    <p className="text-slate-500 text-[11px] leading-relaxed">
+                      Desktop and Start Menu shortcuts are installed with the official DivYield icon.
+                    </p>
+                  </div>
+                  <div className="p-3 bg-white rounded-lg border border-slate-200/60 flex flex-col gap-1">
+                    <span className="font-semibold text-slate-800">Uninstall Options</span>
+                    <p className="text-slate-500 text-[11px] leading-relaxed">
+                      Windows: <strong>Start Menu → DivYield → Uninstall DivYield</strong> or via <strong>Windows Settings → Installed Apps</strong>. macOS: Move DivYield from Applications to Trash.
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           )}

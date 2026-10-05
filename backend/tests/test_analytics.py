@@ -131,3 +131,48 @@ def test_historical_growth_calculation():
     # CAGR should be calculated
     assert data["cagr_percent"] is not None
     assert data["cagr_percent"] > 0
+
+
+def test_diversification_empty_portfolio():
+    response = client.get("/api/v1/analytics/diversification")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["overall_score"] == 0
+    assert data["hhi_index"] == 0.0
+    assert data["total_holdings_count"] == 0
+    assert len(data["metrics"]) == 4
+
+
+def test_diversification_populated_portfolio():
+    # Insert diversified set of holdings
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM holdings")
+        cursor.execute(
+            """
+            INSERT INTO holdings (provider, ticker, name, quantity, average_price, current_price, market_value, currency, sector, dividend_yield, annual_dividend)
+            VALUES
+            ('TRADING212', 'ASML_NL_EQ', 'ASML Holding', 10, 600.0, 700.0, 7000.0, 'EUR', 'Technology', 1.5, 105.0),
+            ('TRADING212', 'SHELL_NL_EQ', 'Shell plc', 100, 25.0, 30.0, 3000.0, 'EUR', 'Energy', 4.0, 120.0),
+            ('TRADING212', 'INGA_NL_EQ', 'ING Groep', 200, 12.0, 15.0, 3000.0, 'EUR', 'Financial Services', 5.0, 150.0),
+            ('TRADING212', 'AAPL_US_EQ', 'Apple Inc', 20, 150.0, 200.0, 4000.0, 'EUR', 'Technology', 0.5, 20.0),
+            ('TRADING212', 'ULVR_GB_EQ', 'Unilever plc', 50, 40.0, 45.0, 2250.0, 'EUR', 'Consumer Defensive', 3.5, 78.75)
+            """
+        )
+        conn.commit()
+
+    response = client.get("/api/v1/analytics/diversification")
+    assert response.status_code == 200
+    data = response.json()
+
+    assert data["total_holdings_count"] == 5
+    assert data["total_sectors_count"] == 4
+    assert data["overall_score"] > 0
+    assert data["rating"] in ["Highly Diversified", "Well Diversified", "Moderately Concentrated", "High Risk / Concentrated"]
+    assert data["hhi_index"] > 0
+    assert data["effective_holdings"] > 0
+    assert len(data["metrics"]) == 4
+    assert len(data["geographic_exposure"]) >= 3
+    assert len(data["income_risks"]) == 5
+    assert len(data["recommendations"]) >= 1
+

@@ -388,6 +388,51 @@ class AnalyticsValueResponse(BaseModel):
     currency: str
 
 
+class DiversificationMetric(BaseModel):
+    name: str
+    score: int
+    status: str  # "excellent" | "good" | "moderate" | "poor"
+    description: str
+
+
+class GeographicExposureItem(BaseModel):
+    region: str
+    value: float
+    percentage: float
+    holdings_count: int
+
+
+class IncomeRiskItem(BaseModel):
+    ticker: str
+    name: str
+    capital_percentage: float
+    income_percentage: float
+    risk_level: str  # "high" | "moderate" | "balanced"
+
+
+class DiversificationRecommendation(BaseModel):
+    type: str  # "warning" | "caution" | "positive"
+    title: str
+    message: str
+
+
+class DiversificationResponse(BaseModel):
+    overall_score: int
+    rating: str
+    hhi_index: float
+    effective_holdings: float
+    total_holdings_count: int
+    total_sectors_count: int
+    top1_concentration: float
+    top5_concentration: float
+    top10_concentration: float
+    metrics: List[DiversificationMetric]
+    sectors: List[SectorConcentrationItem]
+    geographic_exposure: List[GeographicExposureItem]
+    income_risks: List[IncomeRiskItem]
+    recommendations: List[DiversificationRecommendation]
+
+
 class TaxSummaryResponse(BaseModel):
     jurisdiction: str
     tax_year: int

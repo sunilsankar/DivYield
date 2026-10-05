@@ -184,7 +184,7 @@ jobs:
           candle -dSourceDir="dist\DivYield" -out "dist\" wix\Product.wxs dist\HarvestedComponents.wxs
 
           # 5. Link MSI installer with WixUI_InstallDir dialogs
-          light -ext WixUIExtension -sice:ICE69 -sice:ICE91 -out "DivYield-Windows.msi" dist\Product.wixobj dist\HarvestedComponents.wixobj
+          light -ext WixUIExtension -sice:ICE38 -sice:ICE43 -sice:ICE69 -sice:ICE91 -out "DivYield-Windows.msi" dist\Product.wixobj dist\HarvestedComponents.wixobj
 
           # 6. Sign the MSI installer
           if ($signtool -and (Test-Path "DivYield-Windows.msi")) {

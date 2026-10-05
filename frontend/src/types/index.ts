@@ -330,4 +330,50 @@ export interface CashInterestResponse {
   total_interest_ytd: number;
 }
 
+export interface DiversificationMetric {
+  name: string;
+  score: number;
+  status: "excellent" | "good" | "moderate" | "poor";
+  description: string;
+}
+
+export interface GeographicExposureItem {
+  region: string;
+  value: number;
+  percentage: number;
+  holdings_count: number;
+}
+
+export interface IncomeRiskItem {
+  ticker: string;
+  name: string;
+  capital_percentage: number;
+  income_percentage: number;
+  risk_level: "high" | "moderate" | "balanced";
+}
+
+export interface DiversificationRecommendation {
+  type: "warning" | "caution" | "positive";
+  title: string;
+  message: string;
+}
+
+export interface DiversificationResponse {
+  overall_score: number;
+  rating: string;
+  hhi_index: number;
+  effective_holdings: number;
+  total_holdings_count: number;
+  total_sectors_count: number;
+  top1_concentration: number;
+  top5_concentration: number;
+  top10_concentration: number;
+  metrics: DiversificationMetric[];
+  sectors: SectorAllocation[];
+  geographic_exposure: GeographicExposureItem[];
+  income_risks: IncomeRiskItem[];
+  recommendations: DiversificationRecommendation[];
+}
+
+
 

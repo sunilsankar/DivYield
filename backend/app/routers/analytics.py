@@ -15,6 +15,11 @@ from app.schemas import (
     AnalyticsAllocationResponse,
     AnalyticsDividendsResponse,
     AnalyticsValueResponse,
+    DiversificationResponse,
+    DiversificationMetric,
+    GeographicExposureItem,
+    IncomeRiskItem,
+    DiversificationRecommendation,
 )
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
@@ -385,3 +390,291 @@ def get_dividend_growth():
             cagr = round(((last_amt / first_amt) ** (1.0 / n_years) - 1.0) * 100.0, 2)
 
     return DividendGrowthResponse(years=items, cagr_percent=cagr)
+
+
+@router.get("/diversification", response_model=DiversificationResponse)
+def get_analytics_diversification():
+    """Calculates comprehensive portfolio diversification score, HHI concentration, geographic spread, and recommendations."""
+    overview = get_analytics_overview()
+    total_val = overview.total_portfolio_value
+    total_div = overview.total_annual_dividend
+    holdings = overview.holdings_concentration
+    sectors = overview.sector_breakdown
+    income_by_holding = overview.income_by_holding
+
+    if not holdings or total_val <= 0:
+        return DiversificationResponse(
+            overall_score=0,
+            rating="Uninvested / No Holdings",
+            hhi_index=0.0,
+            effective_holdings=0.0,
+            total_holdings_count=0,
+            total_sectors_count=0,
+            top1_concentration=0.0,
+            top5_concentration=0.0,
+            top10_concentration=0.0,
+            metrics=[
+                DiversificationMetric(name="Asset Concentration", score=0, status="poor", description="No holdings active"),
+                DiversificationMetric(name="Sector Spread", score=0, status="poor", description="No sectors present"),
+                DiversificationMetric(name="Income Balance", score=0, status="poor", description="No dividend income"),
+                DiversificationMetric(name="Asset Count", score=0, status="poor", description="0 holdings"),
+            ],
+            sectors=[],
+            geographic_exposure=[],
+            income_risks=[],
+            recommendations=[
+                DiversificationRecommendation(
+                    type="caution",
+                    title="No Holdings Found",
+                    message="Sync your Trading 212 account or add manual holdings to view diversification analysis."
+                )
+            ]
+        )
+
+    holdings_count = len(holdings)
+    # HHI (Herfindahl-Hirschman Index) on scale 0 - 10000
+    hhi_index = sum((h.percentage) ** 2 for h in holdings)
+    effective_holdings = round(10000.0 / hhi_index, 1) if hhi_index > 0 else 0.0
+
+    # 1. Asset Concentration Score (HHI based)
+    if hhi_index <= 800:
+        s_hhi = 100
+        status_hhi = "excellent"
+    elif hhi_index <= 1500:
+        s_hhi = int(100 - (hhi_index - 800) * (20.0 / 700.0))
+        status_hhi = "good"
+    elif hhi_index <= 2500:
+        s_hhi = int(80 - (hhi_index - 1500) * (30.0 / 1000.0))
+        status_hhi = "moderate"
+    else:
+        s_hhi = max(10, int(50 - (hhi_index - 2500) * (40.0 / 7500.0)))
+        status_hhi = "poor"
+
+    # 2. Sector Spread Score
+    sector_count = len(sectors)
+    max_sec_pct = sectors[0].percentage if sectors else 100.0
+    sec_count_comp = min(100.0, sector_count * 12.5)
+    sec_penalty = (max_sec_pct - 25.0) * 1.5 if max_sec_pct > 25.0 else 0.0
+    s_sec = max(10, min(100, int(sec_count_comp - sec_penalty)))
+    status_sec = "excellent" if s_sec >= 85 else ("good" if s_sec >= 70 else ("moderate" if s_sec >= 50 else "poor"))
+
+    # 3. Income Balance Score
+    if total_div <= 0:
+        s_inc = 75
+        status_inc = "good"
+        desc_inc = "No dividend payers; capital growth focused"
+    else:
+        top3_inc = sum(item.percentage_of_total_income for item in income_by_holding[:3])
+        if top3_inc <= 30.0:
+            s_inc = 100
+            status_inc = "excellent"
+        elif top3_inc <= 50.0:
+            s_inc = int(100 - (top3_inc - 30.0) * 1.0)
+            status_inc = "good"
+        elif top3_inc <= 70.0:
+            s_inc = int(80 - (top3_inc - 50.0) * 1.25)
+            status_inc = "moderate"
+        else:
+            s_inc = max(10, int(55 - (top3_inc - 70.0) * 1.5))
+            status_inc = "poor"
+        desc_inc = f"Top 3 dividend payers account for {top3_inc:.1f}% of total payout"
+
+    # 4. Asset Count Score
+    if holdings_count >= 25:
+        s_cnt = 100
+        status_cnt = "excellent"
+    elif holdings_count >= 15:
+        s_cnt = min(99, int(80 + (holdings_count - 15) * 2))
+        status_cnt = "good"
+    elif holdings_count >= 8:
+        s_cnt = min(79, int(55 + (holdings_count - 8) * 3.5))
+        status_cnt = "moderate"
+    else:
+        s_cnt = max(15, holdings_count * 6)
+        status_cnt = "poor"
+
+    # Weighted Overall Score
+    overall = int(round(0.35 * s_hhi + 0.30 * s_sec + 0.20 * s_inc + 0.15 * s_cnt))
+    if overall >= 85:
+        rating = "Highly Diversified"
+    elif overall >= 70:
+        rating = "Well Diversified"
+    elif overall >= 50:
+        rating = "Moderately Concentrated"
+    else:
+        rating = "High Risk / Concentrated"
+
+    metrics = [
+        DiversificationMetric(
+            name="Holding Balance (HHI)",
+            score=s_hhi,
+            status=status_hhi,
+            description=f"HHI index: {int(hhi_index)} ({effective_holdings} effective holdings)",
+        ),
+        DiversificationMetric(
+            name="Sector Spread",
+            score=s_sec,
+            status=status_sec,
+            description=f"{sector_count} sectors active (largest: {sectors[0].sector if sectors else 'None'} at {max_sec_pct:.1f}%)",
+        ),
+        DiversificationMetric(
+            name="Dividend Income Balance",
+            score=s_inc,
+            status=status_inc,
+            description=desc_inc,
+        ),
+        DiversificationMetric(
+            name="Asset Count Adequacy",
+            score=s_cnt,
+            status=status_cnt,
+            description=f"{holdings_count} active holdings in portfolio",
+        ),
+    ]
+
+    # Geographic / Regional Exposure
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT ticker, market_value FROM holdings")
+        raw_rows = cursor.fetchall()
+
+    geo_map = {
+        "United States": 0.0,
+        "Netherlands & Euronext": 0.0,
+        "United Kingdom": 0.0,
+        "Germany & DAX": 0.0,
+        "International / Other": 0.0,
+    }
+    geo_counts = {k: 0 for k in geo_map}
+
+    for r in raw_rows:
+        t = (r["ticker"] or "").upper()
+        mv = float(r["market_value"] or 0)
+        if t.endswith("_US_EQ") or ".US" in t or (not "_" in t and not "." in t and len(t) <= 5 and not t.endswith("L") and not t.endswith("D") and not t.endswith("A")):
+            reg = "United States"
+        elif t.endswith("_NL_EQ") or ".AS" in t or t.endswith("A"):
+            reg = "Netherlands & Euronext"
+        elif t.endswith("_GB_EQ") or ".L" in t or t.endswith("L"):
+            reg = "United Kingdom"
+        elif t.endswith("_DE_EQ") or ".DE" in t or t.endswith("D") or ".XETRA" in t:
+            reg = "Germany & DAX"
+        else:
+            reg = "International / Other"
+        geo_map[reg] += mv
+        geo_counts[reg] += 1
+
+    geo_exposure: List[GeographicExposureItem] = []
+    for reg, val in sorted(geo_map.items(), key=lambda x: x[1], reverse=True):
+        if val > 0:
+            pct = (val / total_val * 100.0) if total_val > 0 else 0.0
+            geo_exposure.append(
+                GeographicExposureItem(
+                    region=reg,
+                    value=round(val, 2),
+                    percentage=round(pct, 2),
+                    holdings_count=geo_counts[reg],
+                )
+            )
+
+    # Top holdings concentration
+    percentages = [h.percentage for h in holdings]
+    top1 = percentages[0] if percentages else 0.0
+    top5 = sum(percentages[:5]) if len(percentages) >= 5 else sum(percentages)
+    top10 = sum(percentages[:10]) if len(percentages) >= 10 else sum(percentages)
+
+    # Income Risks (capital % vs dividend % mismatch)
+    income_risks: List[IncomeRiskItem] = []
+    # Build map of capital pct
+    cap_map = {h.ticker: h.percentage for h in holdings}
+    for item in income_by_holding[:10]:
+        cap_pct = cap_map.get(item.ticker, 0.0)
+        inc_pct = item.percentage_of_total_income
+        if inc_pct > 20.0 or (inc_pct - cap_pct > 12.0):
+            risk_lvl = "high"
+        elif inc_pct > 10.0 or (inc_pct - cap_pct > 6.0):
+            risk_lvl = "moderate"
+        else:
+            risk_lvl = "balanced"
+
+        income_risks.append(
+            IncomeRiskItem(
+                ticker=item.ticker,
+                name=item.name,
+                capital_percentage=round(cap_pct, 2),
+                income_percentage=round(inc_pct, 2),
+                risk_level=risk_lvl,
+            )
+        )
+
+    # Intelligent Recommendations
+    recommendations: List[DiversificationRecommendation] = []
+    if top1 > 15.0:
+        recommendations.append(
+            DiversificationRecommendation(
+                type="warning",
+                title="Single-Stock Concentration",
+                message=f"{holdings[0].ticker} represents {top1:.1f}% of total portfolio value. Consider rebalancing if it exceeds your target risk limit (recommended max: 10-15%).",
+            )
+        )
+
+    if sectors and sectors[0].percentage > 25.0:
+        recommendations.append(
+            DiversificationRecommendation(
+                type="warning",
+                title="Sector Overweight",
+                message=f"The {sectors[0].sector} sector accounts for {sectors[0].percentage:.1f}% of assets. Downturns in this sector could heavily impact overall performance (recommended max: 20-25%).",
+            )
+        )
+
+    if income_risks and income_risks[0].risk_level == "high":
+        recommendations.append(
+            DiversificationRecommendation(
+                type="caution",
+                title="Dividend Reliance Warning",
+                message=f"{income_risks[0].ticker} accounts for {income_risks[0].income_percentage:.1f}% of all dividend cashflow. A dividend cut by this company would noticeably reduce your passive income.",
+            )
+        )
+
+    if effective_holdings < 15 and holdings_count >= 25:
+        recommendations.append(
+            DiversificationRecommendation(
+                type="caution",
+                title="Effective Holding Dispersion",
+                message=f"While you have {holdings_count} positions, your top-heavy weighting results in an effective holding count of only {effective_holdings}. Smaller positions provide minimal diversification benefit.",
+            )
+        )
+
+    if sector_count < 6:
+        recommendations.append(
+            DiversificationRecommendation(
+                type="caution",
+                title="Sector Expansion Opportunities",
+                message=f"Your portfolio is distributed across only {sector_count} sectors. Consider researching quality companies in complementary sectors like Consumer Staples, Healthcare, or Utilities.",
+            )
+        )
+
+    if overall >= 80:
+        recommendations.append(
+            DiversificationRecommendation(
+                type="positive",
+                title="Solid Portfolio Structure",
+                message=f"Your portfolio achieves a strong {overall}/100 diversification score with healthy distribution across {sector_count} sectors and {holdings_count} positions.",
+            )
+        )
+
+    return DiversificationResponse(
+        overall_score=overall,
+        rating=rating,
+        hhi_index=round(hhi_index, 1),
+        effective_holdings=effective_holdings,
+        total_holdings_count=holdings_count,
+        total_sectors_count=sector_count,
+        top1_concentration=round(top1, 2),
+        top5_concentration=round(top5, 2),
+        top10_concentration=round(top10, 2),
+        metrics=metrics,
+        sectors=sectors,
+        geographic_exposure=geo_exposure,
+        income_risks=income_risks,
+        recommendations=recommendations,
+    )
+
