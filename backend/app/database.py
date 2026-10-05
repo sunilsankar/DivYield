@@ -227,3 +227,25 @@ def delete_setting(key: str, db_path: Path | None = None) -> None:
     with get_db(db_path) as conn:
         conn.execute("DELETE FROM settings WHERE key = ?;", (key,))
         conn.commit()
+
+
+def reset_database(db_path: Path | None = None) -> None:
+    """Safely clear all portfolio data, transactions, events, logs, and restore default settings."""
+    target_path = db_path or settings.db_path
+    with sqlite3.connect(target_path) as conn:
+        conn.execute("PRAGMA foreign_keys = OFF;")
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM holdings;")
+        cursor.execute("DELETE FROM transactions;")
+        cursor.execute("DELETE FROM dividend_events;")
+        cursor.execute("DELETE FROM cash_interest;")
+        cursor.execute("DELETE FROM sync_log;")
+        cursor.execute("DELETE FROM instrument_mappings;")
+        cursor.execute("DELETE FROM settings;")
+        for key, value in DEFAULT_SETTINGS:
+            cursor.execute(
+                "INSERT INTO settings (key, value) VALUES (?, ?);",
+                (key, value),
+            )
+        conn.commit()
+

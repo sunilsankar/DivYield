@@ -75,6 +75,7 @@ def main():
             width=1280,
             height=800,
             min_size=(900, 600),
+            maximized=True,
             text_select=True,
             zoomable=True,
             background_color="#ffffff",

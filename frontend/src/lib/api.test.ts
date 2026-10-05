@@ -14,6 +14,7 @@ import {
   fetchCalendar,
   fetchUpdateCheck,
   fetchDiversification,
+  triggerFactoryReset,
 } from "./api";
 
 describe("API Client Tests", () => {
@@ -307,5 +308,28 @@ describe("API Client Tests", () => {
     expect(res.hhi_index).toBe(480.5);
     expect(res.effective_holdings).toBe(20.8);
     expect(globalThis.fetch).toHaveBeenCalledWith("/api/v1/analytics/diversification");
+  });
+
+  it("triggerFactoryReset sends POST to /api/v1/system/factory-reset", async () => {
+    const mockResetResponse = {
+      success: true,
+      message: "Database and credentials reset",
+    };
+
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => mockResetResponse,
+    } as unknown as Response);
+
+    const res = await triggerFactoryReset(true);
+    expect(res.success).toBe(true);
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      "/api/v1/system/factory-reset",
+      expect.objectContaining({
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clear_credentials: true }),
+      })
+    );
   });
 });

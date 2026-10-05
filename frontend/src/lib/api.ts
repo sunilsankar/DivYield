@@ -469,3 +469,17 @@ export async function importCsv(dataset: "holdings" | "transactions" | "dividend
   return res.json();
 }
 
+export async function triggerFactoryReset(clearCredentials: boolean = true): Promise<{ success: boolean; message: string }> {
+  const res = await fetch(`${API_BASE}/system/factory-reset`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ clear_credentials: clearCredentials }),
+  });
+  if (!res.ok) {
+    const detail = await res.json().catch(() => ({ detail: "Failed to reset system" }));
+    throw new Error(detail.detail || `Reset failed (${res.status})`);
+  }
+  return res.json();
+}
+
+

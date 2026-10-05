@@ -36,6 +36,11 @@ class GenericActionResponse(BaseModel):
     details: Optional[Dict[str, Any]] = None
 
 
+class ResetDatabaseRequest(BaseModel):
+    clear_credentials: bool = Field(True, description="Whether to also remove API credentials from OS Keychain")
+
+
+
 # Holdings & Portfolio Schemas
 class HoldingItem(BaseModel):
     id: int

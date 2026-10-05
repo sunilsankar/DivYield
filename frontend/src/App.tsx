@@ -15,7 +15,7 @@ import { AnalyticsView } from "./components/analytics/AnalyticsView";
 import { DiversificationView } from "./components/diversification/DiversificationView";
 import { TaxEstimatorView } from "./components/tax/TaxEstimatorView";
 import { DataToolsView } from "./components/data/DataToolsView";
-import { KeyRound, Wallet, RefreshCw, Sparkles } from "lucide-react";
+import { KeyRound, Wallet, RefreshCw, Sparkles, Trash2, AlertTriangle } from "lucide-react";
 import {
   HealthStatus,
   Holding,
@@ -36,6 +36,7 @@ import {
   triggerSync,
   fetchSyncStatus,
   fetchUpdateCheck,
+  triggerFactoryReset,
 } from "./lib/api";
 
 const SECTOR_COLORS = [
@@ -147,6 +148,25 @@ export function App() {
     stepMessage: string;
   } | null>(null);
   const [updateInfo, setUpdateInfo] = useState<UpdateCheckResult | null>(null);
+  const [isResetting, setIsResetting] = useState<boolean>(false);
+  const [resetModalOpen, setResetModalOpen] = useState<boolean>(false);
+  const [resetWipeCredentials, setResetWipeCredentials] = useState<boolean>(true);
+
+  const handleFactoryReset = async () => {
+    setIsResetting(true);
+    try {
+      await triggerFactoryReset(resetWipeCredentials);
+      setResetModalOpen(false);
+      setNotification("System and database successfully reset. Reloading application...");
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Reset failed";
+      alert(`Reset error: ${msg}`);
+      setIsResetting(false);
+    }
+  };
 
   // Health fetch function connecting to FastAPI
   const checkHealth = async () => {
@@ -487,7 +507,8 @@ export function App() {
 
         {/* Right Main Content Area */}
         <main className="flex-1 flex flex-col gap-6 min-w-0">
-          {currentTab === "dashboard" && (
+          <div key={currentTab} className="animate-fade-in-up flex-1 flex flex-col gap-6">
+            {currentTab === "dashboard" && (
             <>
               {/* System Connectivity Banner */}
               <SystemStatusBanner
@@ -693,10 +714,91 @@ export function App() {
                   </div>
                 </div>
               </div>
+
+              {/* Danger Zone: Reset Database & API Key */}
+              <div className="p-5 bg-rose-50/50 border border-rose-200/80 rounded-2xl text-xs space-y-4">
+                <div className="flex items-center gap-2 text-rose-900 font-bold text-sm">
+                  <AlertTriangle className="w-4 h-4 text-rose-600" />
+                  <span>Danger Zone: Clear Database & Reload</span>
+                </div>
+                <p className="text-slate-600 text-xs leading-relaxed">
+                  Clear all local holdings, transaction history, and dividend data from your SQLite database. Use this if you want to perform a clean re-sync from Trading 212 or completely reset the app.
+                </p>
+                <div className="flex flex-wrap items-center gap-3 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setResetWipeCredentials(false);
+                      setResetModalOpen(true);
+                    }}
+                    className="px-3.5 py-2 text-xs font-semibold bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
+                    Clear Database Only (Keep API Key)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setResetWipeCredentials(true);
+                      setResetModalOpen(true);
+                    }}
+                    className="px-3.5 py-2 text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Factory Reset (Clear DB & API Key)
+                  </button>
+                </div>
+              </div>
             </div>
           )}
+          </div>
         </main>
       </div>
+
+      {/* Factory Reset Confirmation Modal */}
+      {resetModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4 animate-fade-in-up">
+            <div className="flex items-center gap-3 text-rose-600">
+              <div className="w-10 h-10 rounded-xl bg-rose-50 border border-rose-200/80 flex items-center justify-center">
+                <AlertTriangle className="w-5 h-5 text-rose-600" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900">
+                  {resetWipeCredentials ? "Confirm Factory Reset" : "Confirm Database Reset"}
+                </h3>
+                <p className="text-xs text-slate-500">This action cannot be undone</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed">
+              {resetWipeCredentials
+                ? "This will permanently delete all synced holdings, transactions, and dividend records from your local database, AND remove your saved Trading 212 API key from the OS Keychain. DivYield will revert to its initial clean state."
+                : "This will permanently delete all synced holdings, transactions, and dividend records from your local database. Your saved API key will remain intact so you can immediately re-sync fresh data."}
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setResetModalOpen(false)}
+                disabled={isResetting}
+                className="px-4 py-2 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleFactoryReset}
+                disabled={isResetting}
+                className="px-4 py-2 text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                {isResetting ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                {isResetting ? "Resetting..." : "Yes, Reset Everything"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       <footer className="border-t border-slate-200/80 bg-white/70 py-4 px-6 mt-8">

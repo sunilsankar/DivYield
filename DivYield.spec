@@ -46,6 +46,7 @@ a = Analysis(
         'app.routers.tax',
         'app.routers.data_tools',
         'app.routers.export',
+        'app.routers.system',
         'app.services.combined_sync',
         'app.services.trading212_sync',
         'app.services.yfinance_enrichment',
