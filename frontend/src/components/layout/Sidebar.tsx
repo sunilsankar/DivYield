@@ -11,7 +11,6 @@ import {
   ShieldCheck,
   Lock,
   ArrowLeftRight,
-  Link2,
   Edit3,
 } from "lucide-react";
 
@@ -24,7 +23,6 @@ export type NavTab =
   | "analytics"
   | "tax"
   | "data-tools"
-  | "mappings"
   | "connections"
   | "settings";
 
@@ -74,11 +72,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange }) => 
       id: "data-tools",
       label: "Data Tools & CSV",
       icon: <Edit3 className="w-4 h-4" />,
-    },
-    {
-      id: "mappings",
-      label: "Instrument Mappings",
-      icon: <Link2 className="w-4 h-4" />,
     },
     {
       id: "connections",

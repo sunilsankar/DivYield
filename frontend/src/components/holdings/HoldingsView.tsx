@@ -8,7 +8,6 @@ import {
   PieChart,
   ChevronDown,
   ChevronUp,
-  Link2,
 } from "lucide-react";
 import { Holding } from "../../types";
 import { formatCurrency, formatPercent } from "../../lib/utils";
@@ -16,7 +15,6 @@ import { StockLogo } from "../ui/StockLogo";
 
 interface HoldingsViewProps {
   holdings: Holding[];
-  onOpenMappings?: () => void;
   onTriggerSync?: () => void;
   isSyncing?: boolean;
 }
@@ -26,7 +24,6 @@ type SortDirection = "asc" | "desc";
 
 export const HoldingsView: React.FC<HoldingsViewProps> = ({
   holdings,
-  onOpenMappings,
   onTriggerSync,
   isSyncing = false,
 }) => {
@@ -126,15 +123,6 @@ export const HoldingsView: React.FC<HoldingsViewProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {onOpenMappings && (
-              <button
-                onClick={onOpenMappings}
-                className="px-3.5 py-2 text-xs font-semibold bg-white hover:bg-slate-50 border border-slate-200 rounded-xl flex items-center gap-1.5 text-slate-700 shadow-xs transition-all duration-150"
-              >
-                <Link2 className="w-3.5 h-3.5 text-indigo-600" />
-                Mappings
-              </button>
-            )}
             {onTriggerSync && (
               <button
                 onClick={onTriggerSync}

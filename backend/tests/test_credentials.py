@@ -9,15 +9,11 @@ from app.credentials import (
     save_trading212_credentials,
     get_trading212_credentials,
     delete_trading212_credentials,
-    save_eodhd_credentials,
-    get_eodhd_credentials,
-    delete_eodhd_credentials,
     set_secret,
     get_secret,
     delete_secret,
 )
 from app.providers.trading212 import Trading212Client
-from app.providers.eodhd import EODHDClient
 
 
 client = TestClient(app)
@@ -54,19 +50,6 @@ def test_trading212_credentials_lifecycle():
 
     delete_trading212_credentials()
     assert get_trading212_credentials() is None
-
-
-def test_eodhd_credentials_lifecycle():
-    delete_eodhd_credentials()
-    assert get_eodhd_credentials() is None
-
-    save_eodhd_credentials(api_token="eodhd_sample_token_456")
-    creds = get_eodhd_credentials()
-    assert creds is not None
-    assert creds["api_token"] == "eodhd_sample_token_456"
-
-    delete_eodhd_credentials()
-    assert get_eodhd_credentials() is None
 
 
 def test_trading212_client_statuses():
@@ -119,53 +102,8 @@ def test_trading212_client_statuses():
     asyncio.run(_run_tests())
 
 
-def test_eodhd_client_statuses():
-    async def _run_tests():
-        client_eodhd = EODHDClient(api_token="test_token")
-
-        # 1. Base 200 + Calendar 200 -> connected, has_dividend_calendar=True
-        r_base_200 = httpx.Response(200, json=[{"Code": "US"}], request=httpx.Request("GET", "https://test"))
-        r_cal_200 = httpx.Response(200, json=[{"code": "AAPL.US"}], request=httpx.Request("GET", "https://test"))
-
-        with patch("httpx.AsyncClient.get", new_callable=AsyncMock) as mock_get:
-            mock_get.side_effect = [r_base_200, r_cal_200]
-            res = await client_eodhd.test_connection()
-            assert res["status"] == "connected"
-            assert res["has_dividend_calendar"] is True
-            assert res["warning"] is None
-
-        # 2. Base 200 + Calendar 402/403 -> connected, has_dividend_calendar=False, warning set
-        r_cal_402 = httpx.Response(402, text="Subscription required", request=httpx.Request("GET", "https://test"))
-        with patch("httpx.AsyncClient.get", new_callable=AsyncMock) as mock_get:
-            mock_get.side_effect = [r_base_200, r_cal_402]
-            res = await client_eodhd.test_connection()
-            assert res["status"] == "connected"
-            assert res["has_dividend_calendar"] is False
-            assert "Dividend Calendar Unavailable" in res["warning"]
-
-        # 3. Base 401 -> invalid_credentials
-        r_base_401 = httpx.Response(401, request=httpx.Request("GET", "https://test"))
-        with patch("httpx.AsyncClient.get", new_callable=AsyncMock) as mock_get:
-            mock_get.return_value = r_base_401
-            res = await client_eodhd.test_connection()
-            assert res["status"] == "invalid_credentials"
-            assert res["has_dividend_calendar"] is False
-
-        # 4. Base 402 -> subscription_limit
-        r_base_402 = httpx.Response(402, text="Daily limit reached", request=httpx.Request("GET", "https://test"))
-        with patch("httpx.AsyncClient.get", new_callable=AsyncMock) as mock_get:
-            mock_get.return_value = r_base_402
-            res = await client_eodhd.test_connection()
-            assert res["status"] == "subscription_limit"
-            assert res["has_dividend_calendar"] is False
-
-    asyncio.run(_run_tests())
-
-
 def test_api_connections_endpoint_never_exposes_raw_credentials():
-    # Save test credentials
     save_trading212_credentials(api_key="T212_ULTRA_SECRET_KEY_1234", environment="live")
-    save_eodhd_credentials(api_token="EODHD_CONFIDENTIAL_TOKEN_5678")
 
     response = client.get("/api/v1/connections")
     assert response.status_code == 200
@@ -173,24 +111,18 @@ def test_api_connections_endpoint_never_exposes_raw_credentials():
 
     # Verify no raw secrets
     assert "T212_ULTRA_SECRET_KEY_1234" not in response.text
-    assert "EODHD_CONFIDENTIAL_TOKEN_5678" not in response.text
 
     # Verify masked format
     assert data["trading212"]["configured"] is True
     assert data["trading212"]["masked_key"] == "••••••••1234"
-    assert data["eodhd"]["configured"] is True
-    assert data["eodhd"]["masked_token"] == "••••••••5678"
 
     # Clean up
     delete_trading212_credentials()
-    delete_eodhd_credentials()
 
     response_cleared = client.get("/api/v1/connections")
     data_cleared = response_cleared.json()
     assert data_cleared["trading212"]["configured"] is False
     assert data_cleared["trading212"]["masked_key"] is None
-    assert data_cleared["eodhd"]["configured"] is False
-    assert data_cleared["eodhd"]["masked_token"] is None
 
 
 def test_api_save_and_test_and_delete_endpoints():
@@ -216,27 +148,3 @@ def test_api_save_and_test_and_delete_endpoints():
     resp_del_t212 = client.delete("/api/v1/credentials/trading212")
     assert resp_del_t212.status_code == 200
     assert resp_del_t212.json()["success"] is True
-
-    # 4. Save EODHD
-    resp_save_eod = client.post(
-        "/api/v1/credentials/eodhd",
-        json={"api_token": "raw_eodhd_token_9999"},
-    )
-    assert resp_save_eod.status_code == 200
-    assert resp_save_eod.json()["success"] is True
-    assert "raw_eodhd_token_9999" not in resp_save_eod.text
-
-    # 5. Test EODHD with mock
-    r_base = httpx.Response(200, json=[], request=httpx.Request("GET", "https://test"))
-    r_cal = httpx.Response(200, json=[], request=httpx.Request("GET", "https://test"))
-    with patch("httpx.AsyncClient.get", new_callable=AsyncMock) as mock_get:
-        mock_get.side_effect = [r_base, r_cal]
-        resp_test_eod = client.post("/api/v1/credentials/eodhd/test")
-        assert resp_test_eod.status_code == 200
-        assert resp_test_eod.json()["status"] == "connected"
-        assert resp_test_eod.json()["has_dividend_calendar"] is True
-
-    # 6. Disconnect EODHD
-    resp_del_eod = client.delete("/api/v1/credentials/eodhd")
-    assert resp_del_eod.status_code == 200
-    assert resp_del_eod.json()["success"] is True

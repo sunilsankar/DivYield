@@ -15,14 +15,6 @@ class Trading212TestRequest(BaseModel):
     environment: Optional[str] = Field("live", pattern="^(live|demo)$")
 
 
-class EODHDCredentialsRequest(BaseModel):
-    api_token: str = Field(..., min_length=1, description="EODHD API Token")
-
-
-class EODHDTestRequest(BaseModel):
-    api_token: Optional[str] = Field(None, description="Test with unsaved token")
-
-
 class Trading212Status(BaseModel):
     configured: bool
     environment: Optional[str] = "live"
@@ -33,18 +25,9 @@ class Trading212Status(BaseModel):
     account_currency: Optional[str] = None
 
 
-class EODHDStatus(BaseModel):
-    configured: bool
-    masked_token: Optional[str] = None
-    status: str = "disconnected"
-    has_dividend_calendar: Optional[bool] = None
-    last_checked: Optional[str] = None
-    error_message: Optional[str] = None
-
-
 class ConnectionsResponse(BaseModel):
     trading212: Trading212Status
-    eodhd: EODHDStatus
+    eodhd: Optional[Dict[str, Any]] = None
 
 
 class GenericActionResponse(BaseModel):
@@ -169,46 +152,6 @@ class SyncStatusResponse(BaseModel):
     current_step: int = 0
     total_steps: int = 0
     step_message: Optional[str] = None
-
-
-# EODHD Enrichment & Mapping Schemas
-class EnrichmentResponse(BaseModel):
-    success: bool
-    message: str
-    instruments_enriched: int
-    dividend_events_added: int
-    errors: List[str] = []
-
-
-class InstrumentMappingItem(BaseModel):
-    id: int
-    trading212_identifier: str
-    trading212_ticker: Optional[str] = None
-    eodhd_symbol: str
-    confidence: str
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
-
-
-class CreateMappingRequest(BaseModel):
-    trading212_identifier: str
-    eodhd_symbol: str
-    confidence: Optional[str] = "MANUAL"
-
-
-class MappingsResponse(BaseModel):
-    mappings: List[InstrumentMappingItem]
-    count: int
-
-
-class SymbolSearchResult(BaseModel):
-    code: str
-    exchange: str
-    name: str
-    type: Optional[str] = None
-    country: Optional[str] = None
-    currency: Optional[str] = None
-    isin: Optional[str] = None
 
 
 class ConcentrationItem(BaseModel):

@@ -341,7 +341,7 @@ const ManualEntriesPanel: React.FC = () => {
             <span>Manual Holding</span>
           </h3>
           <p className="text-xs text-slate-500 mt-0.5">
-            Track assets held outside Trading 212 or EODHD (e.g., shares on a different broker, family inheritance).
+            Track assets held outside Trading 212 (e.g., shares on a different broker, family inheritance).
           </p>
         </div>
 

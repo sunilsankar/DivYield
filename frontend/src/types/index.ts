@@ -50,7 +50,6 @@ export interface ApiHolding {
   dividend_yield?: number;
   annual_dividend?: number;
   payout_frequency?: string | null;
-  eodhd_symbol?: string | null;
   updated_at?: string | null;
 }
 
@@ -137,7 +136,6 @@ export interface DividendEvent {
 export interface MonthlyDividend {
   month: string;
   received: number;
-  expected: number;
 }
 
 export interface SectorAllocation {
@@ -157,18 +155,8 @@ export interface Trading212Status {
   account_currency?: string | null;
 }
 
-export interface EODHDStatus {
-  configured: boolean;
-  masked_token?: string | null;
-  status: "connected" | "disconnected" | "invalid_credentials" | "error" | "untested";
-  has_dividend_calendar?: boolean | null;
-  last_checked?: string | null;
-  error_message?: string | null;
-}
-
 export interface ConnectionsResponse {
   trading212: Trading212Status;
-  eodhd: EODHDStatus;
 }
 
 export interface ConnectionTestResult {
@@ -180,7 +168,6 @@ export interface ConnectionTestResult {
     metadata?: boolean;
     orders_execute?: boolean;
   };
-  has_dividend_calendar?: boolean;
   warning?: string | null;
   message?: string;
 }
@@ -193,38 +180,11 @@ export interface SyncResult {
   orders_count?: number;
   transactions_count?: number;
   dividends_count?: number;
-  instruments_enriched?: number;
-  expected_dividends_added?: number;
   account_currency?: string;
   free_cash?: number;
   total_cash?: number;
   last_synced?: string | null;
-  eodhd_status?: string | null;
   error?: string | null;
-}
-
-export interface InstrumentMappingItem {
-  id: number;
-  trading212_identifier: string;
-  trading212_ticker?: string | null;
-  eodhd_symbol: string;
-  confidence: string;
-  created_at?: string | null;
-  updated_at?: string | null;
-}
-
-export interface MappingsResponse {
-  mappings: InstrumentMappingItem[];
-  count: number;
-}
-
-export interface SymbolSearchResult {
-  symbol: string;
-  name: string;
-  exchange: string;
-  currency: string;
-  type: string;
-  country: string;
 }
 
 export interface ConcentrationItem {

@@ -20,10 +20,10 @@ def setup_db(tmp_path, monkeypatch):
             """
             INSERT INTO holdings
               (provider, external_id, ticker, name, quantity, average_price, current_price,
-               market_value, currency, sector, annual_dividend, dividend_yield, payout_frequency, eodhd_symbol)
+               market_value, currency, sector, annual_dividend, dividend_yield, payout_frequency)
             VALUES
-              ('T212', 'h1', 'ASML_NL_EQ', 'ASML Holding', 10.0, 700.0, 850.0, 8500.0, 'EUR', 'Technology', 60.0, 1.5, 'Quarterly', 'ASML.AS'),
-              ('T212', 'h2', 'NN_NL_EQ', 'NN Group', 100.0, 35.0, 42.0, 4200.0, 'EUR', 'Financials', 320.0, 7.6, 'Semi-Annual', 'NN.AS');
+              ('T212', 'h1', 'ASML_NL_EQ', 'ASML Holding', 10.0, 700.0, 850.0, 8500.0, 'EUR', 'Technology', 60.0, 1.5, 'Quarterly'),
+              ('T212', 'h2', 'NN_NL_EQ', 'NN Group', 100.0, 35.0, 42.0, 4200.0, 'EUR', 'Financials', 320.0, 7.6, 'Semi-Annual');
             """
         )
         cursor.execute(
@@ -139,8 +139,8 @@ def test_export_endpoints():
     assert resp_yahoo.status_code == 200
     assert "text/csv" in resp_yahoo.headers["content-type"]
     assert "Symbol,Current Price" in resp_yahoo.text
-    assert "ASML.AS" in resp_yahoo.text
-    assert "NN.AS" in resp_yahoo.text
+    assert "ASML_NL_EQ" in resp_yahoo.text
+    assert "NN_NL_EQ" in resp_yahoo.text
 
 
 def test_no_trading_order_execution_routes_exist():

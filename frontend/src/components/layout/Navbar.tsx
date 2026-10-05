@@ -102,7 +102,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* Connection Pill */}
             <button
               onClick={onOpenConnections}
-              title="Configure Trading 212 & EODHD connections"
+              title="Configure Trading 212 connection"
               className="flex items-center gap-1.5 px-2.5 py-1.5 bg-black/[0.03] hover:bg-black/[0.06] border border-black/[0.06] rounded-lg transition-colors duration-150 text-xs text-slate-700 hover:text-slate-900"
             >
               <KeyRound className="w-3.5 h-3.5 text-slate-500" />

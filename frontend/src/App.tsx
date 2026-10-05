@@ -4,12 +4,10 @@ import { Sidebar, NavTab } from "./components/layout/Sidebar";
 import { StatCards } from "./components/dashboard/StatCards";
 import { AllocationChart } from "./components/dashboard/AllocationChart";
 import { DividendBarChart } from "./components/dashboard/DividendBarChart";
-import { UpcomingDividends } from "./components/dashboard/UpcomingDividends";
 import { TopHoldings } from "./components/dashboard/TopHoldings";
 import { SystemStatusBanner } from "./components/dashboard/SystemStatusBanner";
 import { ConnectionsManager } from "./components/settings/ConnectionsManager";
 import { TransactionsView } from "./components/transactions/TransactionsView";
-import { MappingsManager } from "./components/mappings/MappingsManager";
 import { HoldingsView } from "./components/holdings/HoldingsView";
 import { DividendsView } from "./components/dividends/DividendsView";
 import { DividendCalendarView } from "./components/dividends/DividendCalendarView";
@@ -20,7 +18,6 @@ import { KeyRound, Wallet, RefreshCw, Sparkles } from "lucide-react";
 import {
   HealthStatus,
   Holding,
-  DividendEvent,
   MonthlyDividend,
   SectorAllocation,
   ConnectionsResponse,
@@ -34,7 +31,6 @@ import {
   fetchPortfolioSummary,
   fetchHoldings,
   fetchDividends,
-  fetchExpectedDividends,
   triggerSync,
   fetchSyncStatus,
   fetchUpdateCheck,
@@ -72,13 +68,10 @@ function calculateSectorAllocations(holdings: Holding[], totalValue: number): Se
   }));
 }
 
-function calculateMonthlyDividends(
-  received: ApiDividendItem[],
-  expected: ApiDividendItem[]
-): MonthlyDividend[] {
+function calculateMonthlyDividends(received: ApiDividendItem[]): MonthlyDividend[] {
   const currentYear = new Date().getFullYear();
   const yearsWithData = new Set<number>();
-  for (const d of [...received, ...expected]) {
+  for (const d of received) {
     const dtStr = d.payment_date || d.ex_dividend_date;
     if (dtStr && dtStr.length >= 4) {
       const y = parseInt(dtStr.slice(0, 4), 10);
@@ -109,18 +102,6 @@ function calculateMonthlyDividends(
     }
   }
 
-  for (const div of expected) {
-    const dtStr = div.payment_date || div.ex_dividend_date;
-    if (!dtStr) continue;
-    const d = new Date(dtStr);
-    if (!isNaN(d.getTime()) && d.getFullYear() === targetYear) {
-      const mIdx = d.getMonth();
-      if (mIdx >= 0 && mIdx < 12) {
-        months[mIdx].expected += div.amount;
-      }
-    }
-  }
-
   return months;
 }
 
@@ -132,7 +113,6 @@ export function App() {
   const [summary, setSummary] = useState<PortfolioSummary | null>(null);
   const [liveHoldings, setLiveHoldings] = useState<HoldingItem[]>([]);
   const [liveDividends, setLiveDividends] = useState<ApiDividendItem[]>([]);
-  const [liveExpected, setLiveExpected] = useState<ApiDividendItem[]>([]);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [lastSyncedText, setLastSyncedText] = useState<string>("Not Synced Yet");
   const [notification, setNotification] = useState<string | null>(null);
@@ -186,18 +166,16 @@ export function App() {
 
   const loadLiveData = async () => {
     try {
-      const [sumRes, holdRes, divRes, expRes, syncRes] = await Promise.allSettled([
+      const [sumRes, holdRes, divRes, syncRes] = await Promise.allSettled([
         fetchPortfolioSummary(),
         fetchHoldings(),
         fetchDividends(),
-        fetchExpectedDividends(),
         fetchSyncStatus(),
       ]);
 
       if (sumRes.status === "fulfilled") setSummary(sumRes.value);
       if (holdRes.status === "fulfilled") setLiveHoldings(holdRes.value.holdings);
       if (divRes.status === "fulfilled") setLiveDividends(divRes.value.dividends);
-      if (expRes.status === "fulfilled") setLiveExpected(expRes.value.dividends);
       if (syncRes.status === "fulfilled" && syncRes.value.last_synced) {
         const d = new Date(syncRes.value.last_synced);
         setLastSyncedText(`Today, ${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`);
@@ -226,7 +204,7 @@ export function App() {
     setIsSyncing(true);
     setSyncProgress({
       currentStep: 1,
-      totalSteps: 8,
+      totalSteps: 7,
       stepMessage: "Starting synchronization...",
     });
     setNotification(null);
@@ -252,7 +230,7 @@ export function App() {
       if (res.success) {
         setNotification(
           res.message ||
-            `Sync complete! ${res.holdings_count ?? 0} holdings, ${res.dividends_count ?? 0} received dividends, ${res.instruments_enriched ?? 0} enriched.`
+            `Sync complete! ${res.holdings_count ?? 0} holdings, ${res.dividends_count ?? 0} received dividends synced from Trading 212.`
         );
         const now = new Date();
         setLastSyncedText(`Today, ${now.getHours()}:${String(now.getMinutes()).padStart(2, "0")}`);
@@ -300,23 +278,37 @@ export function App() {
       ? summary.total_value
       : activeHoldings.reduce((sum, h) => sum + h.marketValue, 0);
 
-  const totalAnnualDividend = activeHoldings.reduce((sum, h) => sum + h.annualDividend, 0);
-  const overallYield = totalPortfolioValue > 0 ? (totalAnnualDividend / totalPortfolioValue) * 100 : 0;
-  const receivedYtd = liveDividends.reduce((sum, d) => sum + d.amount, 0);
+  const totalReceivedAllTime = useMemo(
+    () => liveDividends.reduce((sum, d) => sum + d.amount, 0),
+    [liveDividends]
+  );
 
-  const upcomingEvents: DividendEvent[] = liveExpected.map((e, idx) => ({
-    id: e.id || idx + 1,
-    ticker: e.ticker,
-    name: e.ticker,
-    exDate: e.ex_dividend_date || "-",
-    payDate: e.payment_date || "-",
-    amountPerShare: e.amount,
-    totalAmount: e.amount,
-    currency: e.currency,
-    status: "EXPECTED" as const,
-  }));
+  const { receivedYtd, trailing12Months, monthlyAverage } = useMemo(() => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const oneYearAgo = new Date(now);
+    oneYearAgo.setFullYear(now.getFullYear() - 1);
 
-  const upcoming30Days = upcomingEvents.reduce((sum, e) => sum + e.totalAmount, 0);
+    let ytd = 0;
+    let ttm = 0;
+
+    for (const d of liveDividends) {
+      const dtStr = d.payment_date || d.ex_dividend_date;
+      if (!dtStr) continue;
+      const date = new Date(dtStr);
+      if (isNaN(date.getTime())) continue;
+
+      if (date.getFullYear() === currentYear) {
+        ytd += d.amount;
+      }
+      if (date >= oneYearAgo && date <= now) {
+        ttm += d.amount;
+      }
+    }
+
+    const avg = ttm > 0 ? ttm / 12 : 0;
+    return { receivedYtd: ytd, trailing12Months: ttm, monthlyAverage: avg };
+  }, [liveDividends]);
 
   const sectorAllocations = useMemo(
     () => calculateSectorAllocations(activeHoldings, totalPortfolioValue),
@@ -324,8 +316,8 @@ export function App() {
   );
 
   const monthlyDividends = useMemo(
-    () => calculateMonthlyDividends(liveDividends, liveExpected),
-    [liveDividends, liveExpected]
+    () => calculateMonthlyDividends(liveDividends),
+    [liveDividends]
   );
 
   return (
@@ -432,15 +424,15 @@ export function App() {
                 onRefresh={checkHealth}
               />
 
-              {/* Statistics Panels (Hand-drawn cards) */}
+              {/* Statistics Panels */}
               <StatCards
                 portfolioValue={totalPortfolioValue}
                 dailyChange={summary?.unrealized_pnl ?? 0}
                 dailyChangePercent={summary?.unrealized_pnl_percent ?? 0}
-                annualDividend={totalAnnualDividend}
-                dividendYield={overallYield}
+                totalReceivedAllTime={totalReceivedAllTime}
                 receivedYtd={receivedYtd}
-                upcoming30Days={upcoming30Days}
+                trailing12Months={trailing12Months}
+                monthlyAverage={monthlyAverage}
               />
 
               {activeHoldings.length === 0 && (
@@ -486,20 +478,12 @@ export function App() {
                 </div>
               </div>
 
-              {/* Secondary Widgets Section: Upcoming Radar + Top Yielding Holdings */}
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                <div className="lg:col-span-5">
-                  <UpcomingDividends
-                    events={upcomingEvents}
-                    onViewCalendar={() => setCurrentTab("calendar")}
-                  />
-                </div>
-                <div className="lg:col-span-7">
-                  <TopHoldings
-                    holdings={activeHoldings}
-                    onViewAllHoldings={() => setCurrentTab("holdings")}
-                  />
-                </div>
+              {/* Secondary Widgets Section: Top Yielding Holdings */}
+              <div className="grid grid-cols-1 gap-6">
+                <TopHoldings
+                  holdings={activeHoldings}
+                  onViewAllHoldings={() => setCurrentTab("holdings")}
+                />
               </div>
             </>
           )}
@@ -507,7 +491,6 @@ export function App() {
           {currentTab === "holdings" && (
             <HoldingsView
               holdings={activeHoldings}
-              onOpenMappings={() => setCurrentTab("mappings")}
               onTriggerSync={handleSyncNow}
               isSyncing={isSyncing}
             />
@@ -525,7 +508,7 @@ export function App() {
             <DividendsView
               receivedDividends={liveDividends}
               monthlyChartData={monthlyDividends}
-              totalAnnualExpected={totalAnnualDividend}
+              totalAnnualExpected={trailing12Months}
               onOpenCalendar={() => setCurrentTab("calendar")}
               onTriggerSync={handleSyncNow}
               isSyncing={isSyncing}
@@ -535,7 +518,6 @@ export function App() {
           {currentTab === "calendar" && (
             <DividendCalendarView
               receivedDividends={liveDividends}
-              expectedDividends={liveExpected}
               holdings={activeHoldings}
               currency={summary?.currency || "EUR"}
             />
@@ -547,10 +529,6 @@ export function App() {
 
           {currentTab === "tax" && (
             <TaxEstimatorView />
-          )}
-
-          {currentTab === "mappings" && (
-            <MappingsManager />
           )}
 
           {currentTab === "data-tools" && (

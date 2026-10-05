@@ -8,8 +8,6 @@ import {
   TransactionsApiResponse,
   DividendsApiResponse,
   SyncResult,
-  MappingsResponse,
-  SymbolSearchResult,
   AnalyticsOverview,
   ProjectionsResponse,
   DividendGrowthResponse,
@@ -87,46 +85,6 @@ export async function deleteTrading212Credentials(): Promise<{ status: string; m
   return res.json();
 }
 
-export async function saveEODHDCredentials(payload: {
-  api_token: string;
-}): Promise<{ status: string; message: string; details?: any }> {
-  const res = await fetch(`${API_BASE}/credentials/eodhd`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.detail || `Failed to save EODHD credentials (${res.status})`);
-  }
-  return res.json();
-}
-
-export async function testEODHDConnection(payload?: {
-  api_token?: string;
-}): Promise<ConnectionTestResult> {
-  const res = await fetch(`${API_BASE}/credentials/eodhd/test`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload || {}),
-  });
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.detail || `EODHD test failed (${res.status})`);
-  }
-  return res.json();
-}
-
-export async function deleteEODHDCredentials(): Promise<{ status: string; message: string }> {
-  const res = await fetch(`${API_BASE}/credentials/eodhd`, {
-    method: "DELETE",
-  });
-  if (!res.ok) {
-    throw new Error(`Failed to disconnect EODHD (${res.status})`);
-  }
-  return res.json();
-}
-
 export async function fetchPortfolioSummary(): Promise<PortfolioSummary> {
   const res = await fetch(`${API_BASE}/portfolio`);
   if (!res.ok) {
@@ -195,9 +153,6 @@ export async function fetchSyncStatus(): Promise<{
   last_synced?: string | null;
   trading212_status: string;
   trading212_error?: string | null;
-  eodhd_status?: string | null;
-  eodhd_last_enriched?: string | null;
-  eodhd_error?: string | null;
   current_step?: number;
   total_steps?: number;
   step_message?: string | null;
@@ -205,76 +160,6 @@ export async function fetchSyncStatus(): Promise<{
   const res = await fetch(`${API_BASE}/sync/status`);
   if (!res.ok) {
     throw new Error(`Failed to load sync status (${res.status})`);
-  }
-  return res.json();
-}
-
-export async function fetchMappings(): Promise<MappingsResponse> {
-  const res = await fetch(`${API_BASE}/mappings`);
-  if (!res.ok) {
-    throw new Error(`Failed to load mappings (${res.status})`);
-  }
-  return res.json();
-}
-
-export async function createOrUpdateMapping(
-  trading212Identifier: string,
-  eodhdSymbol: string,
-  confidence: string = "MANUAL"
-): Promise<{ success: boolean; message: string }> {
-  const res = await fetch(`${API_BASE}/mappings`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      trading212_identifier: trading212Identifier,
-      eodhd_symbol: eodhdSymbol,
-      confidence,
-    }),
-  });
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.detail || errorData.message || `Failed to save mapping (${res.status})`);
-  }
-  return res.json();
-}
-
-export async function deleteMapping(
-  mappingId: number
-): Promise<{ success: boolean; message: string }> {
-  const res = await fetch(`${API_BASE}/mappings/${mappingId}`, {
-    method: "DELETE",
-  });
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.detail || errorData.message || `Failed to delete mapping (${res.status})`);
-  }
-  return res.json();
-}
-
-export async function searchEODHDSymbols(
-  query: string
-): Promise<{ results: SymbolSearchResult[]; count: number }> {
-  const res = await fetch(`${API_BASE}/eodhd/search?q=${encodeURIComponent(query)}`);
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.detail || errorData.message || `Failed to search symbols (${res.status})`);
-  }
-  return res.json();
-}
-
-export async function triggerEnrichment(): Promise<{
-  success: boolean;
-  message: string;
-  instruments_enriched: number;
-  dividend_events_added: number;
-  errors: string[];
-}> {
-  const res = await fetch(`${API_BASE}/eodhd/enrich`, {
-    method: "POST",
-  });
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.detail || errorData.message || `Failed to run enrichment (${res.status})`);
   }
   return res.json();
 }

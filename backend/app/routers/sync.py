@@ -1,4 +1,4 @@
-"""One-Click Combined Portfolio and Dividend Synchronization Router."""
+"""Trading 212 Portfolio and Dividend Synchronization Router."""
 from fastapi import APIRouter
 from app.services.combined_sync import run_combined_sync, _combined_sync_lock, get_sync_progress
 from app.services.trading212_sync import _sync_lock as _t212_lock
@@ -10,13 +10,10 @@ router = APIRouter(tags=["sync"])
 
 @router.post("/sync", response_model=SyncResponse)
 async def run_sync():
-    """Trigger one-click synchronization.
+    """Trigger one-click Trading 212 read-only synchronization.
 
-    Executes combined sync pipeline:
-    1. Synchronize Trading 212 holdings, history, and actual dividends
-    2. Resolve instruments and enrich through EODHD fundamentals
-    3. Retrieve and store future expected dividend events
-    4. Record combined sync logs and status
+    1. Synchronize Trading 212 holdings, cash, order history, and actual dividends
+    2. Record sync logs and status
     """
     result = await run_combined_sync()
 
@@ -28,13 +25,13 @@ async def run_sync():
         orders_count=result.get("orders_count", 0),
         transactions_count=result.get("transactions_count", 0),
         dividends_count=result.get("dividends_count", 0),
-        instruments_enriched=result.get("instruments_enriched", 0),
-        expected_dividends_added=result.get("expected_dividends_added", 0),
+        instruments_enriched=0,
+        expected_dividends_added=0,
         account_currency=result.get("account_currency", "EUR"),
         free_cash=result.get("free_cash", 0.0),
         total_cash=result.get("total_cash", 0.0),
         last_synced=result.get("last_synced"),
-        eodhd_status=result.get("eodhd_status"),
+        eodhd_status=None,
         error=result.get("error"),
     )
 
@@ -46,9 +43,6 @@ async def get_sync_status():
     last_synced = get_setting("last_synced") or get_setting("trading212_last_synced")
     t212_status = get_setting("trading212_sync_status", "disconnected")
     t212_error = get_setting("trading212_sync_error")
-    eodhd_status = get_setting("eodhd_sync_status", "not_configured")
-    eodhd_last_enriched = get_setting("eodhd_last_enriched")
-    eodhd_error = get_setting("eodhd_sync_error")
     prog = get_sync_progress()
 
     return SyncStatusResponse(
@@ -56,10 +50,10 @@ async def get_sync_status():
         last_synced=last_synced,
         trading212_status=t212_status or "disconnected",
         trading212_error=t212_error,
-        eodhd_status=eodhd_status or "not_configured",
-        eodhd_last_enriched=eodhd_last_enriched,
-        eodhd_error=eodhd_error,
+        eodhd_status=None,
+        eodhd_last_enriched=None,
+        eodhd_error=None,
         current_step=prog.get("current_step", 0) if is_syncing else 0,
-        total_steps=prog.get("total_steps", 8) if is_syncing else 0,
+        total_steps=prog.get("total_steps", 7) if is_syncing else 0,
         step_message=prog.get("step_message") if is_syncing else None,
     )

@@ -19,7 +19,7 @@ import { StockLogo } from "../ui/StockLogo";
 
 interface DividendCalendarViewProps {
   receivedDividends: ApiDividendItem[];
-  expectedDividends: ApiDividendItem[];
+  expectedDividends?: ApiDividendItem[];
   holdings?: (ApiHolding | Holding)[];
   currency?: string;
 }
@@ -29,7 +29,7 @@ type StatusFilter = "ALL" | "RECEIVED" | "EXPECTED";
 
 export const DividendCalendarView: React.FC<DividendCalendarViewProps> = ({
   receivedDividends,
-  expectedDividends,
+  expectedDividends = [],
   holdings = [],
   currency = "EUR",
 }) => {
@@ -289,7 +289,7 @@ export const DividendCalendarView: React.FC<DividendCalendarViewProps> = ({
                 </span>
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">
-                Track historical cash payouts from Trading 212 & upcoming declarations from EODHD with stock logos.
+                Track historical cash payouts credited directly from Trading 212 with stock logos.
               </p>
             </div>
           </div>
@@ -811,7 +811,7 @@ export const DividendCalendarView: React.FC<DividendCalendarViewProps> = ({
             </p>
           </div>
           <span className="text-xs text-slate-400 hidden sm:inline">
-            Source: Trading 212 & EODHD
+            Source: Trading 212
           </span>
         </div>
 
@@ -895,7 +895,7 @@ export const DividendCalendarView: React.FC<DividendCalendarViewProps> = ({
 
                       <td className="py-3 px-3 text-center">
                         <span className="text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
-                          {e.source || (isReceived ? "TRADING212" : "EODHD")}
+                          {e.source || "TRADING212"}
                         </span>
                       </td>
                     </tr>
@@ -1038,7 +1038,7 @@ export const DividendCalendarView: React.FC<DividendCalendarViewProps> = ({
             {/* Footer */}
             <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
               <span className="text-[11px] text-slate-400">
-                Source: <span className="font-medium text-slate-600">{expandedStockEvent.source || (expandedStockEvent.displayStatus === "RECEIVED" ? "Trading 212" : "EODHD")}</span>
+                Source: <span className="font-medium text-slate-600">{expandedStockEvent.source || "Trading 212"}</span>
               </span>
               <button
                 type="button"

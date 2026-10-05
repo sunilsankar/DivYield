@@ -22,7 +22,6 @@ CREATE TABLE IF NOT EXISTS holdings (
     dividend_yield REAL DEFAULT 0,
     annual_dividend REAL DEFAULT 0,
     payout_frequency TEXT,
-    eodhd_symbol TEXT,
     fx_rate REAL DEFAULT 1.0,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(provider, external_id)
@@ -66,16 +65,6 @@ CREATE INDEX IF NOT EXISTS idx_dividend_events_ticker ON dividend_events(ticker)
 CREATE INDEX IF NOT EXISTS idx_dividend_events_payment_date ON dividend_events(payment_date);
 CREATE INDEX IF NOT EXISTS idx_dividend_events_status_date ON dividend_events(status, payment_date DESC);
 CREATE INDEX IF NOT EXISTS idx_holdings_qty_market_val ON holdings(quantity, market_value DESC);
-
-CREATE TABLE IF NOT EXISTS instrument_mappings (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    trading212_identifier TEXT NOT NULL UNIQUE,
-    trading212_ticker TEXT,
-    eodhd_symbol TEXT NOT NULL,
-    confidence TEXT NOT NULL DEFAULT 'MANUAL',
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
-);
 
 CREATE TABLE IF NOT EXISTS sync_log (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -123,8 +112,11 @@ def init_db(db_path: Path | None = None) -> None:
         conn.execute("PRAGMA journal_mode=WAL;")
         conn.executescript(SCHEMA_SQL)
 
-        # Migrations for holdings enrichment columns
+        # Clean up legacy tables
         cursor = conn.cursor()
+        cursor.execute("DROP TABLE IF EXISTS instrument_mappings;")
+
+        # Migrations for holdings enrichment columns
         cursor.execute("PRAGMA table_info(holdings);")
         existing_cols = {col[1] for col in cursor.fetchall()}
         for col_name, col_def in [
@@ -133,7 +125,6 @@ def init_db(db_path: Path | None = None) -> None:
             ("dividend_yield", "REAL DEFAULT 0"),
             ("annual_dividend", "REAL DEFAULT 0"),
             ("payout_frequency", "TEXT"),
-            ("eodhd_symbol", "TEXT"),
             ("fx_rate", "REAL DEFAULT 1.0"),
         ]:
             if col_name not in existing_cols:

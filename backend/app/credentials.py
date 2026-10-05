@@ -133,18 +133,3 @@ def delete_trading212_credentials() -> None:
     delete_secret("trading212_api_key")
     delete_secret("trading212_api_secret")
     delete_secret("trading212_environment")
-
-
-def save_eodhd_credentials(api_token: str) -> None:
-    set_secret("eodhd_api_token", api_token.strip())
-
-
-def get_eodhd_credentials() -> Optional[Dict[str, str]]:
-    token = get_secret("eodhd_api_token")
-    if not token:
-        return None
-    return {"api_token": token}
-
-
-def delete_eodhd_credentials() -> None:
-    delete_secret("eodhd_api_token")

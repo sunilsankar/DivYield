@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from app.config import settings
 from app.database import init_db
-from app.routers import health, credentials, portfolio, transactions, dividends, sync, eodhd, analytics, tax, data_tools, export
+from app.routers import health, credentials, portfolio, transactions, dividends, sync, analytics, tax, data_tools, export
 
 
 @asynccontextmanager
@@ -38,7 +38,6 @@ app.include_router(portfolio.router, prefix=settings.api_v1_prefix)
 app.include_router(transactions.router, prefix=settings.api_v1_prefix)
 app.include_router(dividends.router, prefix=settings.api_v1_prefix)
 app.include_router(sync.router, prefix=settings.api_v1_prefix)
-app.include_router(eodhd.router, prefix=settings.api_v1_prefix)
 app.include_router(analytics.router, prefix=settings.api_v1_prefix)
 app.include_router(tax.router, prefix=settings.api_v1_prefix)
 app.include_router(data_tools.router, prefix=settings.api_v1_prefix)

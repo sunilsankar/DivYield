@@ -6,20 +6,20 @@ interface StatCardsProps {
   portfolioValue: number;
   dailyChange: number;
   dailyChangePercent: number;
-  annualDividend: number;
-  dividendYield: number;
+  totalReceivedAllTime: number;
   receivedYtd: number;
-  upcoming30Days: number;
+  trailing12Months: number;
+  monthlyAverage: number;
 }
 
 export const StatCards: React.FC<StatCardsProps> = ({
   portfolioValue,
   dailyChange,
   dailyChangePercent,
-  annualDividend,
-  dividendYield,
+  totalReceivedAllTime,
   receivedYtd,
-  upcoming30Days,
+  trailing12Months,
+  monthlyAverage,
 }) => {
   const isPositive = dailyChange >= 0;
 
@@ -64,12 +64,12 @@ export const StatCards: React.FC<StatCardsProps> = ({
         </div>
       </div>
 
-      {/* 2. Projected Annual Dividend */}
+      {/* 2. Total Received Dividends (All Time) */}
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5 flex flex-col justify-between">
         <div>
           <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Forward Dividend
+              Total Received
             </span>
             <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
               <Coins className="w-4 h-4" />
@@ -77,18 +77,18 @@ export const StatCards: React.FC<StatCardsProps> = ({
           </div>
           <div className="flex items-baseline gap-1.5 my-1">
             <span className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
-              {formatCurrency(annualDividend)}
+              {formatCurrency(totalReceivedAllTime)}
             </span>
-            <span className="text-xs font-medium text-slate-400">/ yr</span>
+            <span className="text-xs font-medium text-slate-400">all time</span>
           </div>
         </div>
 
         <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
           <span className="font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
-            {dividendYield.toFixed(2)}% Yield
+            Trading 212
           </span>
           <span className="text-slate-500 font-medium">
-            ~{formatCurrency(annualDividend / 12)}/mo
+            Cash Credited
           </span>
         </div>
       </div>
@@ -113,18 +113,18 @@ export const StatCards: React.FC<StatCardsProps> = ({
 
         <div className="mt-3 pt-3 border-t border-slate-100 flex items-center gap-2 text-xs text-slate-600">
           <span className="font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full">
-            Actual Payouts
+            This Year
           </span>
-          <span className="text-slate-400 font-normal">credited</span>
+          <span className="text-slate-400 font-normal">actual payouts</span>
         </div>
       </div>
 
-      {/* 4. Upcoming Next 30 Days */}
+      {/* 4. Trailing 12 Months (TTM) */}
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5 flex flex-col justify-between">
         <div>
           <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Next 30 Days
+              TTM Dividends
             </span>
             <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
               <CalendarDays className="w-4 h-4" />
@@ -132,16 +132,18 @@ export const StatCards: React.FC<StatCardsProps> = ({
           </div>
           <div className="flex items-baseline gap-1 my-1">
             <span className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
-              {formatCurrency(upcoming30Days)}
+              {formatCurrency(trailing12Months)}
             </span>
           </div>
         </div>
 
-        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center gap-2 text-xs text-slate-600">
+        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
           <span className="font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full">
-            Scheduled
+            Past 12 Mo
           </span>
-          <span className="text-slate-400 font-normal">forward events</span>
+          <span className="text-slate-500 font-medium">
+            ~{formatCurrency(monthlyAverage)}/mo
+          </span>
         </div>
       </div>
     </div>

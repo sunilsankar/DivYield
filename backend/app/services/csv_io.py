@@ -85,14 +85,14 @@ def yahoo_portfolio_csv() -> str:
         cursor = conn.cursor()
         cursor.execute(
             """
-            SELECT ticker, current_price, average_price, quantity, eodhd_symbol
+            SELECT ticker, current_price, average_price, quantity
             FROM holdings
             ORDER BY ticker ASC
             """
         )
         rows = cursor.fetchall()
         for r in rows:
-            symbol = r["eodhd_symbol"] or r["ticker"]
+            symbol = r["ticker"]
             cur_price = round(float(r["current_price"] or 0), 2)
             avg_price = round(float(r["average_price"] or 0), 2)
             qty = float(r["quantity"] or 0)
