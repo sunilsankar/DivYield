@@ -39,19 +39,11 @@ export async function getCredentials(): Promise<Trading212Credentials | null> {
 }
 
 export async function hasCredentials(): Promise<boolean> {
-  const apiKey = await SecureStore.getItemAsync(KEY_API_KEY);
-  return Boolean(apiKey && apiKey.length > 0);
+  return Boolean(await SecureStore.getItemAsync(KEY_API_KEY));
 }
 
 export async function deleteCredentials(): Promise<void> {
   await SecureStore.deleteItemAsync(KEY_API_KEY);
   await SecureStore.deleteItemAsync(KEY_API_SECRET);
   await SecureStore.deleteItemAsync(KEY_ENVIRONMENT);
-}
-
-export function maskSecret(secret?: string | null): string {
-  if (!secret) return '••••••••';
-  const trimmed = secret.trim();
-  if (trimmed.length <= 4) return '••••••••';
-  return `••••••••${trimmed.slice(-4)}`;
 }

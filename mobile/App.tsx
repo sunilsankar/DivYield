@@ -16,7 +16,6 @@ import {
   getMonthlyDividends,
   getPortfolioSummary,
   getSetting,
-  initDatabase,
 } from './src/services/database';
 import { hasCredentials } from './src/services/secureStore';
 import { runSync } from './src/services/sync';
@@ -57,7 +56,6 @@ export default function App() {
 
   const loadData = async () => {
     try {
-      await initDatabase();
       const s = await getPortfolioSummary();
       const h = await getHoldings();
       const d = await getDividends();

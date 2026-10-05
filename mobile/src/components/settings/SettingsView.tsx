@@ -10,11 +10,10 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { clearDatabase, getHoldings, getTransactions } from '../../services/database';
+import { clearDatabase, getStats } from '../../services/database';
 import {
   deleteCredentials,
   getCredentials,
-  maskSecret,
   saveCredentials,
 } from '../../services/secureStore';
 import { Trading212Client } from '../../services/trading212';
@@ -49,9 +48,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onRefreshData }) => 
   };
 
   const loadStats = async () => {
-    const h = await getHoldings();
-    const t = await getTransactions(1000);
-    setDbStats({ holdings: h.length, transactions: t.length });
+    setDbStats(await getStats());
   };
 
   const handleSave = async () => {

@@ -21,25 +21,26 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 }) => {
   const isPositive = summary.unrealized_pnl >= 0;
 
-  // Derive metrics
-  const totalReceivedAllTime = useMemo(() => {
-    return dividends.reduce((acc, d) => acc + (d.amount || 0), 0);
-  }, [dividends]);
-
-  const receivedYtd = useMemo(() => {
+  // Derive metrics in a single pass
+  const { totalReceivedAllTime, receivedYtd, ttmDividends } = useMemo(() => {
     const currentYear = new Date().getFullYear().toString();
-    return dividends
-      .filter(d => (d.payment_date || '').startsWith(currentYear))
-      .reduce((acc, d) => acc + (d.amount || 0), 0);
-  }, [dividends]);
-
-  const ttmDividends = useMemo(() => {
     const cutoff = new Date();
     cutoff.setFullYear(cutoff.getFullYear() - 1);
     const cutoffStr = cutoff.toISOString().slice(0, 10);
-    return dividends
-      .filter(d => (d.payment_date || '') >= cutoffStr)
-      .reduce((acc, d) => acc + (d.amount || 0), 0);
+
+    let allTime = 0;
+    let ytd = 0;
+    let ttm = 0;
+
+    for (const d of dividends) {
+      const amt = d.amount || 0;
+      allTime += amt;
+      const date = d.payment_date || '';
+      if (date.startsWith(currentYear)) ytd += amt;
+      if (date >= cutoffStr) ttm += amt;
+    }
+
+    return { totalReceivedAllTime: allTime, receivedYtd: ytd, ttmDividends: ttm };
   }, [dividends]);
 
   // Max for bar chart

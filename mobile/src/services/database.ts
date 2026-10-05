@@ -163,6 +163,16 @@ export async function getTransactions(limit: number = 100): Promise<Transaction[
   `, [limit]);
 }
 
+export async function getStats(): Promise<{ holdings: number; transactions: number }> {
+  const db = await getDb();
+  const hRow = await db.getFirstAsync<{ cnt: number }>('SELECT COUNT(*) as cnt FROM holdings WHERE quantity > 0');
+  const tRow = await db.getFirstAsync<{ cnt: number }>('SELECT COUNT(*) as cnt FROM transactions');
+  return {
+    holdings: hRow?.cnt || 0,
+    transactions: tRow?.cnt || 0,
+  };
+}
+
 export async function getDividends(): Promise<DividendEvent[]> {
   const db = await getDb();
   return db.getAllAsync<DividendEvent>(`

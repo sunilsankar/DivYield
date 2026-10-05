@@ -1,20 +1,7 @@
 import { Trading212Credentials } from '../types';
 
 function encodeBase64(str: string): string {
-  if (typeof btoa === 'function') {
-    return btoa(str);
-  }
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
-  let output = '';
-  for (
-    let block = 0, charCode = 0, i = 0, map = chars;
-    str.charAt(i | 0) || ((map = '='), i % 1);
-    output += map.charAt(63 & (block >> (8 - (i % 1) * 8)))
-  ) {
-    charCode = str.charCodeAt((i += 3 / 4));
-    block = (block << 8) | charCode;
-  }
-  return output;
+  return btoa(str);
 }
 
 export class Trading212Client {
@@ -126,63 +113,35 @@ export class Trading212Client {
     return this.request('/equity/portfolio');
   }
 
-  async getAllOrders(maxPages: number = 10): Promise<Array<any>> {
-    const orders: any[] = [];
-    let nextPath: string | null = '/equity/history/orders?limit=50';
+  private async fetchPaginated<T = any>(initialPath: string, maxPages: number): Promise<T[]> {
+    const items: T[] = [];
+    let nextPath: string | null = initialPath;
     let pages = 0;
 
     while (nextPath && pages < maxPages) {
       try {
-        const res: { items?: any[]; nextPagePath?: string | null } = await this.request(nextPath);
-        if (res && Array.isArray(res.items)) {
-          orders.push(...res.items);
+        const res: { items?: T[]; nextPagePath?: string | null } = await this.request(nextPath);
+        if (res?.items && Array.isArray(res.items)) {
+          items.push(...res.items);
         }
-        nextPath = res.nextPagePath || null;
+        nextPath = res?.nextPagePath || null;
         pages++;
-      } catch (e) {
+      } catch {
         break;
       }
     }
-    return orders;
+    return items;
+  }
+
+  async getAllOrders(maxPages: number = 10): Promise<Array<any>> {
+    return this.fetchPaginated('/equity/history/orders?limit=50', maxPages);
   }
 
   async getAllTransactions(maxPages: number = 10): Promise<Array<any>> {
-    const txs: any[] = [];
-    let nextPath: string | null = '/equity/history/transactions?limit=50';
-    let pages = 0;
-
-    while (nextPath && pages < maxPages) {
-      try {
-        const res: { items?: any[]; nextPagePath?: string | null } = await this.request(nextPath);
-        if (res && Array.isArray(res.items)) {
-          txs.push(...res.items);
-        }
-        nextPath = res.nextPagePath || null;
-        pages++;
-      } catch (e) {
-        break;
-      }
-    }
-    return txs;
+    return this.fetchPaginated('/equity/history/transactions?limit=50', maxPages);
   }
 
   async getAllDividends(maxPages: number = 15): Promise<Array<any>> {
-    const divs: any[] = [];
-    let nextPath: string | null = '/equity/history/dividends?limit=50';
-    let pages = 0;
-
-    while (nextPath && pages < maxPages) {
-      try {
-        const res: { items?: any[]; nextPagePath?: string | null } = await this.request(nextPath);
-        if (res && Array.isArray(res.items)) {
-          divs.push(...res.items);
-        }
-        nextPath = res.nextPagePath || null;
-        pages++;
-      } catch (e) {
-        break;
-      }
-    }
-    return divs;
+    return this.fetchPaginated('/equity/history/dividends?limit=50', maxPages);
   }
 }
