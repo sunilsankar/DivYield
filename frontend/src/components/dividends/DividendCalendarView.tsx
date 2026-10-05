@@ -114,6 +114,47 @@ export const DividendCalendarView: React.FC<DividendCalendarViewProps> = ({
     });
   }, [receivedDividends, expectedDividends, holdingsNameMap]);
 
+  // Auto-jump to the active month on initial load if the current calendar month has zero dividends
+  const hasInitializedMonth = React.useRef(false);
+  useEffect(() => {
+    if (hasInitializedMonth.current || allEvents.length === 0) return;
+
+    const currentY = new Date().getFullYear();
+    const currentM = new Date().getMonth();
+
+    const hasEventsInCurrentMonth = allEvents.some((e) => {
+      const dStr = e.payment_date || e.ex_dividend_date;
+      if (!dStr) return false;
+      const parts = dStr.split("-");
+      return (
+        parseInt(parts[0], 10) === currentY &&
+        parseInt(parts[1], 10) - 1 === currentM
+      );
+    });
+
+    if (!hasEventsInCurrentMonth) {
+      const todayIso = new Date().toISOString().slice(0, 10);
+      // Try to find closest upcoming event first
+      const upcoming = allEvents
+        .filter((e) => (e.payment_date || e.ex_dividend_date || "") >= todayIso)
+        .sort((a, b) =>
+          (a.payment_date || "").localeCompare(b.payment_date || "")
+        )[0];
+
+      // Fallback to most recent received event
+      const target = upcoming || allEvents[0];
+      if (target) {
+        const dStr = target.payment_date || target.ex_dividend_date;
+        if (dStr) {
+          const parts = dStr.split("-");
+          setSelectedYear(parseInt(parts[0], 10));
+          setSelectedMonth(parseInt(parts[1], 10) - 1);
+        }
+      }
+    }
+    hasInitializedMonth.current = true;
+  }, [allEvents]);
+
   // Filtered events based on search, status, and selected period
   const filteredEvents = useMemo(() => {
     return allEvents.filter((item) => {
@@ -289,7 +330,7 @@ export const DividendCalendarView: React.FC<DividendCalendarViewProps> = ({
                 </span>
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">
-                Track historical cash payouts credited directly from Trading 212 with stock logos.
+                Track actual received payouts from Trading 212 and upcoming projected distributions via Yahoo Finance with stock logos.
               </p>
             </div>
           </div>

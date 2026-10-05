@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { RefreshCw, ShieldCheck, Database, KeyRound, CheckCircle2, TrendingUp, Palette, PenTool, ArrowUpCircle } from "lucide-react";
+import { RefreshCw, ShieldCheck, Database, KeyRound, CheckCircle2, Palette, PenTool, ArrowUpCircle } from "lucide-react";
 import { HealthStatus, ConnectionsResponse, UpdateCheckResult } from "@/types";
 import { useTheme } from "@/context/ThemeContext";
 import { DisplayPreferencesModal } from "@/components/settings/DisplayPreferencesModal";
@@ -42,8 +42,8 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
           {/* Brand & Tagline */}
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-primary rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-2xs ring-1 ring-black/5 transition-transform duration-150 hover:scale-102">
-              <TrendingUp className="w-4.5 h-4.5 text-white" />
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center overflow-hidden shadow-2xs ring-1 ring-black/5 transition-transform duration-150 hover:scale-102">
+              <img src="/favicon.svg" alt="DivYield Logo" className="w-full h-full object-contain" />
             </div>
             <div>
               <div className="flex items-center gap-1.5">

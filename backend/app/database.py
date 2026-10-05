@@ -96,6 +96,15 @@ CREATE TABLE IF NOT EXISTS cash_interest (
     UNIQUE(source, period_start, period_end)
 );
 CREATE INDEX IF NOT EXISTS idx_cash_interest_period_end ON cash_interest(period_end);
+
+CREATE TABLE IF NOT EXISTS instrument_mappings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    trading212_ticker TEXT UNIQUE NOT NULL,
+    yahoo_ticker TEXT NOT NULL,
+    confidence TEXT DEFAULT 'AUTO',
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_mappings_t212 ON instrument_mappings(trading212_ticker);
 """
 
 DEFAULT_SETTINGS = [
@@ -112,9 +121,7 @@ def init_db(db_path: Path | None = None) -> None:
         conn.execute("PRAGMA journal_mode=WAL;")
         conn.executescript(SCHEMA_SQL)
 
-        # Clean up legacy tables
         cursor = conn.cursor()
-        cursor.execute("DROP TABLE IF EXISTS instrument_mappings;")
 
         # Migrations for holdings enrichment columns
         cursor.execute("PRAGMA table_info(holdings);")

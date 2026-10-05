@@ -136,6 +136,7 @@ export interface DividendEvent {
 export interface MonthlyDividend {
   month: string;
   received: number;
+  expected?: number;
 }
 
 export interface SectorAllocation {

@@ -10,6 +10,8 @@ interface StatCardsProps {
   receivedYtd: number;
   trailing12Months: number;
   monthlyAverage: number;
+  forwardDividend?: number;
+  next30Days?: number;
 }
 
 export const StatCards: React.FC<StatCardsProps> = ({
@@ -20,8 +22,12 @@ export const StatCards: React.FC<StatCardsProps> = ({
   receivedYtd,
   trailing12Months,
   monthlyAverage,
+  forwardDividend = 0,
+  next30Days = 0,
 }) => {
   const isPositive = dailyChange >= 0;
+  const hasForwardDividend = forwardDividend > 0;
+  const hasNext30Days = next30Days > 0;
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4.5">
@@ -64,12 +70,12 @@ export const StatCards: React.FC<StatCardsProps> = ({
         </div>
       </div>
 
-      {/* 2. Total Received Dividends (All Time) */}
+      {/* 2. Forward Annual Dividend or Total Received */}
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5 flex flex-col justify-between">
         <div>
           <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Total Received
+              {hasForwardDividend ? "Forward Dividend" : "Total Received"}
             </span>
             <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
               <Coins className="w-4 h-4" />
@@ -77,18 +83,20 @@ export const StatCards: React.FC<StatCardsProps> = ({
           </div>
           <div className="flex items-baseline gap-1.5 my-1">
             <span className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
-              {formatCurrency(totalReceivedAllTime)}
+              {formatCurrency(hasForwardDividend ? forwardDividend : totalReceivedAllTime)}
             </span>
-            <span className="text-xs font-medium text-slate-400">all time</span>
+            <span className="text-xs font-medium text-slate-400">
+              {hasForwardDividend ? "annual run-rate" : "all time"}
+            </span>
           </div>
         </div>
 
         <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
           <span className="font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
-            Trading 212
+            {hasForwardDividend ? "Yahoo Projected" : "Trading 212"}
           </span>
           <span className="text-slate-500 font-medium">
-            Cash Credited
+            {hasForwardDividend ? `All-time: ${formatCurrency(totalReceivedAllTime)}` : "Cash Credited"}
           </span>
         </div>
       </div>
@@ -119,12 +127,12 @@ export const StatCards: React.FC<StatCardsProps> = ({
         </div>
       </div>
 
-      {/* 4. Trailing 12 Months (TTM) */}
+      {/* 4. Next 30 Days or Trailing 12 Months */}
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5 flex flex-col justify-between">
         <div>
           <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              TTM Dividends
+              {hasNext30Days ? "Next 30 Days" : "TTM Dividends"}
             </span>
             <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
               <CalendarDays className="w-4 h-4" />
@@ -132,14 +140,17 @@ export const StatCards: React.FC<StatCardsProps> = ({
           </div>
           <div className="flex items-baseline gap-1 my-1">
             <span className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
-              {formatCurrency(trailing12Months)}
+              {formatCurrency(hasNext30Days ? next30Days : trailing12Months)}
             </span>
+            {hasNext30Days && (
+              <span className="text-xs font-medium text-slate-400">upcoming</span>
+            )}
           </div>
         </div>
 
         <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
           <span className="font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full">
-            Past 12 Mo
+            {hasNext30Days ? "Scheduled" : "Past 12 Mo"}
           </span>
           <span className="text-slate-500 font-medium">
             ~{formatCurrency(monthlyAverage)}/mo

@@ -40,23 +40,32 @@ async def test_combined_sync_full_pipeline():
         "total_cash": 5000.0,
     }
 
+    mock_yf_res = {
+        "success": True,
+        "enriched_count": 5,
+        "projected_events": 8,
+    }
+
     with patch("app.services.combined_sync.get_trading212_credentials", return_value=mock_t212_creds), \
-         patch("app.services.combined_sync.sync_trading212", new_callable=AsyncMock, return_value=mock_t212_res):
+         patch("app.services.combined_sync.sync_trading212", new_callable=AsyncMock, return_value=mock_t212_res), \
+         patch("app.services.combined_sync.YahooFinanceEnrichmentService.enrich_portfolio", new_callable=AsyncMock, return_value=mock_yf_res):
 
         res = await run_combined_sync()
         assert res["success"] is True
         assert res["status"] == "completed"
         assert res["holdings_count"] == 5
+        assert res["instruments_enriched"] == 5
+        assert res["expected_dividends_added"] == 8
         assert "Trading 212: 5 holdings" in res["message"]
 
         # Check sync_log
         with get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT provider, status, items_synced FROM sync_log WHERE provider = 'TRADING212'")
+            cursor.execute("SELECT provider, status, items_synced FROM sync_log WHERE provider = 'COMBINED'")
             row = cursor.fetchone()
             assert row is not None
             assert row["status"] == "SUCCESS"
-            assert row["items_synced"] == (5 + 10 + 8 + 4)
+            assert row["items_synced"] == (5 + 10 + 8 + 4 + 8)
 
 
 @pytest.mark.anyio

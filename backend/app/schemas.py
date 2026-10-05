@@ -401,4 +401,23 @@ class TaxSummaryResponse(BaseModel):
     currency: str = "EUR"
 
 
+class InstrumentMappingItem(BaseModel):
+    id: int
+    trading212_ticker: str
+    yahoo_ticker: str
+    confidence: str = "AUTO"
+    updated_at: Optional[str] = None
+
+
+class CreateMappingRequest(BaseModel):
+    trading212_ticker: str
+    yahoo_ticker: str
+
+
+class MappingsResponse(BaseModel):
+    mappings: List[InstrumentMappingItem]
+    count: int
+
+
+
 

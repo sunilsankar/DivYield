@@ -8,13 +8,14 @@ from typing import Dict, Any
 
 from app.credentials import get_trading212_credentials
 from app.services.trading212_sync import sync_trading212, _sync_lock as _t212_lock
+from app.services.yfinance_enrichment import YahooFinanceEnrichmentService
 from app.database import get_db_connection, set_setting, get_setting
 
 _combined_sync_lock = asyncio.Lock()
 
 _sync_progress: Dict[str, Any] = {
     "current_step": 0,
-    "total_steps": 7,
+    "total_steps": 8,
     "step_message": None,
 }
 
@@ -31,14 +32,15 @@ def update_sync_progress(step: int, total: int, message: str) -> None:
 
 def clear_sync_progress() -> None:
     _sync_progress["current_step"] = 0
-    _sync_progress["total_steps"] = 7
+    _sync_progress["total_steps"] = 8
     _sync_progress["step_message"] = None
 
 
 async def run_combined_sync() -> Dict[str, Any]:
     """Execute the full synchronization pipeline:
     1. Trading 212: holdings, transactions, received dividends (Read-Only)
-    2. Update sync logs and status settings.
+    2. Yahoo Finance: sector, yield, projected upcoming dividends (Free Enrichment)
+    3. Update sync logs and status settings.
     """
     if _combined_sync_lock.locked() or _t212_lock.locked():
         return {
@@ -49,7 +51,7 @@ async def run_combined_sync() -> Dict[str, Any]:
         }
 
     async with _combined_sync_lock:
-        update_sync_progress(1, 7, "Initializing synchronization...")
+        update_sync_progress(1, 8, "Initializing synchronization...")
         try:
             now_iso = datetime.now(timezone.utc).isoformat()
             t212_creds = get_trading212_credentials()
@@ -68,22 +70,39 @@ async def run_combined_sync() -> Dict[str, Any]:
                     "last_synced": None,
                 }
 
-            # Run Trading 212 sync
+            # 1. Run Trading 212 sync (Steps 1-7)
             t212_res = await sync_trading212(progress_cb=update_sync_progress)
             overall_success = t212_res.get("success", False)
+
+            # 2. Run Yahoo Finance Enrichment & Future Dividend Projections (Step 8)
+            enriched_count = 0
+            projected_count = 0
+            if overall_success and t212_res.get("holdings_count", 0) > 0:
+                update_sync_progress(8, 8, "Enriching holdings & projecting upcoming dividends via Yahoo Finance...")
+                try:
+                    yf_res = await YahooFinanceEnrichmentService.enrich_portfolio(
+                        progress_callback=update_sync_progress,
+                        max_workers=4,
+                    )
+                    enriched_count = yf_res.get("enriched_count", 0)
+                    projected_count = yf_res.get("projected_events", 0)
+                except Exception as e:
+                    # Non-fatal if Yahoo Finance enrichment encounters an issue
+                    update_sync_progress(8, 8, f"Yahoo Finance enrichment completed with notice: {e}")
 
             total_items = (
                 t212_res.get("holdings_count", 0)
                 + t212_res.get("orders_count", 0)
                 + t212_res.get("transactions_count", 0)
                 + t212_res.get("dividends_count", 0)
+                + projected_count
             )
 
             with get_db_connection() as conn:
                 conn.execute(
                     """
                     INSERT INTO sync_log (provider, status, items_synced, error_message)
-                    VALUES ('TRADING212', ?, ?, ?)
+                    VALUES ('COMBINED', ?, ?, ?)
                     """,
                     (
                         "SUCCESS" if overall_success else "FAILED",
@@ -97,7 +116,8 @@ async def run_combined_sync() -> Dict[str, Any]:
 
             summary_msg = (
                 f"Trading 212: {t212_res.get('holdings_count', 0)} holdings, "
-                f"{t212_res.get('dividends_count', 0)} received dividends"
+                f"{t212_res.get('dividends_count', 0)} received dividends. "
+                f"Yahoo Finance: {projected_count} upcoming dividends projected."
             )
 
             return {
@@ -108,8 +128,8 @@ async def run_combined_sync() -> Dict[str, Any]:
                 "orders_count": t212_res.get("orders_count", 0),
                 "transactions_count": t212_res.get("transactions_count", 0),
                 "dividends_count": t212_res.get("dividends_count", 0),
-                "instruments_enriched": 0,
-                "expected_dividends_added": 0,
+                "instruments_enriched": enriched_count,
+                "expected_dividends_added": projected_count,
                 "account_currency": t212_res.get("account_currency", "EUR"),
                 "free_cash": t212_res.get("free_cash", 0.0),
                 "total_cash": t212_res.get("total_cash", 0.0),

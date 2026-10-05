@@ -31,6 +31,7 @@ import {
   fetchPortfolioSummary,
   fetchHoldings,
   fetchDividends,
+  fetchExpectedDividends,
   triggerSync,
   fetchSyncStatus,
   fetchUpdateCheck,
@@ -68,10 +69,20 @@ function calculateSectorAllocations(holdings: Holding[], totalValue: number): Se
   }));
 }
 
-function calculateMonthlyDividends(received: ApiDividendItem[]): MonthlyDividend[] {
+function calculateMonthlyDividends(
+  received: ApiDividendItem[],
+  expected: ApiDividendItem[] = []
+): MonthlyDividend[] {
   const currentYear = new Date().getFullYear();
   const yearsWithData = new Set<number>();
   for (const d of received) {
+    const dtStr = d.payment_date || d.ex_dividend_date;
+    if (dtStr && dtStr.length >= 4) {
+      const y = parseInt(dtStr.slice(0, 4), 10);
+      if (!isNaN(y)) yearsWithData.add(y);
+    }
+  }
+  for (const d of expected) {
     const dtStr = d.payment_date || d.ex_dividend_date;
     if (dtStr && dtStr.length >= 4) {
       const y = parseInt(dtStr.slice(0, 4), 10);
@@ -102,6 +113,18 @@ function calculateMonthlyDividends(received: ApiDividendItem[]): MonthlyDividend
     }
   }
 
+  for (const div of expected) {
+    const dtStr = div.payment_date || div.ex_dividend_date;
+    if (!dtStr) continue;
+    const d = new Date(dtStr);
+    if (!isNaN(d.getTime()) && d.getFullYear() === targetYear) {
+      const mIdx = d.getMonth();
+      if (mIdx >= 0 && mIdx < 12) {
+        months[mIdx].expected = (months[mIdx].expected || 0) + div.amount;
+      }
+    }
+  }
+
   return months;
 }
 
@@ -113,6 +136,7 @@ export function App() {
   const [summary, setSummary] = useState<PortfolioSummary | null>(null);
   const [liveHoldings, setLiveHoldings] = useState<HoldingItem[]>([]);
   const [liveDividends, setLiveDividends] = useState<ApiDividendItem[]>([]);
+  const [liveExpected, setLiveExpected] = useState<ApiDividendItem[]>([]);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [lastSyncedText, setLastSyncedText] = useState<string>("Not Synced Yet");
   const [notification, setNotification] = useState<string | null>(null);
@@ -166,16 +190,18 @@ export function App() {
 
   const loadLiveData = async () => {
     try {
-      const [sumRes, holdRes, divRes, syncRes] = await Promise.allSettled([
+      const [sumRes, holdRes, divRes, expRes, syncRes] = await Promise.allSettled([
         fetchPortfolioSummary(),
         fetchHoldings(),
         fetchDividends(),
+        fetchExpectedDividends(),
         fetchSyncStatus(),
       ]);
 
       if (sumRes.status === "fulfilled") setSummary(sumRes.value);
       if (holdRes.status === "fulfilled") setLiveHoldings(holdRes.value.holdings);
       if (divRes.status === "fulfilled") setLiveDividends(divRes.value.dividends);
+      if (expRes.status === "fulfilled") setLiveExpected(expRes.value.dividends);
       if (syncRes.status === "fulfilled" && syncRes.value.last_synced) {
         const d = new Date(syncRes.value.last_synced);
         setLastSyncedText(`Today, ${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`);
@@ -204,7 +230,7 @@ export function App() {
     setIsSyncing(true);
     setSyncProgress({
       currentStep: 1,
-      totalSteps: 7,
+      totalSteps: 8,
       stepMessage: "Starting synchronization...",
     });
     setNotification(null);
@@ -310,14 +336,59 @@ export function App() {
     return { receivedYtd: ytd, trailing12Months: ttm, monthlyAverage: avg };
   }, [liveDividends]);
 
+  const forwardAnnualDividend = useMemo(() => {
+    // 1. If holdings have annual_dividend, sum across active positions
+    const fromHoldings = liveHoldings.reduce((sum, h) => {
+      if (typeof h.annual_dividend === "number" && h.annual_dividend > 0) {
+        return sum + h.annual_dividend * (h.quantity || 1);
+      }
+      if (typeof h.dividend_yield === "number" && h.dividend_yield > 0) {
+        return sum + h.market_value * (h.dividend_yield / 100);
+      }
+      return sum;
+    }, 0);
+
+    if (fromHoldings > 0) return fromHoldings;
+
+    // 2. Fallback to sum of expected dividends over next 12 months
+    const now = new Date();
+    const oneYearAhead = new Date(now);
+    oneYearAhead.setFullYear(now.getFullYear() + 1);
+
+    return liveExpected.reduce((sum, d) => {
+      const dtStr = d.payment_date || d.ex_dividend_date;
+      if (!dtStr) return sum;
+      const date = new Date(dtStr);
+      if (!isNaN(date.getTime()) && date >= now && date <= oneYearAhead) {
+        return sum + d.amount;
+      }
+      return sum;
+    }, 0);
+  }, [liveHoldings, liveExpected]);
+
+  const next30DaysDividends = useMemo(() => {
+    const now = new Date();
+    const thirtyDaysAhead = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+    return liveExpected.reduce((sum, d) => {
+      const dtStr = d.payment_date || d.ex_dividend_date;
+      if (!dtStr) return sum;
+      const date = new Date(dtStr);
+      if (!isNaN(date.getTime()) && date >= now && date <= thirtyDaysAhead) {
+        return sum + d.amount;
+      }
+      return sum;
+    }, 0);
+  }, [liveExpected]);
+
   const sectorAllocations = useMemo(
     () => calculateSectorAllocations(activeHoldings, totalPortfolioValue),
     [activeHoldings, totalPortfolioValue]
   );
 
   const monthlyDividends = useMemo(
-    () => calculateMonthlyDividends(liveDividends),
-    [liveDividends]
+    () => calculateMonthlyDividends(liveDividends, liveExpected),
+    [liveDividends, liveExpected]
   );
 
   return (
@@ -433,6 +504,8 @@ export function App() {
                 receivedYtd={receivedYtd}
                 trailing12Months={trailing12Months}
                 monthlyAverage={monthlyAverage}
+                forwardDividend={forwardAnnualDividend}
+                next30Days={next30DaysDividends}
               />
 
               {activeHoldings.length === 0 && (
@@ -508,7 +581,7 @@ export function App() {
             <DividendsView
               receivedDividends={liveDividends}
               monthlyChartData={monthlyDividends}
-              totalAnnualExpected={trailing12Months}
+              totalAnnualExpected={forwardAnnualDividend > 0 ? forwardAnnualDividend : trailing12Months}
               onOpenCalendar={() => setCurrentTab("calendar")}
               onTriggerSync={handleSyncNow}
               isSyncing={isSyncing}
@@ -518,6 +591,7 @@ export function App() {
           {currentTab === "calendar" && (
             <DividendCalendarView
               receivedDividends={liveDividends}
+              expectedDividends={liveExpected}
               holdings={activeHoldings}
               currency={summary?.currency || "EUR"}
             />
