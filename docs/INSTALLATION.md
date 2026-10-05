@@ -11,13 +11,14 @@ This document provides complete instructions for installing, configuring, and de
 
 ---
 
-## Pre-Compiled Desktop Installers (Recommended)
+## Pre-Compiled Desktop & Mobile Installers (Recommended)
 
 If you just want to run DivYield without compiling from source, download the pre-compiled installer for your operating system from the latest [GitHub Releases](https://github.com/sunilsankar/DivYield/releases):
 
 | Platform | Recommended Installer | Details |
 |---|---|---|
-| **Windows 10 / 11** | `DivYield-Windows.msi` | Native Windows Installer. Installs to Program Files with Start Menu shortcut and uninstaller. *(Portable `DivYield-Windows.zip` also available)* |
+| **Android (10+)** | `DivYield-Android.apk` | Standalone APK for Android phones and tablets. Direct side-load install. Built with Expo, Material 3, and on-device SQLite. |
+| **Windows 10 / 11** | `DivYield-Windows.msi` | Native Windows Installer. Installs to Program Files with Start Menu and Desktop shortcuts and uninstaller. *(Portable `DivYield-Windows.zip` also available)* |
 | **macOS (Apple Silicon)** | `DivYield-macOS-AppleSilicon.dmg` | Native ARM64 disk image for Apple Silicon (M1, M2, M3, M4) Macs. Drag to Applications. |
 | **macOS (Intel Core)** | Build from source | Supported via `npm run build && pyinstaller DivYield.spec`. |
 
@@ -192,6 +193,42 @@ pyinstaller DivYield.spec --clean
 
 ---
 
+## Building & Installing Android Mobile Application
+
+DivYield includes a complete native Android application built with **React Native**, **Expo SDK 57**, **Material Design 3**, and **on-device SQLite** (`expo-sqlite`).
+
+### 1. Installing Pre-Built APK on Your Phone
+
+1. Download **`DivYield-Android.apk`** from [GitHub Releases](https://github.com/sunilsankar/DivYield/releases) directly on your Android device (or transfer it from your computer via USB/AirDrop/Google Drive).
+2. Open the downloaded `.apk` file using your file manager or browser download manager.
+3. If prompted with *"For your security, your phone is not allowed to install unknown apps from this source"*, tap **Settings** and toggle **Allow from this source**.
+4. Tap **Install** and then **Open**.
+5. Go to **Settings** in the bottom navigation bar to configure your Trading 212 API key with read-only permissions and tap **Sync Now**.
+
+### 2. Building Android APK from Source
+
+Prerequisites: Node.js 20+, JDK 17, and Android SDK (platforms `android-34`+ and build-tools).
+
+```bash
+cd mobile
+
+# 1. Install dependencies
+npm ci
+
+# 2. Generate native Android Gradle project
+npx expo prebuild --platform android --no-install
+
+# 3. Compile standalone release APK
+cd android
+chmod +x gradlew
+./gradlew assembleRelease -x lint -x lintVitalRelease -x lintVitalAnalyzeRelease
+
+# 4. The output APK is generated at:
+# mobile/android/app/build/outputs/apk/release/app-release.apk
+```
+
+---
+
 ## Production Server Deployment
 
 To deploy DivYield as a self-hosted web service on a Linux server:
@@ -320,12 +357,12 @@ After opening DivYield, click **Settings > API Connections** in the sidebar:
 4. Choose **Live** or **Practice/Demo** environment.
 5. Click **Test Connection** to verify access, then **Save Credentials**.
 
-### 2. EODHD Market API Token (Optional / Recommended)
+### 2. Automatic Market & Dividend Enrichment (Yahoo Finance)
 
-1. Sign up for an API token at [EODHD.com](https://eodhd.com).
-2. Enter your token into the **EODHD API Key** field.
-3. Click **Test Connection** and **Save Token**.
-4. DivYield will enrich holdings with company fundamentals, dividend schedules, and sector classifications.
+DivYield includes built-in financial enrichment via Yahoo Finance with rate limiting and currency normalization. No secondary paid API key or subscription is required:
+- Automatically resolves instrument tickers and exchange suffixes (`.AS`, `.DE`, `.L`, `.PA`, etc.).
+- Computes dividend yields, payment frequencies, and forward calendar dividend projections.
+- Maps sectors, industries, and asset diversification metrics automatically.
 
 ---
 

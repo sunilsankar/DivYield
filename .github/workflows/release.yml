@@ -209,9 +209,62 @@ jobs:
             DivYield-Windows.msi
             DivYield-Windows.zip
 
+  build-android:
+    name: Build Android APK
+    needs: [security-scan, test]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Install Mobile Dependencies
+        working-directory: ./mobile
+        run: npm ci
+
+      - name: Ensure React Native Gradle Plugin Integrity
+        working-directory: ./mobile
+        run: |
+          if [ ! -f "node_modules/@react-native/gradle-plugin/settings.gradle.kts" ]; then
+            curl -sL https://registry.npmjs.org/@react-native/gradle-plugin/-/gradle-plugin-0.86.3.tgz | tar -xzf - --strip-components=1 -C node_modules/@react-native/gradle-plugin
+          fi
+
+      - name: Prebuild Native Android Project
+        working-directory: ./mobile
+        run: npx expo prebuild --platform android --no-install
+
+      - name: Build Android Release APK
+        working-directory: ./mobile/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease -x lint -x lintVitalRelease -x lintVitalAnalyzeRelease --no-daemon
+
+      - name: Copy & Rename APK
+        run: cp mobile/android/app/build/outputs/apk/release/app-release.apk DivYield-Android.apk
+
+      - name: Upload Android Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: divyield-android
+          path: DivYield-Android.apk
+
   release:
     name: Create Release
-    needs: build
+    needs: [build, build-android]
     runs-on: ubuntu-24.04
     if: startsWith(github.ref, 'refs/tags/v')
     permissions:
@@ -232,5 +285,6 @@ jobs:
             DivYield-macOS-AppleSilicon.dmg
             DivYield-Windows.msi
             DivYield-Windows.zip
+            DivYield-Android.apk
           draft: false
           generate_release_notes: true
