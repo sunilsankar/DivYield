@@ -91,9 +91,11 @@ jobs:
         working-directory: ./frontend
         run: npx tsc --noEmit
 
-  build:
-    name: Build DivYield (${{ matrix.platform }})
-    needs: [security-scan, test]
+  build-desktop:
+    name: Build & Release Desktop (${{ matrix.platform }})
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
     strategy:
       fail-fast: false
       matrix:
@@ -101,13 +103,9 @@ jobs:
           - os: macos-latest
             platform: macos-arm64
             artifact_name: DivYield-macOS-AppleSilicon.dmg
-          # - os: macos-13
-          #   platform: macos-x86_64
-          #   artifact_name: DivYield-macOS-Intel.dmg
           - os: windows-latest
             platform: windows-x64
             artifact_name: DivYield-Windows.msi
-    runs-on: ${{ matrix.os }}
     
     steps:
       - uses: actions/checkout@v4
@@ -199,20 +197,23 @@ jobs:
 
           # Also create portable zip archive as optional backup
           Compress-Archive -Path dist/DivYield/* -DestinationPath DivYield-Windows.zip
-          
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
+
+      - name: Publish Desktop Release to GitHub
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
         with:
-          name: divyield-${{ matrix.platform }}
-          path: |
+          name: DivYield ${{ github.ref_name }}
+          prerelease: true
+          files: |
             DivYield-*.dmg
             DivYield-Windows.msi
             DivYield-Windows.zip
 
   build-android:
-    name: Build Android APK
-    needs: [security-scan, test]
+    name: Build & Release Android APK
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -248,40 +249,15 @@ jobs:
         working-directory: ./mobile/android
         run: |
           chmod +x gradlew
-          ./gradlew assembleRelease -x lint -x lintVitalRelease -x lintVitalAnalyzeRelease --no-daemon
+          ./gradlew assembleRelease -x lint -x lintVitalRelease -x lintVitalAnalyzeRelease --no-daemon --parallel -Dorg.gradle.jvmargs="-Xmx4g"
 
-      - name: Copy & Rename APK
+      - name: Prepare APK Asset
         run: cp mobile/android/app/build/outputs/apk/release/app-release.apk DivYield-Android.apk
 
-      - name: Upload Android Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: divyield-android
-          path: DivYield-Android.apk
-
-  release:
-    name: Create Release
-    needs: [build, build-android]
-    runs-on: ubuntu-24.04
-    if: startsWith(github.ref, 'refs/tags/v')
-    permissions:
-      contents: write
-      
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: divyield-*
-          merge-multiple: true
-          
-      - name: Release
+      - name: Publish Android Release to GitHub
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           name: DivYield ${{ github.ref_name }}
           prerelease: true
-          files: |
-            DivYield-macOS-AppleSilicon.dmg
-            DivYield-Windows.msi
-            DivYield-Windows.zip
-            DivYield-Android.apk
-          draft: false
-          generate_release_notes: true
+          files: DivYield-Android.apk
