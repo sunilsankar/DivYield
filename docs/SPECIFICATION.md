@@ -9,35 +9,32 @@
 
 DivYield is a fast, smooth, lightweight, local-first portfolio and dividend tracker.
 
-It synchronizes the user's real portfolio from **Trading 212 using a strictly read-only API key**, then enriches owned securities with **EODHD** instrument and dividend information.
+It synchronizes the user's real portfolio from **Trading 212 using a strictly read-only API key & API secret**, then enriches owned securities with **Yahoo Finance** dividend and sector information (zero external API keys required).
 
 The product is:
-1. A lightweight web application first.
-2. A standalone Android app later.
-3. A standalone iOS app later.
+1. A lightweight desktop application (Windows MSI and macOS DMG).
+2. A standalone native Android app (APK).
+3. A local-first web application.
 
-The architecture separates UI, application API, and provider integrations so mobile clients can reuse the same backend.
+The architecture separates UI, application API, and provider integrations so mobile clients and desktop apps reuse the same design principles and database schemas.
 
 ## 2. Core Workflow
 
 ```text
-Configure Trading 212 READ-ONLY API
-        +
-Configure EODHD API
+Configure Trading 212 READ-ONLY API Key & Secret
         ↓
      Sync Now
         ↓
 Trading 212 → all holdings / history / received dividends
         ↓
-Extract instruments
+Extract instruments & map tickers
         ↓
-Resolve Trading 212 → EODHD mappings
-        ↓
-EODHD → instrument + dividend enrichment
+Yahoo Finance → dividend history + upcoming declaration projections
         ↓
 SQLite
         ↓
-Dashboard / Dividends / Calendar / Planning / Analysis / Tax
+Dashboard / Dividends / Calendar / Planning / Diversification / Tax / Security Lock
+```
 ```
 
 The user does not manually enter normal holdings or tickers.

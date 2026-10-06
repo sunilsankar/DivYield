@@ -9,6 +9,32 @@ Available as a **native desktop application** (macOS & Windows), a **native mobi
 
 ---
 
+## 📸 Screenshots & Visual Preview
+
+<div align="center">
+
+### Desktop Dashboard & Real-Time Tracking
+![Desktop Dashboard Preview](docs/assets/dashboard-preview.svg)
+
+<br/>
+
+### Interactive Dividend Calendar & Payout Forecasts
+![Visual Dividend Calendar Preview](docs/assets/calendar-preview.svg)
+
+<br/>
+
+### Biometric, PIN & Desktop Password Lock
+![Security Lock Preview](docs/assets/security-lock-preview.svg)
+
+<br/>
+
+### Android Mobile App & Upcoming Dividend Notifications
+![Android Mobile App Preview](docs/assets/mobile-preview.svg)
+
+</div>
+
+---
+
 ## 🚀 Pre-Built Downloads
 
 Get the pre-compiled standalone app directly from [GitHub Releases](https://github.com/sunilsankar/DivYield/releases):
@@ -24,31 +50,38 @@ Get the pre-compiled standalone app directly from [GitHub Releases](https://gith
 
 ## 🌟 Key Features
 
-### 🛡️ 1. Strict Read-Only Security
+### 🛡️ 1. Strict Read-Only Security & App Lock
 - **No Mutation Capability**: Code-level allowlist explicitly blocks and rejects order placement, buying, selling, or money transfers.
 - **Hardware-Backed Encryption**: Credentials are never stored in browser storage (`localStorage`) or plaintext database. Desktop uses the **OS Keychain** (`keyring` / Fernet AES-256), and mobile uses **Android Keystore** (`expo-secure-store`).
+- **Desktop Password Protection**: Lock standalone Windows and macOS apps with an OS keychain-backed password and instant lock button.
+- **Mobile Biometric & PIN Security**: Android app supports native biometric unlock (Fingerprint / Face Unlock via `expo-local-authentication`) with a secure 4-digit PIN fallback and automatic background relock.
 - **Local-First Privacy**: Your portfolio and dividend history remain 100% on your device in SQLite (WAL mode).
 
-### 📅 2. Visual Dividend Calendar
-- **Interactive 31-Day Grid**: Visual calendar showing payment dates, day totals, ticker symbols, company names, and direct Trading 212 CDN stock logos.
-- **Forecast & Received Tracking**: Distinguishes between verified cash received from Trading 212 and upcoming forward dividend events.
-- **Smart Month Selection**: Auto-jumps to active dividend months and features full-screen day drawers to inspect high-volume payout dates.
+### 🔔 2. Upcoming Dividend Notifications (Android 10+)
+- **Automated Payout Alerts**: Schedules local 9:00 AM alarm notifications on the morning of forecasted dividend payment dates.
+- **Privacy-Preserving**: Runs 100% on-device via native Android alarm scheduler without remote push servers, tracking, or battery drain.
+- **Full Android 10+ Compatibility**: Handles Android 13+ `POST_NOTIFICATIONS` runtime permissions gracefully with fallback for Android 10–12.
 
-### ⚖️ 3. Portfolio Diversification & Risk Engine
+### 📅 3. Visual Dividend Calendar
+- **Interactive 31-Day Grid**: Visual calendar showing payment dates, day totals, ticker symbols, company names, and direct Trading 212 CDN stock logos.
+- **Forecast & Received Tracking**: Distinguishes between verified cash received from Trading 212 and upcoming forward dividend events enriched by Yahoo Finance.
+- **Smart Month Selection**: Auto-jumps to active dividend months and features day drawers to inspect high-volume payout dates.
+
+### ⚖️ 4. Portfolio Diversification & Risk Engine
 - **Diversification Health Score (0–100)**: Composite rating assessing holding balance, sector spread, income spread, and asset count.
 - **Concentration Analysis**: Calculates the Herfindahl-Hirschman Index (HHI) and highlights concentration warnings when single positions exceed 15% or sectors exceed 25%.
 - **Geographic & Income Breakdown**: Evaluates currency exposure (USD, EUR, GBP) and ranks top income-generating assets.
 
-### 📈 4. Forward Planning & Compounding Simulator
+### 📈 5. Forward Planning & Compounding Simulator
 - **Multi-Year Compounding Engine**: Simulates dividend reinvestment (DRIP), annual dividend growth (CAGR), periodic cash contributions, and capital appreciation.
 - **Annual Run-Rate & TTM**: Tracks Trailing 12 Months (TTM) income and projected 12-month forward annual dividend run-rate.
 
-### 🇳🇱 5. Netherlands Box 3 Wealth Tax Estimator
+### 🇳🇱 6. Netherlands Box 3 Wealth Tax Estimator
 - **Versioned Tax Rules**: Built-in statutory schedules for 2024, 2025, and 2026.
 - **Deemed Return Calculations**: Accounts for bank savings vs. investment deemed yields, single vs. fiscal partner tax-free allowances, and 15% creditable dividend withholding tax.
 - **Audit Export**: Generates compliant CSV tax estimate exports with legal disclaimers.
 
-### 🎨 6. Modern Apple HIG UI & Theme Switcher
+### 🎨 7. Modern Apple HIG UI & Theme Switcher
 - **Apple Human Interface Guidelines (HIG)**: Crisp San Francisco typography, flush sidebar navigation, and fluid transitions.
 - **Dual Aesthetic Modes**: Instantly toggle between the clean **Modern Apple UI** and a playful **Hand-Drawn Sketch UI**.
 - **Color Grading**: 5 custom palettes (Indigo Slate, Forest Mint, Warm Amber, Ruby Rose, Ocean Teal).
@@ -57,9 +90,11 @@ Get the pre-compiled standalone app directly from [GitHub Releases](https://gith
 
 ## 🔑 Trading 212 API Setup
 
-DivYield requires an API Key generated from your Trading 212 account. It runs strictly on read permissions.
+DivYield requires an **API Key** and **API Secret** generated from your Trading 212 account. It runs strictly on read permissions.
 
-### Generating Your API Key:
+> ⚠️ **Mandatory Credentials**: Both the **API Key** and **API Secret** are required to establish an authenticated connection with Trading 212.
+
+### Generating Your API Credentials:
 1. Log in to your Trading 212 account on the web or mobile app.
 2. Go to **Settings > API (Beta)** and click **Generate API Key**.
 3. Toggle the following permissions:
@@ -77,7 +112,7 @@ DivYield requires an API Key generated from your Trading 212 account. It runs st
 | **Orders - Execute** | ⛔ **OFF** | **STRICTLY FORBIDDEN** — Must remain off |
 | **Pies - Write** | ⛔ **OFF** | **STRICTLY FORBIDDEN** — Must remain off |
 
-4. Copy the API Key into DivYield's **Settings > API Connections** and click **Save Key**.
+4. Copy the generated **API Key** and **API Secret** into DivYield's **Settings > API Connections** and click **Save Key**.
 5. Click **Sync Now** to populate your portfolio!
 
 ---
@@ -165,7 +200,7 @@ npx expo start
 DivYield includes test suites verifying read-only enforcement, calculation accuracy, and API contracts.
 
 ```bash
-# Backend pytest suite (67 tests)
+# Backend pytest suite (68 tests)
 pytest backend/tests
 
 # Frontend vitest suite (15 tests)

@@ -23,6 +23,7 @@ flowchart TB
         MainApp["FastAPI Main (app/main.py)"]
         HealthRouter["/health"]
         CredsRouter["/credentials & /connections"]
+        SecurityRouter["/security (status, verify, set, remove)"]
         PortfolioRouter["/portfolio & /holdings"]
         TxRouter["/transactions"]
         DivRouter["/dividends & /calendar"]
@@ -36,7 +37,7 @@ flowchart TB
     subgraph ServiceLayer["Core Domain Services"]
         CombinedSync["Combined Sync Orchestrator (combined_sync.py)"]
         T212Sync["Trading 212 Sync & FX Derivation (trading212_sync.py)"]
-        EODHDEnrichment["EODHD Enrichment & Symbol Mapping (eodhd_enrichment.py)"]
+        YahooEnrichment["Yahoo Finance Enrichment (yfinance_enrichment.py)"]
         TaxEngine["Netherlands Box 3 Engine (tax_engine.py)"]
         CashInterestService["Uninvested Cash Interest Service (cash_interest.py)"]
         CSVService["CSV Import / Export Engine (csv_io.py)"]
@@ -46,6 +47,7 @@ flowchart TB
         SecurityAllowlist["Read-Only Allowlist Guard (trading212_allowlist.py)"]
         KeyringManager["OS Keychain Manager (macOS / Windows / SecretService)"]
         FernetFallback["Encrypted Secrets Fallback (data/.secrets.enc with 0600 key)"]
+        AppLockEngine["App Password & PIN Lock Engine (Desktop Keyring / Mobile SecureStore)"]
     end
 
     subgraph StorageLayer["Persistence Layer (SQLite in WAL Mode)"]
@@ -62,7 +64,7 @@ flowchart TB
 
     subgraph ExternalProviders["External Financial APIs & CDNs"]
         T212API["Trading 212 Public API v0 (Strict Read-Only)"]
-        EODHDAPI["EODHD Financial API (Dividends, Calendar, Fundamentals)"]
+        YahooAPI["Yahoo Finance API (Dividends, Calendar, Sectors)"]
         T212CDN["Trading 212 Equities S3 CDN (Direct Company Logos)"]
     end
 
@@ -79,6 +81,7 @@ flowchart TB
     %% Routing
     MainApp --> HealthRouter
     MainApp --> CredsRouter
+    MainApp --> SecurityRouter
     MainApp --> PortfolioRouter
     MainApp --> TxRouter
     MainApp --> DivRouter
@@ -91,14 +94,15 @@ flowchart TB
     %% Services & Logic
     SyncRouter --> CombinedSync
     CredsRouter --> KeyringManager
+    SecurityRouter --> KeyringManager
     KeyringManager -. Fallback .-> FernetFallback
 
     CombinedSync --> T212Sync
-    CombinedSync --> EODHDEnrichment
+    CombinedSync --> YahooEnrichment
     T212Sync --> SecurityAllowlist
     SecurityAllowlist --> T212API
 
-    EODHDEnrichment --> EODHDAPI
+    YahooEnrichment --> YahooAPI
 
     AnalyticsRouter --> TableHoldings
     AnalyticsRouter --> TableDividends

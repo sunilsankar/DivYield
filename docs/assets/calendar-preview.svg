@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 600" width="100%" height="100%" style="background:#0f172a; snip font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;snip ">
+  <!-- Window Header -->
+  <rect x="0" y="0" width="1000" height="40" fill="#1e293b" rx="8" />
+  <circle cx="24" cy="20" r="6" fill="#ef4444" />
+  <circle cx="44" cy="20" r="6" fill="#f59e0b" />
+  <circle cx="64" cy="20" r="6" fill="#10b981" />
+  <text x="500" y="25" fill="#94a3b8" font-size="13" font-weight="600" text-anchor="middle">DivYield — Dividend Calendar (Forecast &snip amp; snip Paid)</text>
+  
+  <!-- Navigation Bar -->
+  <rect x="0" y="40" width="1000" height="56" fill="#0f172a" />
+  <line x1="0" y1="96" x2="1000" y2="96" stroke="#334155" stroke-width="1" />
+  <text x="32" y="74" fill="#38bdf8" font-size="18" font-weight="bold">DivYield</text>
+  <text x="130" y="73" fill="#94a3b8" font-size="13" font-weight="500">Dashboard</text>
+  <text x="210" y="73" fill="#94a3b8" font-size="13" font-weight="500">Holdings</text>
+  <text x="290" y="73" fill="#94a3b8" font-size="13" font-weight="500">Dividends</text>
+  <rect x="365" y="54" width="75" height="28" rx="6" fill="#1e293b" />
+  <text x="402" y="73" fill="#38bdf8" font-size="13" font-weight="600" text-anchor="middle">Calendar</text>
+  <text x="470" y="73" fill="#94a3b8" font-size="13" font-weight="500">Diversification</text>
+
+  <!-- Calendar Controls -->
+  <g transform="translate(32, 116)">
+    <text x="0" y="24" fill="#f8fafc" font-size="22" font-weight="bold">October 2026</text>
+    <rect x="170" y="4" width="32" height="28" rx="6" fill="#1e293b" stroke="#334155" stroke-width="1" />
+    <text x="186" y="22" fill="#cbd5e1" font-size="14" text-anchor="middle">‹</text>
+    <rect x="208" y="4" width="32" height="28" rx="6" fill="#1e293b" stroke="#334155" stroke-width="1" />
+    <text x="224" y="22" fill="#cbd5e1" font-size="14" text-anchor="middle">›</text>
+
+    <!-- Filters -->
+    <rect x="650" y="4" width="50" height="28" rx="6" fill="#0284c7" />
+    <text x="675" y="22" fill="#ffffff" font-size="12" font-weight="600" text-anchor="middle">All</text>
+    <rect x="708" y="4" width="72" height="28" rx="6" fill="#1e293b" stroke="#334155" stroke-width="1" />
+    <text x="744" y="22" fill="#94a3b8" font-size="12" text-anchor="middle">Received</text>
+    <rect x="788" y="4" width="72" height="28" rx="6" fill="#1e293b" stroke="#334155" stroke-width="1" />
+    <text x="824" y="22" fill="#94a3b8" font-size="12" text-anchor="middle">Forecast</text>
+    
+    <!-- Month total summary -->
+    <rect x="868" y="4" width="68" height="28" rx="6" fill="#10b981" fill-opacity="0.2" stroke="#10b981" stroke-width="1" />
+    <text x="902" y="22" fill="#34d399" font-size="12" font-weight="bold" text-anchor="middle">€148.60</text>
+  </g>
+
+  <!-- Weekday Labels -->
+  <g transform="translate(32, 165)" fill="#64748b" font-size="12" font-weight="600">
+    <text x="60" y="0" text-anchor="middle">MON</text>
+    <text x="194" y="0" text-anchor="middle">TUE</text>
+    <text x="328" y="0" text-anchor="middle">WED</text>
+    <text x="462" y="0" text-anchor="middle">THU</text>
+    <text x="596" y="0" text-anchor="middle">FRI</text>
+    <text x="730" y="0" text-anchor="middle">SAT</text>
+    <text x="864" y="0" text-anchor="middle">SUN</text>
+  </g>
+
+  <!-- Calendar Grid (Rows) -->
+  <g transform="translate(32, 180)">
+    <!-- Day cell sample 1: Oct 6 (Today) -->
+    <rect x="138" y="80" width="126" height="76" rx="8" fill="#1e293b" stroke="#0284c7" stroke-width="2" />
+    <text x="150" y="102" fill="#38bdf8" font-weight="bold" font-size="14">6</text>
+    <rect x="150" y="112" width="102" height="20" rx="4" fill="#0284c7" fill-opacity="0.3" />
+    <text x="154" y="126" fill="#38bdf8" font-size="10" font-weight="600">ASML • €42.50 (Exp)</text>
+
+    <!-- Day cell sample 2: Oct 15 -->
+    <rect x="410" y="80" width="126" height="76" rx="8" fill="#1e293b" stroke="#334155" stroke-width="1" />
+    <text x="422" y="102" fill="#cbd5e1" font-size="14">15</text>
+    <rect x="422" y="112" width="102" height="20" rx="4" fill="#10b981" fill-opacity="0.3" />
+    <text x="426" y="126" fill="#34d399" font-size="10" font-weight="600">INGA • €68.20 (Paid)</text>
+
+    <!-- Day cell sample 3: Oct 28 -->
+    <rect x="274" y="164" width="126" height="76" rx="8" fill="#1e293b" stroke="#334155" stroke-width="1" />
+    <text x="286" y="186" fill="#cbd5e1" font-size="14">28</text>
+    <rect x="286" y="196" width="102" height="20" rx="4" fill="#0284c7" fill-opacity="0.3" />
+    <text x="290" y="210" fill="#38bdf8" font-size="10" font-weight="600">JNJ • €37.90 (Exp)</text>
+
+    <!-- Remaining empty/filled grid lines for realistic feel -->
+    <rect x="4" y="0" width="126" height="76" rx="8" fill="#131c2e" stroke="#1e293b" stroke-width="1" opacity="0.5" />
+    <rect x="138" y="0" width="126" height="76" rx="8" fill="#131c2e" stroke="#1e293b" stroke-width="1" opacity="0.5" />
+    <rect x="274" y="0" width="126" height="76" rx="8" fill="#131c2e" stroke="#1e293b" stroke-width="1" opacity="0.5" />
+    <rect x="410" y="0" width="126" height="76" rx="8" fill="#1e293b" stroke="#334155" stroke-width="1" /><text x="422" y="22" fill="#cbd5e1" font-size="14">1</text>
+    <rect x="546" y="0" width="126" height="76" rx="8" fill="#1e293b" stroke="#334155" stroke-width="1" /><text x="558" y="22" fill="#cbd5e1" font-size="14">2</text>
+    <rect x="682" y="0" width="126" height="76" rx="8" fill="#1e293b" stroke="#334155" stroke-width="1" /><text x="694" y="22" fill="#64748b" font-size="14">3</text>
+    <rect x="818" y="0" width="126" height="76" rx="8" fill="#1e293b" stroke="#334155" stroke-width="1" /><text x="830" y="22" fill="#64748b" font-size="14">4</text>
+
+    <rect x="4" y="80" width="126" height="76" rx="8" fill="#1e293b" stroke="#334155" stroke-width="1" /><text x="16" y="102" fill="#cbd5e1" font-size="14">5</text>
+    <rect x="274" y="80" width="126" height="76" rx="8" fill="#1e293b" stroke="#334155" stroke-width="1" /><text x="286" y="102" fill="#cbd5e1" font-size="14">7</text>
+    <rect x="546" y="80" width="126" height="76" rx="8" fill="#1e293b" stroke="#334155" stroke-width="1" /><text x="558" y="102" fill="#cbd5e1" font-size="14">9</text>
+    <rect x="682" y="80" width="126" height="76" rx="8" fill="#1e293b" stroke="#334155" stroke-width="1" /><text x="694" y="102" fill="#64748b" font-size="14">10</text>
+    <rect x="818" y="80" width="126" height="76" rx="8" fill="#1e293b" stroke="#334155" stroke-width="1" /><text x="830" y="102" fill="#64748b" font-size="14">11</text>
+  </g>
+
+  <!-- Interactive Day Drawer Modal Overlay (Showing popup feature) -->
+  <g transform="translate(580, 290)">
+    <rect x="0" y="0" width="380" height="280" rx="12" fill="#1e293b" stroke="#475569" stroke-width="1" filter="drop-shadow(0 20px 25px rgba(0,0,0,0.5))" />
+    <rect x="0" y="0" width="380" height="44" rx="12" fill="#0f172a" />
+    <text x="20" y="28" fill="#f8fafc" font-weight="bold" font-size="14">October 6, 2026 — Dividend Details</text>
+    <text x="356" y="28" fill="#94a3b8" font-size="14" text-anchor="end">✕</text>
+
+    <!-- Content -->
+    <rect x="16" y="58" width="348" height="80" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1" />
+    <text x="30" y="82" fill="#38bdf8" font-weight="bold" font-size="15">ASML Holding N.V. (ASML)</text>
+    <text x="30" y="100" fill="#94a3b8" font-size="12">Projected Quarterly Dividend • 18 shares</text>
+    <text x="30" y="122" fill="#34d399" font-weight="bold" font-size="14">€42.50 Net</text>
+    <text x="130" y="122" fill="#64748b" font-size="11">(@ €2.36 / share)</text>
+    <rect x="285" y="108" width="65" height="20" rx="4" fill="#0284c7" fill-opacity="0.3" />
+    <text x="317" y="122" fill="#38bdf8" font-size="10" font-weight="bold" text-anchor="middle">FORECAST</text>
+
+    <text x="20" y="164" fill="#94a3b8" font-size="11">Enriched via Yahoo Finance dividend calendar engine.</text>
+    <text x="20" y="182" fill="#94a3b8" font-size="11">Payment date estimated based on historical quarterly cadence.</text>
+    
+    <rect x="20" y="220" width="340" height="36" rx="8" fill="#0284c7" />
+    <text x="190" y="243" fill="#ffffff" font-weight="bold" font-size="13" text-anchor="middle">Close Drawer</text>
+  </g>
+</svg>
