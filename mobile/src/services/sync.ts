@@ -4,10 +4,13 @@ import {
   batchUpsertHoldings,
   batchUpsertTransactions,
   getDb,
+  replaceForecastDividends,
   setSetting,
+  updateHoldingEnrichment,
 } from './database';
 import { getCredentials } from './secureStore';
 import { Trading212Client } from './trading212';
+import { enrichInstrument } from './yfinance';
 
 let isSyncingActive = false;
 
@@ -27,7 +30,7 @@ export async function runSync(onProgress?: (progress: SyncProgress) => void): Pr
       onProgress({
         is_syncing: true,
         current_step: step,
-        total_steps: 7,
+        total_steps: 8,
         step_message: message,
       });
     }
@@ -232,8 +235,44 @@ export async function runSync(onProgress?: (progress: SyncProgress) => void): Pr
       await batchUpsertDividends(divEvents);
     }
 
-    // Step 7: Finalizing & updating sync log
-    updateProgress(7, 'Finalizing sync & cache...');
+    // Step 7: Enrich with Yahoo Finance (sectors, industries, and future dividend projections)
+    updateProgress(7, 'Enriching with Yahoo Finance (sectors & future dividends)...');
+    const forecastDividends: DividendEvent[] = [];
+    for (const h of holdings) {
+      try {
+        const enriched = await enrichInstrument(h.ticker, h.name, h.quantity);
+        if (enriched) {
+          await updateHoldingEnrichment(h.ticker, {
+            sector: enriched.sector,
+            industry: enriched.industry,
+            dividend_yield: enriched.dividendYield,
+            annual_dividend: enriched.annualDividend,
+            payout_frequency: enriched.payoutFrequency,
+          });
+
+          for (const proj of enriched.futureDividends) {
+            forecastDividends.push({
+              ticker: proj.ticker,
+              amount: proj.projectedTotal,
+              currency: h.currency || 'EUR',
+              payment_date: proj.paymentDate,
+              status: 'EXPECTED',
+              source: 'YFINANCE',
+              external_id: `yf_${proj.ticker}_${proj.paymentDate}`,
+            });
+          }
+        }
+      } catch (enrichErr) {
+        console.warn(`[Sync] Enrichment skipped for ${h.ticker}:`, enrichErr);
+      }
+    }
+
+    if (forecastDividends.length > 0) {
+      await replaceForecastDividends(forecastDividends);
+    }
+
+    // Step 8: Finalizing & updating sync log
+    updateProgress(8, 'Finalizing sync & cache...');
     const nowIso = new Date().toISOString();
     await setSetting('last_synced', nowIso);
     await setSetting('trading212_sync_status', 'success');
@@ -241,12 +280,12 @@ export async function runSync(onProgress?: (progress: SyncProgress) => void): Pr
     const db = await getDb();
     await db.runAsync(
       `INSERT INTO sync_log (provider, status, items_synced) VALUES (?, ?, ?)`,
-      ['TRADING212', 'success', holdings.length + divEvents.length]
+      ['TRADING212', 'success', holdings.length + divEvents.length + forecastDividends.length]
     );
 
     return {
       success: true,
-      message: `Synced ${holdings.length} holdings and ${divEvents.length} dividends.`,
+      message: `Synced ${holdings.length} holdings, ${divEvents.length} dividends, and ${forecastDividends.length} forecasts.`,
       holdingsCount: holdings.length,
       dividendsCount: divEvents.length,
     };
@@ -263,8 +302,8 @@ export async function runSync(onProgress?: (progress: SyncProgress) => void): Pr
     if (onProgress) {
       onProgress({
         is_syncing: false,
-        current_step: 7,
-        total_steps: 7,
+        current_step: 8,
+        total_steps: 8,
         step_message: 'Sync completed',
         last_synced: new Date().toISOString(),
       });

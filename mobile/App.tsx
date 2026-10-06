@@ -10,6 +10,7 @@ import { TopAppBar } from './src/components/common/TopAppBar';
 import { DashboardView } from './src/components/dashboard/DashboardView';
 import { HoldingsView } from './src/components/holdings/HoldingsView';
 import { SettingsView } from './src/components/settings/SettingsView';
+import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import {
   getDividends,
   getHoldings,
@@ -27,7 +28,8 @@ import {
   TabKey,
 } from './src/types';
 
-export default function App() {
+function MainApp() {
+  const { theme, isSketch } = useTheme();
   const [currentTab, setCurrentTab] = useState<TabKey>('dashboard');
   const [summary, setSummary] = useState<PortfolioSummary>({
     total_value: 0,
@@ -50,7 +52,7 @@ export default function App() {
   const [syncProgress, setSyncProgress] = useState<SyncProgress>({
     is_syncing: false,
     current_step: 0,
-    total_steps: 7,
+    total_steps: 8,
     step_message: '',
   });
 
@@ -94,7 +96,7 @@ export default function App() {
       setSyncProgress({
         is_syncing: true,
         current_step: 1,
-        total_steps: 7,
+        total_steps: 8,
         step_message: 'Starting sync...',
       });
 
@@ -112,52 +114,63 @@ export default function App() {
   };
 
   return (
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: theme.cardBg }]}
+      edges={['top', 'left', 'right']}
+    >
+      <StatusBar style="dark" />
+
+      {/* Top App Bar */}
+      <TopAppBar
+        isSyncing={syncProgress.is_syncing}
+        onSyncPress={handleSync}
+        lastSynced={lastSynced}
+      />
+
+      {/* Sync Progress Bar */}
+      <SyncProgressBar progress={syncProgress} />
+
+      {/* Screen Content */}
+      <View style={[styles.content, { backgroundColor: theme.background }]}>
+        {currentTab === 'dashboard' && (
+          <DashboardView
+            summary={summary}
+            holdings={holdings}
+            dividends={dividends}
+            monthlyDividends={monthlyDividends}
+            onNavigateTab={setCurrentTab}
+          />
+        )}
+
+        {currentTab === 'holdings' && <HoldingsView holdings={holdings} />}
+
+        {currentTab === 'calendar' && <CalendarView dividends={dividends} />}
+
+        {currentTab === 'analytics' && (
+          <AnalyticsView
+            summary={summary}
+            holdings={holdings}
+            dividends={dividends}
+          />
+        )}
+
+        {currentTab === 'settings' && (
+          <SettingsView onRefreshData={loadData} />
+        )}
+      </View>
+
+      {/* Bottom Navigation Bar */}
+      <BottomNavBar currentTab={currentTab} onTabChange={setCurrentTab} />
+    </SafeAreaView>
+  );
+}
+
+export default function App() {
+  return (
     <SafeAreaProvider>
-      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-        <StatusBar style="dark" />
-
-        {/* Top App Bar */}
-        <TopAppBar
-          isSyncing={syncProgress.is_syncing}
-          onSyncPress={handleSync}
-          lastSynced={lastSynced}
-        />
-
-        {/* Sync Progress Bar */}
-        <SyncProgressBar progress={syncProgress} />
-
-        {/* Screen Content */}
-        <View style={styles.content}>
-          {currentTab === 'dashboard' && (
-            <DashboardView
-              summary={summary}
-              holdings={holdings}
-              dividends={dividends}
-              monthlyDividends={monthlyDividends}
-              onNavigateTab={setCurrentTab}
-            />
-          )}
-
-          {currentTab === 'holdings' && <HoldingsView holdings={holdings} />}
-
-          {currentTab === 'calendar' && <CalendarView dividends={dividends} />}
-
-          {currentTab === 'analytics' && (
-            <AnalyticsView
-              summary={summary}
-              holdings={holdings}
-              dividends={dividends}
-            />
-          )}
-
-          {currentTab === 'settings' && (
-            <SettingsView onRefreshData={loadData} />
-          )}
-        </View>
-
-        {/* Material 3 Bottom Navigation Bar */}
-        <BottomNavBar currentTab={currentTab} onTabChange={setCurrentTab} />
-      </SafeAreaView>
+      <ThemeProvider>
+        <MainApp />
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }
@@ -165,10 +178,8 @@ export default function App() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#ffffff',
   },
   content: {
     flex: 1,
-    backgroundColor: '#f8fafc',
   },
 });

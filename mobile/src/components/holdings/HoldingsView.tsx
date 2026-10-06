@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useTheme } from '../../context/ThemeContext';
 import { Holding } from '../../types';
 import { StockLogo } from '../common/StockLogo';
 
@@ -18,6 +19,7 @@ interface HoldingsViewProps {
 type SortField = 'value' | 'pnl' | 'ticker' | 'quantity';
 
 export const HoldingsView: React.FC<HoldingsViewProps> = ({ holdings }) => {
+  const { theme, isSketch } = useTheme();
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<SortField>('value');
 
@@ -27,7 +29,8 @@ export const HoldingsView: React.FC<HoldingsViewProps> = ({ holdings }) => {
       if (!q) return true;
       return (
         h.ticker.toLowerCase().includes(q) ||
-        (h.name && h.name.toLowerCase().includes(q))
+        (h.name && h.name.toLowerCase().includes(q)) ||
+        (h.sector && h.sector.toLowerCase().includes(q))
       );
     });
 
@@ -53,20 +56,36 @@ export const HoldingsView: React.FC<HoldingsViewProps> = ({ holdings }) => {
     const weight = totalValue > 0 ? (item.market_value / totalValue) * 100 : 0;
 
     return (
-      <View style={styles.card}>
+      <View
+        style={[
+          styles.card,
+          {
+            backgroundColor: theme.cardBg,
+            borderColor: theme.cardBorder,
+            borderWidth: isSketch ? 2 : 1,
+          },
+        ]}
+      >
         <View style={styles.topRow}>
           <StockLogo ticker={item.ticker} size={40} />
           <View style={styles.headerInfo}>
             <View style={styles.tickerWeightRow}>
-              <Text style={styles.ticker}>{item.ticker}</Text>
+              <Text style={[styles.ticker, { color: theme.textPrimary }]}>{item.ticker}</Text>
               <Text style={styles.weightBadge}>{weight.toFixed(1)}%</Text>
+              {Boolean(item.sector) && (
+                <Text style={styles.sectorBadge} numberOfLines={1}>
+                  {item.sector}
+                </Text>
+              )}
             </View>
             <Text style={styles.name} numberOfLines={1}>
               {item.name || item.ticker}
             </Text>
           </View>
           <View style={styles.valueCol}>
-            <Text style={styles.marketValue}>€{item.market_value.toFixed(2)}</Text>
+            <Text style={[styles.marketValue, { color: theme.textPrimary }]}>
+              €{item.market_value.toFixed(2)}
+            </Text>
             <View style={[styles.pnlPill, isPos ? styles.pnlPos : styles.pnlNeg]}>
               <Text style={[styles.pnlText, isPos ? styles.pnlTextPos : styles.pnlTextNeg]}>
                 {isPos ? '+' : ''}€{item.ppl.toFixed(2)} ({isPos ? '+' : ''}{pnlPercent.toFixed(1)}%)
@@ -79,23 +98,39 @@ export const HoldingsView: React.FC<HoldingsViewProps> = ({ holdings }) => {
           <Text style={styles.detailText}>
             {item.quantity.toLocaleString()} shs @ €{item.average_price.toFixed(2)}
           </Text>
-          <Text style={styles.priceText}>
-            Curr: €{item.current_price.toFixed(2)}
-          </Text>
+          <View style={styles.rightDetails}>
+            {item.dividend_yield && item.dividend_yield > 0 ? (
+              <Text style={styles.yieldText}>
+                Yield: {(item.dividend_yield * 100).toFixed(2)}% •{' '}
+              </Text>
+            ) : null}
+            <Text style={styles.priceText}>
+              Curr: €{item.current_price.toFixed(2)}
+            </Text>
+          </View>
         </View>
       </View>
     );
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Search Bar */}
       <View style={styles.searchRow}>
-        <View style={styles.searchBar}>
+        <View
+          style={[
+            styles.searchBar,
+            {
+              backgroundColor: isSketch ? '#faf7f2' : '#ffffff',
+              borderColor: theme.cardBorder,
+              borderWidth: isSketch ? 2 : 1,
+            },
+          ]}
+        >
           <MaterialCommunityIcons name="magnify" size={20} color="#94a3b8" />
           <TextInput
-            style={styles.searchInput}
-            placeholder="Search holdings..."
+            style={[styles.searchInput, { color: theme.textPrimary }]}
+            placeholder="Search holdings or sectors..."
             placeholderTextColor="#94a3b8"
             value={search}
             onChangeText={setSearch}
@@ -110,10 +145,26 @@ export const HoldingsView: React.FC<HoldingsViewProps> = ({ holdings }) => {
         {(['value', 'pnl', 'ticker', 'quantity'] as SortField[]).map(f => (
           <TouchableOpacity
             key={f}
-            style={[styles.sortChip, sortBy === f && styles.sortChipActive]}
+            style={[
+              styles.sortChip,
+              {
+                backgroundColor: isSketch ? '#faf7f2' : '#ffffff',
+                borderColor: theme.cardBorder,
+                borderWidth: isSketch ? 1 : 1,
+              },
+              sortBy === f && {
+                backgroundColor: theme.accent,
+                borderColor: theme.accent,
+              },
+            ]}
             onPress={() => setSortBy(f)}
           >
-            <Text style={[styles.sortChipText, sortBy === f && styles.sortChipTextActive]}>
+            <Text
+              style={[
+                styles.sortChipText,
+                sortBy === f && styles.sortChipTextActive,
+              ]}
+            >
               {f === 'value' ? 'Value' : f === 'pnl' ? 'Return' : f === 'ticker' ? 'Name' : 'Shares'}
             </Text>
           </TouchableOpacity>
@@ -139,7 +190,6 @@ export const HoldingsView: React.FC<HoldingsViewProps> = ({ holdings }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
   },
   searchRow: {
     paddingHorizontal: 16,
@@ -149,18 +199,14 @@ const styles = StyleSheet.create({
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
     borderRadius: 12,
     paddingHorizontal: 12,
     height: 44,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
   },
   searchInput: {
     flex: 1,
     marginLeft: 8,
     fontSize: 14,
-    color: '#0f172a',
   },
   sortRow: {
     flexDirection: 'row',
@@ -178,13 +224,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-  },
-  sortChipActive: {
-    backgroundColor: '#2563eb',
-    borderColor: '#2563eb',
   },
   sortChipText: {
     fontSize: 11,
@@ -200,7 +239,6 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   card: {
-    backgroundColor: '#ffffff',
     borderRadius: 16,
     padding: 14,
     elevation: 2,
@@ -222,11 +260,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    flexWrap: 'wrap',
   },
   ticker: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#0f172a',
   },
   weightBadge: {
     fontSize: 10,
@@ -236,6 +274,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 5,
     paddingVertical: 1,
     borderRadius: 4,
+  },
+  sectorBadge: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#0369a1',
+    backgroundColor: '#e0f2fe',
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 4,
+    maxWidth: 90,
   },
   name: {
     fontSize: 12,
@@ -248,7 +296,6 @@ const styles = StyleSheet.create({
   marketValue: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#0f172a',
   },
   pnlPill: {
     marginTop: 3,
@@ -278,11 +325,20 @@ const styles = StyleSheet.create({
     marginTop: 10,
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: '#f8fafc',
+    borderTopColor: '#f1f5f9',
   },
   detailText: {
     fontSize: 11,
     color: '#64748b',
+  },
+  rightDetails: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  yieldText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#059669',
   },
   priceText: {
     fontSize: 11,

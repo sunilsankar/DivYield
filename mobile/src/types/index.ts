@@ -41,8 +41,8 @@ export interface DividendEvent {
   amount: number;
   currency: string;
   payment_date: string;
-  status: 'RECEIVED' | 'EXPECTED';
-  source: 'TRADING212' | 'YAHOO';
+  status: 'RECEIVED' | 'EXPECTED' | 'FORECAST';
+  source: 'TRADING212' | 'YAHOO' | 'YFINANCE' | string;
   external_id?: string | null;
   created_at?: string;
 }

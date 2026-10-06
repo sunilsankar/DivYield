@@ -163,12 +163,14 @@ export async function getTransactions(limit: number = 100): Promise<Transaction[
   `, [limit]);
 }
 
-export async function getStats(): Promise<{ holdings: number; transactions: number }> {
+export async function getStats(): Promise<{ holdings: number; dividends: number; transactions: number }> {
   const db = await getDb();
   const hRow = await db.getFirstAsync<{ cnt: number }>('SELECT COUNT(*) as cnt FROM holdings WHERE quantity > 0');
+  const dRow = await db.getFirstAsync<{ cnt: number }>('SELECT COUNT(*) as cnt FROM dividend_events');
   const tRow = await db.getFirstAsync<{ cnt: number }>('SELECT COUNT(*) as cnt FROM transactions');
   return {
     holdings: hRow?.cnt || 0,
+    dividends: dRow?.cnt || 0,
     transactions: tRow?.cnt || 0,
   };
 }
@@ -337,6 +339,133 @@ export async function batchUpsertDividends(divs: DividendEvent[]): Promise<void>
       ]);
     }
   });
+}
+
+export async function updateHoldingEnrichment(
+  ticker: string,
+  enrichment: {
+    sector?: string;
+    industry?: string;
+    dividend_yield?: number;
+    annual_dividend?: number;
+    payout_frequency?: string;
+  }
+): Promise<void> {
+  const db = await getDb();
+  await db.runAsync(`
+    UPDATE holdings
+    SET
+      sector = COALESCE(?, sector),
+      industry = COALESCE(?, industry),
+      dividend_yield = COALESCE(?, dividend_yield),
+      annual_dividend = COALESCE(?, annual_dividend),
+      payout_frequency = COALESCE(?, payout_frequency),
+      updated_at = CURRENT_TIMESTAMP
+    WHERE ticker = ?
+  `, [
+    enrichment.sector || null,
+    enrichment.industry || null,
+    enrichment.dividend_yield ?? null,
+    enrichment.annual_dividend ?? null,
+    enrichment.payout_frequency || null,
+    ticker
+  ]);
+}
+
+export async function replaceForecastDividends(forecasts: DividendEvent[]): Promise<void> {
+  const db = await getDb();
+  await db.withTransactionAsync(async () => {
+    // Clean old YFINANCE forecast events so we don't accumulate duplicates or stale projections
+    await db.runAsync(`DELETE FROM dividend_events WHERE source = 'YFINANCE' AND status = 'EXPECTED'`);
+    for (const d of forecasts) {
+      await db.runAsync(`
+        INSERT INTO dividend_events (
+          ticker, amount, currency, payment_date, status, source, external_id, created_at
+        ) VALUES (?, ?, ?, ?, 'EXPECTED', 'YFINANCE', ?, CURRENT_TIMESTAMP)
+        ON CONFLICT(source, external_id) DO UPDATE SET
+          amount = excluded.amount,
+          currency = excluded.currency,
+          payment_date = excluded.payment_date,
+          status = 'EXPECTED'
+      `, [
+        d.ticker,
+        d.amount,
+        d.currency || 'EUR',
+        d.payment_date,
+        d.external_id || `yf_${d.ticker}_${d.payment_date}`,
+      ]);
+    }
+  });
+}
+
+export async function exportAllDataAsCsv(): Promise<string> {
+  const holdings = await getHoldings();
+  const divs = await getDividends();
+  const txs = await getTransactions(2000);
+
+  const escapeCsv = (val: any) => {
+    if (val === null || val === undefined) return '';
+    const str = String(val);
+    if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+  };
+
+  const lines: string[] = [];
+
+  // 1. Holdings
+  lines.push('=== HOLDINGS ===');
+  lines.push('Ticker,Name,ISIN,Quantity,AvgPrice,CurrentPrice,MarketValue,PPL,Yield(%),AnnualDividend,Sector,Industry');
+  for (const h of holdings) {
+    lines.push([
+      escapeCsv(h.ticker),
+      escapeCsv(h.name),
+      escapeCsv(h.isin),
+      h.quantity,
+      h.average_price,
+      h.current_price,
+      h.market_value,
+      h.ppl,
+      h.dividend_yield,
+      h.annual_dividend,
+      escapeCsv(h.sector),
+      escapeCsv(h.industry)
+    ].join(','));
+  }
+  lines.push('');
+
+  // 2. Dividends
+  lines.push('=== DIVIDENDS ===');
+  lines.push('PaymentDate,Ticker,Amount,Currency,Status,Source');
+  for (const d of divs) {
+    lines.push([
+      escapeCsv(d.payment_date),
+      escapeCsv(d.ticker),
+      d.amount,
+      escapeCsv(d.currency),
+      escapeCsv(d.status),
+      escapeCsv(d.source)
+    ].join(','));
+  }
+  lines.push('');
+
+  // 3. Transactions
+  lines.push('=== TRANSACTIONS ===');
+  lines.push('Date,Type,Ticker,Quantity,Price,TotalAmount,Currency');
+  for (const t of txs) {
+    lines.push([
+      escapeCsv(t.date),
+      escapeCsv(t.type),
+      escapeCsv(t.ticker),
+      t.quantity ?? '',
+      t.price ?? '',
+      t.total_amount,
+      escapeCsv(t.currency)
+    ].join(','));
+  }
+
+  return lines.join('\n');
 }
 
 export async function clearDatabase(): Promise<void> {

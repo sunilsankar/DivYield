@@ -2,7 +2,9 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
+  Modal,
   ScrollView,
+  Share,
   StyleSheet,
   Switch,
   Text,
@@ -10,7 +12,12 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { clearDatabase, getStats } from '../../services/database';
+import { useTheme } from '../../context/ThemeContext';
+import {
+  clearDatabase,
+  exportAllDataAsCsv,
+  getStats,
+} from '../../services/database';
 import {
   deleteCredentials,
   getCredentials,
@@ -23,6 +30,8 @@ interface SettingsViewProps {
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({ onRefreshData }) => {
+  const { theme, themeMode, setThemeMode, isSketch } = useTheme();
+
   const [apiKey, setApiKey] = useState('');
   const [apiSecret, setApiSecret] = useState('');
   const [isDemo, setIsDemo] = useState(false);
@@ -30,7 +39,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onRefreshData }) => 
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
 
-  const [dbStats, setDbStats] = useState({ holdings: 0, transactions: 0 });
+  const [showHelpModal, setShowHelpModal] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [dbStats, setDbStats] = useState({ holdings: 0, transactions: 0, dividends: 0 });
 
   useEffect(() => {
     loadCreds();
@@ -48,7 +59,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onRefreshData }) => 
   };
 
   const loadStats = async () => {
-    setDbStats(await getStats());
+    const s = await getStats();
+    setDbStats(s);
   };
 
   const handleSave = async () => {
@@ -122,18 +134,73 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onRefreshData }) => 
     );
   };
 
+  const handleExportCsv = async () => {
+    try {
+      setIsExporting(true);
+      const csv = await exportAllDataAsCsv();
+      if (!csv || csv.trim().length === 0) {
+        Alert.alert('Export Empty', 'No holdings or transactions are available to export yet. Perform a sync first.');
+        return;
+      }
+      await Share.share({
+        title: 'DivYield_Portfolio_Export.csv',
+        message: csv,
+      });
+    } catch (err: any) {
+      Alert.alert('Export Error', err.message || 'Failed to export CSV data');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={[styles.container, { backgroundColor: theme.background }]}
+      contentContainerStyle={styles.content}
+    >
       {/* API Key Form */}
-      <View style={styles.card}>
+      <View
+        style={[
+          styles.card,
+          {
+            backgroundColor: theme.cardBg,
+            borderColor: theme.cardBorder,
+            borderWidth: isSketch ? 2 : 1,
+          },
+        ]}
+      >
         <View style={styles.cardHeader}>
-          <MaterialCommunityIcons name="key-outline" size={24} color="#2563eb" />
-          <Text style={styles.cardTitle}>Trading 212 API Credentials</Text>
+          <MaterialCommunityIcons name="key-outline" size={24} color={theme.accent} />
+          <Text style={[styles.cardTitle, { color: theme.textPrimary }]}>
+            Trading 212 API Credentials
+          </Text>
         </View>
+
+        {/* How to get API key link button */}
+        <TouchableOpacity
+          style={[styles.helpGuideBanner, isSketch && styles.sketchBorder]}
+          onPress={() => setShowHelpModal(true)}
+        >
+          <MaterialCommunityIcons name="help-circle-outline" size={20} color="#2563eb" />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.helpGuideTitle}>How to get your API Key?</Text>
+            <Text style={styles.helpGuideSub}>
+              Tap to see required permissions & setup checklist
+            </Text>
+          </View>
+          <MaterialCommunityIcons name="chevron-right" size={20} color="#2563eb" />
+        </TouchableOpacity>
 
         <Text style={styles.inputLabel}>API Key *</Text>
         <TextInput
-          style={styles.input}
+          style={[
+            styles.input,
+            {
+              backgroundColor: isSketch ? '#faf7f2' : '#f8fafc',
+              borderColor: theme.cardBorder,
+              color: theme.textPrimary,
+            },
+          ]}
           placeholder="Paste Trading 212 API key"
           placeholderTextColor="#94a3b8"
           value={apiKey}
@@ -145,7 +212,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onRefreshData }) => 
 
         <Text style={styles.inputLabel}>API Secret (Optional)</Text>
         <TextInput
-          style={styles.input}
+          style={[
+            styles.input,
+            {
+              backgroundColor: isSketch ? '#faf7f2' : '#f8fafc',
+              borderColor: theme.cardBorder,
+              color: theme.textPrimary,
+            },
+          ]}
           placeholder="Paste API Secret (if using Basic Auth)"
           placeholderTextColor="#94a3b8"
           value={apiSecret}
@@ -157,10 +231,17 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onRefreshData }) => 
 
         <View style={styles.switchRow}>
           <View>
-            <Text style={styles.switchLabel}>Practice / Demo Environment</Text>
+            <Text style={[styles.switchLabel, { color: theme.textPrimary }]}>
+              Practice / Demo Environment
+            </Text>
             <Text style={styles.switchSub}>Turn on only if using a Demo account</Text>
           </View>
-          <Switch value={isDemo} onValueChange={setIsDemo} trackColor={{ false: '#cbd5e1', true: '#93c5fd' }} thumbColor={isDemo ? '#2563eb' : '#f8fafc'} />
+          <Switch
+            value={isDemo}
+            onValueChange={setIsDemo}
+            trackColor={{ false: '#cbd5e1', true: '#93c5fd' }}
+            thumbColor={isDemo ? '#2563eb' : '#f8fafc'}
+          />
         </View>
 
         {testResult && (
@@ -170,7 +251,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onRefreshData }) => 
               size={18}
               color={testResult.ok ? '#059669' : '#dc2626'}
             />
-            <Text style={[styles.testText, testResult.ok ? styles.testTextOk : styles.testTextFail]}>
+            <Text
+              style={[
+                styles.testText,
+                testResult.ok ? styles.testTextOk : styles.testTextFail,
+              ]}
+            >
               {testResult.message}
             </Text>
           </View>
@@ -178,7 +264,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onRefreshData }) => 
 
         <View style={styles.btnRow}>
           <TouchableOpacity
-            style={[styles.btn, styles.btnSecondary]}
+            style={[styles.btn, styles.btnSecondary, isSketch && styles.sketchBorder]}
             onPress={handleTest}
             disabled={isTesting}
           >
@@ -187,7 +273,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onRefreshData }) => 
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.btn, styles.btnPrimary]} onPress={handleSave}>
+          <TouchableOpacity
+            style={[
+              styles.btn,
+              styles.btnPrimary,
+              { backgroundColor: theme.accent },
+              isSketch && styles.sketchBorder,
+            ]}
+            onPress={handleSave}
+          >
             <Text style={styles.btnTextPrimary}>Save Key</Text>
           </TouchableOpacity>
         </View>
@@ -199,14 +293,124 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onRefreshData }) => 
         )}
       </View>
 
-      {/* Permissions & Security Box */}
-      <View style={styles.card}>
+      {/* Theme Options */}
+      <View
+        style={[
+          styles.card,
+          {
+            backgroundColor: theme.cardBg,
+            borderColor: theme.cardBorder,
+            borderWidth: isSketch ? 2 : 1,
+          },
+        ]}
+      >
+        <View style={styles.cardHeader}>
+          <MaterialCommunityIcons name="palette-outline" size={24} color={theme.accent} />
+          <Text style={[styles.cardTitle, { color: theme.textPrimary }]}>App Theme</Text>
+        </View>
+        <Text style={styles.themeSub}>
+          Choose your interface style. Sketch mode gives a hand-drawn paper look.
+        </Text>
+
+        <View style={styles.themeToggleRow}>
+          <TouchableOpacity
+            style={[
+              styles.themeOptionBtn,
+              themeMode === 'modern' && styles.themeOptionActive,
+              isSketch && styles.sketchBorder,
+            ]}
+            onPress={() => setThemeMode('modern')}
+          >
+            <MaterialCommunityIcons
+              name="cellphone"
+              size={18}
+              color={themeMode === 'modern' ? '#ffffff' : '#64748b'}
+            />
+            <Text
+              style={[
+                styles.themeOptionText,
+                themeMode === 'modern' && styles.themeOptionTextActive,
+              ]}
+            >
+              Modern
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.themeOptionBtn,
+              themeMode === 'sketch' && styles.themeOptionActiveSketch,
+              isSketch && styles.sketchBorder,
+            ]}
+            onPress={() => setThemeMode('sketch')}
+          >
+            <MaterialCommunityIcons
+              name="draw"
+              size={18}
+              color={themeMode === 'sketch' ? '#18181b' : '#64748b'}
+            />
+            <Text
+              style={[
+                styles.themeOptionText,
+                themeMode === 'sketch' && styles.themeOptionTextActiveSketch,
+              ]}
+            >
+              Sketch
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Export to CSV */}
+      <View
+        style={[
+          styles.card,
+          {
+            backgroundColor: theme.cardBg,
+            borderColor: theme.cardBorder,
+            borderWidth: isSketch ? 2 : 1,
+          },
+        ]}
+      >
+        <View style={styles.cardHeader}>
+          <MaterialCommunityIcons name="file-delimited-outline" size={24} color="#059669" />
+          <Text style={[styles.cardTitle, { color: theme.textPrimary }]}>Data Export</Text>
+        </View>
+        <Text style={styles.exportSub}>
+          Export your portfolio holdings, dividend records, and transactions into a standard CSV file.
+        </Text>
+
+        <TouchableOpacity
+          style={[styles.exportBtn, isSketch && styles.sketchBorder]}
+          onPress={handleExportCsv}
+          disabled={isExporting}
+        >
+          <MaterialCommunityIcons name="export-variant" size={20} color="#ffffff" />
+          <Text style={styles.exportBtnText}>
+            {isExporting ? 'Exporting...' : 'Export to CSV'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Permissions Checklist Box */}
+      <View
+        style={[
+          styles.card,
+          {
+            backgroundColor: theme.cardBg,
+            borderColor: theme.cardBorder,
+            borderWidth: isSketch ? 2 : 1,
+          },
+        ]}
+      >
         <View style={styles.cardHeader}>
           <MaterialCommunityIcons name="shield-lock-outline" size={24} color="#059669" />
-          <Text style={styles.cardTitle}>Strict Read-Only Security</Text>
+          <Text style={[styles.cardTitle, { color: theme.textPrimary }]}>
+            Strict Read-Only Guarantee
+          </Text>
         </View>
         <Text style={styles.securityText}>
-          DivYield is mathematically read-only. It contains ZERO trading, order execution, or transfer code.
+          DivYield is mathematically read-only. It contains ZERO trading, order execution, or money transfer code.
         </Text>
 
         <View style={styles.checklist}>
@@ -241,31 +445,179 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onRefreshData }) => 
         </View>
 
         <Text style={styles.securitySub}>
-          Your credentials are encrypted directly in your device's hardware-backed SecureStore.
+          Credentials are saved exclusively in your phone's hardware-backed SecureStore.
         </Text>
       </View>
 
       {/* Local Database Storage */}
-      <View style={styles.card}>
+      <View
+        style={[
+          styles.card,
+          {
+            backgroundColor: theme.cardBg,
+            borderColor: theme.cardBorder,
+            borderWidth: isSketch ? 2 : 1,
+          },
+        ]}
+      >
         <View style={styles.cardHeader}>
           <MaterialCommunityIcons name="database-outline" size={24} color="#475569" />
-          <Text style={styles.cardTitle}>Local SQLite Storage</Text>
+          <Text style={[styles.cardTitle, { color: theme.textPrimary }]}>
+            Local SQLite Storage
+          </Text>
         </View>
 
         <View style={styles.storageRow}>
           <Text style={styles.storageLabel}>Holdings Stored</Text>
-          <Text style={styles.storageValue}>{dbStats.holdings}</Text>
+          <Text style={[styles.storageValue, { color: theme.textPrimary }]}>
+            {dbStats.holdings}
+          </Text>
+        </View>
+        <View style={styles.storageRow}>
+          <Text style={styles.storageLabel}>Dividends (Received & Forecast)</Text>
+          <Text style={[styles.storageValue, { color: theme.textPrimary }]}>
+            {dbStats.dividends}
+          </Text>
         </View>
         <View style={styles.storageRow}>
           <Text style={styles.storageLabel}>Transactions Stored</Text>
-          <Text style={styles.storageValue}>{dbStats.transactions}</Text>
+          <Text style={[styles.storageValue, { color: theme.textPrimary }]}>
+            {dbStats.transactions}
+          </Text>
         </View>
 
-        <TouchableOpacity style={styles.clearBtn} onPress={handleClearDb}>
+        <TouchableOpacity
+          style={[styles.clearBtn, isSketch && styles.sketchBorder]}
+          onPress={handleClearDb}
+        >
           <MaterialCommunityIcons name="trash-can-outline" size={18} color="#dc2626" />
           <Text style={styles.clearBtnText}>Clear Local Database</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Help Modal: Step-by-Step API Key Instructions */}
+      <Modal
+        visible={showHelpModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowHelpModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View
+            style={[
+              styles.modalContent,
+              {
+                backgroundColor: theme.cardBg,
+                borderColor: theme.cardBorder,
+                borderWidth: isSketch ? 2 : 0,
+              },
+            ]}
+          >
+            <View style={styles.modalHeader}>
+              <View>
+                <Text style={[styles.modalTitle, { color: theme.textPrimary }]}>
+                  API Key Setup Guide
+                </Text>
+                <Text style={styles.modalSub}>
+                  Follow these steps in your Trading 212 account
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setShowHelpModal(false)}
+                style={styles.modalCloseBtn}
+              >
+                <MaterialCommunityIcons name="close" size={20} color="#64748b" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.guideList}>
+              <View style={styles.guideStep}>
+                <View style={styles.stepBadge}>
+                  <Text style={styles.stepBadgeText}>1</Text>
+                </View>
+                <View style={styles.stepContent}>
+                  <Text style={[styles.stepTitle, { color: theme.textPrimary }]}>
+                    Open Trading 212 Settings
+                  </Text>
+                  <Text style={styles.stepDesc}>
+                    Log into your Trading 212 mobile app or web portal. Tap on your profile icon or Menu &gt; Settings &gt; API.
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.guideStep}>
+                <View style={styles.stepBadge}>
+                  <Text style={styles.stepBadgeText}>2</Text>
+                </View>
+                <View style={styles.stepContent}>
+                  <Text style={[styles.stepTitle, { color: theme.textPrimary }]}>
+                    Generate API Key
+                  </Text>
+                  <Text style={styles.stepDesc}>
+                    Click &quot;Generate API key&quot; (or &quot;New API Key&quot;). Give it a label like &quot;DivYield&quot;.
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.guideStep}>
+                <View style={styles.stepBadge}>
+                  <Text style={styles.stepBadgeText}>3</Text>
+                </View>
+                <View style={styles.stepContent}>
+                  <Text style={[styles.stepTitle, { color: theme.textPrimary }]}>
+                    Enable Read-Only Permissions
+                  </Text>
+                  <Text style={styles.stepDesc}>
+                    Ensure the following permissions are checked ON:
+                  </Text>
+                  <View style={styles.permList}>
+                    <Text style={styles.permOn}>✓ Account data: ON</Text>
+                    <Text style={styles.permOn}>✓ History (Orders &amp; Tx): ON</Text>
+                    <Text style={styles.permOn}>✓ History - Dividends: ON</Text>
+                    <Text style={styles.permOn}>✓ Metadata: ON</Text>
+                    <Text style={styles.permOn}>✓ Pies - Read &amp; Portfolio: ON</Text>
+                  </View>
+                </View>
+              </View>
+
+              <View style={styles.guideStep}>
+                <View style={[styles.stepBadge, { backgroundColor: '#fee2e2' }]}>
+                  <Text style={[styles.stepBadgeText, { color: '#dc2626' }]}>!</Text>
+                </View>
+                <View style={styles.stepContent}>
+                  <Text style={[styles.stepTitle, { color: '#dc2626' }]}>
+                    Disable Order Execution (Mandatory)
+                  </Text>
+                  <Text style={styles.stepDesc}>
+                    Leave &quot;Orders - Execute&quot; and &quot;Pies - Write&quot; strictly OFF. DivYield is completely read-only and never requires order rights.
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.guideStep}>
+                <View style={styles.stepBadge}>
+                  <Text style={styles.stepBadgeText}>4</Text>
+                </View>
+                <View style={styles.stepContent}>
+                  <Text style={[styles.stepTitle, { color: theme.textPrimary }]}>
+                    Paste Key &amp; Sync
+                  </Text>
+                  <Text style={styles.stepDesc}>
+                    Copy the generated API key, paste it into DivYield, and tap &quot;Save Key&quot; then &quot;Test Connection&quot;.
+                  </Text>
+                </View>
+              </View>
+            </ScrollView>
+
+            <TouchableOpacity
+              style={[styles.gotItBtn, { backgroundColor: theme.accent }]}
+              onPress={() => setShowHelpModal(false)}
+            >
+              <Text style={styles.gotItBtnText}>Got it, thanks!</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 };
@@ -273,7 +625,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onRefreshData }) => 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
   },
   content: {
     padding: 16,
@@ -281,7 +632,6 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   card: {
-    backgroundColor: '#ffffff',
     borderRadius: 16,
     padding: 16,
     elevation: 2,
@@ -299,7 +649,25 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#0f172a',
+  },
+  helpGuideBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#eff6ff',
+    padding: 12,
+    borderRadius: 12,
+    gap: 10,
+    marginBottom: 14,
+  },
+  helpGuideTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#1d4ed8',
+  },
+  helpGuideSub: {
+    fontSize: 11,
+    color: '#3b82f6',
+    marginTop: 1,
   },
   inputLabel: {
     fontSize: 12,
@@ -309,14 +677,11 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   input: {
-    backgroundColor: '#f8fafc',
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
     paddingHorizontal: 12,
     height: 44,
     fontSize: 14,
-    color: '#0f172a',
   },
   switchRow: {
     flexDirection: 'row',
@@ -327,7 +692,6 @@ const styles = StyleSheet.create({
   switchLabel: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#0f172a',
   },
   switchSub: {
     fontSize: 11,
@@ -361,7 +725,7 @@ const styles = StyleSheet.create({
   btnRow: {
     flexDirection: 'row',
     gap: 12,
-    marginTop: 10,
+    marginTop: 8,
   },
   btn: {
     flex: 1,
@@ -382,31 +746,87 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   btnTextSecondary: {
-    color: '#1e293b',
+    color: '#475569',
     fontSize: 14,
     fontWeight: '700',
   },
   deleteLink: {
-    marginTop: 14,
     alignItems: 'center',
+    marginTop: 16,
+    paddingVertical: 4,
   },
   deleteLinkText: {
     color: '#dc2626',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  themeSub: {
     fontSize: 12,
-    fontWeight: '600',
+    color: '#64748b',
+    marginBottom: 12,
+  },
+  themeToggleRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  themeOptionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: '#f1f5f9',
+  },
+  themeOptionActive: {
+    backgroundColor: '#0f172a',
+  },
+  themeOptionActiveSketch: {
+    backgroundColor: '#fef3c7',
+  },
+  themeOptionText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#64748b',
+  },
+  themeOptionTextActive: {
+    color: '#ffffff',
+  },
+  themeOptionTextActiveSketch: {
+    color: '#18181b',
+  },
+  exportSub: {
+    fontSize: 12,
+    color: '#64748b',
+    marginBottom: 12,
+  },
+  exportBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#059669',
+    height: 44,
+    borderRadius: 10,
+    gap: 8,
+  },
+  exportBtnText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '700',
   },
   securityText: {
     fontSize: 13,
     color: '#475569',
     lineHeight: 18,
-    marginBottom: 10,
+    marginBottom: 12,
   },
   checklist: {
     backgroundColor: '#f8fafc',
-    borderRadius: 10,
-    padding: 10,
-    gap: 6,
-    marginBottom: 8,
+    borderRadius: 12,
+    padding: 12,
+    gap: 8,
+    marginVertical: 4,
   },
   checkItem: {
     flexDirection: 'row',
@@ -415,18 +835,18 @@ const styles = StyleSheet.create({
   },
   checkText: {
     fontSize: 12,
-    fontWeight: '600',
     color: '#334155',
+    fontWeight: '600',
   },
   securitySub: {
     fontSize: 11,
     color: '#94a3b8',
-    marginTop: 4,
+    marginTop: 8,
   },
   storageRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 8,
+    paddingVertical: 6,
     borderBottomWidth: 1,
     borderBottomColor: '#f1f5f9',
   },
@@ -437,7 +857,6 @@ const styles = StyleSheet.create({
   storageValue: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#0f172a',
   },
   clearBtn: {
     flexDirection: 'row',
@@ -445,13 +864,108 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
     marginTop: 14,
-    paddingVertical: 10,
+    paddingVertical: 8,
     backgroundColor: '#fef2f2',
     borderRadius: 8,
   },
   clearBtnText: {
+    color: '#dc2626',
     fontSize: 13,
     fontWeight: '700',
-    color: '#dc2626',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    maxHeight: '85%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  modalSub: {
+    fontSize: 12,
+    color: '#64748b',
+    marginTop: 2,
+  },
+  modalCloseBtn: {
+    padding: 6,
+    backgroundColor: '#f1f5f9',
+    borderRadius: 16,
+  },
+  guideList: {
+    marginVertical: 14,
+  },
+  guideStep: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  stepBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#eff6ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepBadgeText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#2563eb',
+  },
+  stepContent: {
+    flex: 1,
+  },
+  stepTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  stepDesc: {
+    fontSize: 12,
+    color: '#64748b',
+    lineHeight: 18,
+  },
+  permList: {
+    backgroundColor: '#f8fafc',
+    padding: 8,
+    borderRadius: 8,
+    marginTop: 6,
+    gap: 4,
+  },
+  permOn: {
+    fontSize: 11,
+    color: '#059669',
+    fontWeight: '700',
+  },
+  gotItBtn: {
+    height: 46,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+  gotItBtnText: {
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  sketchBorder: {
+    borderWidth: 1,
+    borderColor: '#18181b',
   },
 });

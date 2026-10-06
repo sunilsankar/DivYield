@@ -1,6 +1,7 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import React, { useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useTheme } from '../../context/ThemeContext';
 import { DividendEvent, Holding, PortfolioSummary } from '../../types';
 import { StockLogo } from '../common/StockLogo';
 
@@ -19,10 +20,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   monthlyDividends,
   onNavigateTab,
 }) => {
+  const { theme, isSketch } = useTheme();
   const isPositive = summary.unrealized_pnl >= 0;
 
   // Derive metrics in a single pass
-  const { totalReceivedAllTime, receivedYtd, ttmDividends } = useMemo(() => {
+  const { totalReceivedAllTime, receivedYtd, ttmDividends, forecastNext12Months } = useMemo(() => {
     const currentYear = new Date().getFullYear().toString();
     const cutoff = new Date();
     cutoff.setFullYear(cutoff.getFullYear() - 1);
@@ -31,21 +33,35 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     let allTime = 0;
     let ytd = 0;
     let ttm = 0;
+    let forecast12 = 0;
 
     for (const d of dividends) {
       const amt = d.amount || 0;
-      allTime += amt;
-      const date = d.payment_date || '';
-      if (date.startsWith(currentYear)) ytd += amt;
-      if (date >= cutoffStr) ttm += amt;
+      if (d.status === 'RECEIVED') {
+        allTime += amt;
+        const date = d.payment_date || '';
+        if (date.startsWith(currentYear)) ytd += amt;
+        if (date >= cutoffStr) ttm += amt;
+      } else {
+        forecast12 += amt;
+      }
     }
 
-    return { totalReceivedAllTime: allTime, receivedYtd: ytd, ttmDividends: ttm };
+    return {
+      totalReceivedAllTime: allTime,
+      receivedYtd: ytd,
+      ttmDividends: ttm,
+      forecastNext12Months: forecast12,
+    };
   }, [dividends]);
 
   // Max for bar chart
   const maxMonthly = useMemo(() => {
-    const max = Math.max(...monthlyDividends.map(m => m.received), 1);
+    let max = 1;
+    for (const m of monthlyDividends) {
+      const sum = (m.received || 0) + (m.forecast || 0);
+      if (sum > max) max = sum;
+    }
     return max;
   }, [monthlyDividends]);
 
@@ -54,14 +70,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   if (holdings.length === 0) {
     return (
       <ScrollView contentContainerStyle={styles.emptyContainer}>
-        <View style={styles.emptyCard}>
-          <MaterialCommunityIcons name="wallet-outline" size={48} color="#2563eb" />
-          <Text style={styles.emptyTitle}>Welcome to DivYield</Text>
+        <View
+          style={[
+            styles.emptyCard,
+            {
+              backgroundColor: theme.cardBg,
+              borderColor: theme.cardBorder,
+              borderWidth: isSketch ? 2 : 1,
+            },
+          ]}
+        >
+          <MaterialCommunityIcons name="wallet-outline" size={48} color={theme.accent} />
+          <Text style={[styles.emptyTitle, { color: theme.textPrimary }]}>Welcome to DivYield</Text>
           <Text style={styles.emptyText}>
             Your local portfolio is empty. Add your read-only Trading 212 API key in Settings and press Sync to load your live holdings and dividends.
           </Text>
           <TouchableOpacity
-            style={styles.emptyButton}
+            style={[styles.emptyButton, { backgroundColor: theme.accent }, isSketch && styles.sketchBorder]}
             onPress={() => onNavigateTab('settings')}
             activeOpacity={0.8}
           >
@@ -73,11 +98,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={[styles.container, { backgroundColor: theme.background }]}
+      contentContainerStyle={styles.content}
+    >
       {/* Portfolio Card */}
-      <View style={styles.heroCard}>
+      <View
+        style={[
+          styles.heroCard,
+          isSketch && {
+            backgroundColor: '#18181b',
+            borderWidth: 2,
+            borderColor: '#000000',
+          },
+        ]}
+      >
         <Text style={styles.heroLabel}>Total Portfolio Value</Text>
-        <Text style={styles.heroValue}>€{summary.total_value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+        <Text style={styles.heroValue}>
+          €{summary.total_value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        </Text>
 
         <View style={styles.heroReturnRow}>
           <View style={[styles.pnlPill, isPositive ? styles.pnlPillPositive : styles.pnlPillNegative]}>
@@ -110,51 +149,139 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       {/* 4 Stat Cards */}
       <View style={styles.gridRow}>
-        <View style={styles.statCard}>
+        <View
+          style={[
+            styles.statCard,
+            {
+              backgroundColor: theme.cardBg,
+              borderColor: theme.cardBorder,
+              borderWidth: isSketch ? 2 : 1,
+            },
+          ]}
+        >
           <Text style={styles.statLabel}>Total Received</Text>
-          <Text style={styles.statValue}>€{totalReceivedAllTime.toFixed(2)}</Text>
+          <Text style={[styles.statValue, { color: theme.textPrimary }]}>
+            €{totalReceivedAllTime.toFixed(2)}
+          </Text>
           <Text style={styles.statSub}>All time cash</Text>
         </View>
-        <View style={styles.statCard}>
+        <View
+          style={[
+            styles.statCard,
+            {
+              backgroundColor: theme.cardBg,
+              borderColor: theme.cardBorder,
+              borderWidth: isSketch ? 2 : 1,
+            },
+          ]}
+        >
           <Text style={styles.statLabel}>Received YTD</Text>
-          <Text style={styles.statValue}>€{receivedYtd.toFixed(2)}</Text>
+          <Text style={[styles.statValue, { color: theme.textPrimary }]}>
+            €{receivedYtd.toFixed(2)}
+          </Text>
           <Text style={styles.statSub}>In {new Date().getFullYear()}</Text>
         </View>
       </View>
 
       <View style={styles.gridRow}>
-        <View style={styles.statCard}>
-          <Text style={styles.statLabel}>TTM Dividends</Text>
-          <Text style={styles.statValue}>€{ttmDividends.toFixed(2)}</Text>
-          <Text style={styles.statSub}>Past 12 months</Text>
+        <View
+          style={[
+            styles.statCard,
+            {
+              backgroundColor: theme.cardBg,
+              borderColor: theme.cardBorder,
+              borderWidth: isSketch ? 2 : 1,
+            },
+          ]}
+        >
+          <Text style={styles.statLabel}>Next 12M Forecast</Text>
+          <Text style={[styles.statValue, { color: '#2563eb' }]}>
+            €{forecastNext12Months.toFixed(2)}
+          </Text>
+          <Text style={styles.statSub}>Projected dividends</Text>
         </View>
-        <View style={styles.statCard}>
+        <View
+          style={[
+            styles.statCard,
+            {
+              backgroundColor: theme.cardBg,
+              borderColor: theme.cardBorder,
+              borderWidth: isSketch ? 2 : 1,
+            },
+          ]}
+        >
           <Text style={styles.statLabel}>Monthly Avg</Text>
-          <Text style={styles.statValue}>€{(ttmDividends / 12).toFixed(2)}</Text>
+          <Text style={[styles.statValue, { color: theme.textPrimary }]}>
+            €{((forecastNext12Months > 0 ? forecastNext12Months : ttmDividends) / 12).toFixed(2)}
+          </Text>
           <Text style={styles.statSub}>Run-rate / mo</Text>
         </View>
       </View>
 
       {/* Monthly Chart */}
-      <View style={styles.chartCard}>
+      <View
+        style={[
+          styles.chartCard,
+          {
+            backgroundColor: theme.cardBg,
+            borderColor: theme.cardBorder,
+            borderWidth: isSketch ? 2 : 1,
+          },
+        ]}
+      >
         <View style={styles.cardHeaderRow}>
-          <Text style={styles.cardTitle}>Monthly Dividends</Text>
+          <View>
+            <Text style={[styles.cardTitle, { color: theme.textPrimary }]}>
+              Monthly Dividends
+            </Text>
+            <View style={styles.legendRow}>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: '#059669' }]} />
+                <Text style={styles.legendText}>Paid</Text>
+              </View>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: '#3b82f6' }]} />
+                <Text style={styles.legendText}>Forecast</Text>
+              </View>
+            </View>
+          </View>
           <Text style={styles.cardBadge}>{new Date().getFullYear()}</Text>
         </View>
 
         <View style={styles.barsContainer}>
           {monthlyDividends.map((item, idx) => {
-            const heightPercent = maxMonthly > 0 ? (item.received / maxMonthly) * 100 : 0;
+            const receivedPct = maxMonthly > 0 ? (item.received / maxMonthly) * 100 : 0;
+            const forecastPct = maxMonthly > 0 ? (item.forecast / maxMonthly) * 100 : 0;
+
             return (
               <View key={idx} style={styles.barCol}>
                 <View style={styles.barTrack}>
-                  <View
-                    style={[
-                      styles.barFill,
-                      { height: `${Math.max(4, Math.min(100, heightPercent))}%` },
-                      item.received > 0 ? styles.barActive : styles.barInactive,
-                    ]}
-                  />
+                  {forecastPct > 0 && (
+                    <View
+                      style={[
+                        styles.barFill,
+                        {
+                          height: `${Math.min(100, Math.max(3, forecastPct))}%`,
+                          backgroundColor: '#3b82f6',
+                          borderTopLeftRadius: 3,
+                          borderTopRightRadius: 3,
+                        },
+                      ]}
+                    />
+                  )}
+                  {receivedPct > 0 && (
+                    <View
+                      style={[
+                        styles.barFill,
+                        {
+                          height: `${Math.min(100, Math.max(3, receivedPct))}%`,
+                          backgroundColor: '#059669',
+                          borderTopLeftRadius: forecastPct > 0 ? 0 : 3,
+                          borderTopRightRadius: forecastPct > 0 ? 0 : 3,
+                        },
+                      ]}
+                    />
+                  )}
                 </View>
                 <Text style={styles.barLabel}>{item.month}</Text>
               </View>
@@ -164,29 +291,47 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       </View>
 
       {/* Recent Dividends */}
-      <View style={styles.recentCard}>
+      <View
+        style={[
+          styles.recentCard,
+          {
+            backgroundColor: theme.cardBg,
+            borderColor: theme.cardBorder,
+            borderWidth: isSketch ? 2 : 1,
+          },
+        ]}
+      >
         <View style={styles.cardHeaderRow}>
-          <Text style={styles.cardTitle}>Recent Dividends</Text>
+          <Text style={[styles.cardTitle, { color: theme.textPrimary }]}>
+            Recent Dividends
+          </Text>
           <TouchableOpacity onPress={() => onNavigateTab('calendar')}>
             <Text style={styles.seeAllText}>View Calendar</Text>
           </TouchableOpacity>
         </View>
 
-        {recentDividends.map((div, i) => (
-          <View key={i} style={styles.divRow}>
-            <StockLogo ticker={div.ticker} size={36} />
-            <View style={styles.divInfo}>
-              <Text style={styles.divTicker}>{div.ticker}</Text>
-              <Text style={styles.divName} numberOfLines={1}>
-                {div.company_name || div.ticker}
-              </Text>
+        {recentDividends.map((div, i) => {
+          const isForecast = div.status === 'EXPECTED' || div.status === 'FORECAST';
+          return (
+            <View key={i} style={styles.divRow}>
+              <StockLogo ticker={div.ticker} size={36} />
+              <View style={styles.divInfo}>
+                <Text style={[styles.divTicker, { color: theme.textPrimary }]}>{div.ticker}</Text>
+                <Text style={styles.divName} numberOfLines={1}>
+                  {div.company_name || div.ticker}
+                </Text>
+              </View>
+              <View style={styles.divAmountCol}>
+                <Text style={[styles.divAmount, isForecast && styles.divAmountForecast]}>
+                  +€{div.amount.toFixed(2)}
+                </Text>
+                <Text style={styles.divDate}>
+                  {div.payment_date} {isForecast ? '• EST' : ''}
+                </Text>
+              </View>
             </View>
-            <View style={styles.divAmountCol}>
-              <Text style={styles.divAmount}>+€{div.amount.toFixed(2)}</Text>
-              <Text style={styles.divDate}>{div.payment_date}</Text>
-            </View>
-          </View>
-        ))}
+          );
+        })}
       </View>
     </ScrollView>
   );
@@ -195,7 +340,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
   },
   content: {
     padding: 16,
@@ -283,7 +427,6 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: '#ffffff',
     borderRadius: 16,
     padding: 14,
     elevation: 2,
@@ -298,7 +441,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   statValue: {
-    color: '#0f172a',
     fontSize: 20,
     fontWeight: '800',
     marginVertical: 4,
@@ -308,7 +450,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
   },
   chartCard: {
-    backgroundColor: '#ffffff',
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
@@ -327,7 +468,26 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#0f172a',
+  },
+  legendRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 4,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  legendDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  legendText: {
+    fontSize: 10,
+    color: '#64748b',
+    fontWeight: '600',
   },
   cardBadge: {
     fontSize: 12,
@@ -349,8 +509,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   barTrack: {
-    width: 8,
-    height: 96,
+    width: 14,
+    height: 100,
     backgroundColor: '#f1f5f9',
     borderRadius: 4,
     justifyContent: 'flex-end',
@@ -358,22 +518,14 @@ const styles = StyleSheet.create({
   },
   barFill: {
     width: '100%',
-    borderRadius: 4,
-  },
-  barActive: {
-    backgroundColor: '#059669',
-  },
-  barInactive: {
-    backgroundColor: '#cbd5e1',
   },
   barLabel: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#64748b',
+    fontSize: 9,
+    color: '#94a3b8',
     marginTop: 6,
+    fontWeight: '600',
   },
   recentCard: {
-    backgroundColor: '#ffffff',
     borderRadius: 16,
     padding: 16,
     elevation: 2,
@@ -392,7 +544,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#f8fafc',
+    borderBottomColor: '#f1f5f9',
   },
   divInfo: {
     flex: 1,
@@ -400,43 +552,49 @@ const styles = StyleSheet.create({
   },
   divTicker: {
     fontSize: 14,
-    fontWeight: '700',
-    color: '#0f172a',
+    fontWeight: '800',
   },
   divName: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#64748b',
+    marginTop: 1,
   },
   divAmountCol: {
     alignItems: 'flex-end',
   },
   divAmount: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#059669',
   },
+  divAmountForecast: {
+    color: '#2563eb',
+  },
   divDate: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#94a3b8',
+    marginTop: 2,
   },
   emptyContainer: {
-    flex: 1,
-    padding: 24,
+    flexGrow: 1,
     justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
   },
   emptyCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 20,
-    padding: 28,
+    borderRadius: 24,
+    padding: 24,
     alignItems: 'center',
-    elevation: 3,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
   },
   emptyTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#0f172a',
-    marginTop: 16,
-    marginBottom: 8,
+    marginVertical: 12,
   },
   emptyText: {
     fontSize: 14,
@@ -446,14 +604,17 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   emptyButton: {
-    backgroundColor: '#2563eb',
-    paddingVertical: 12,
     paddingHorizontal: 24,
+    paddingVertical: 12,
     borderRadius: 12,
   },
   emptyButtonText: {
     color: '#ffffff',
     fontSize: 14,
     fontWeight: '700',
+  },
+  sketchBorder: {
+    borderWidth: 1,
+    borderColor: '#18181b',
   },
 });

@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useTheme } from '../../context/ThemeContext';
 import { DividendEvent } from '../../types';
 import { StockLogo } from '../common/StockLogo';
 
@@ -16,18 +17,12 @@ interface CalendarViewProps {
 }
 
 export const CalendarView: React.FC<CalendarViewProps> = ({ dividends }) => {
-  const [currentDate, setCurrentDate] = useState(() => {
-    // If we have dividends, find the latest dividend date, else current date
-    if (dividends.length > 0) {
-      const dates = dividends.map(d => d.payment_date).sort();
-      const latest = dates[dates.length - 1];
-      const d = new Date(latest);
-      if (!isNaN(d.getTime())) return d;
-    }
-    return new Date();
-  });
+  const { theme, isSketch } = useTheme();
 
+  // Default to today's month so current date is immediately visible
+  const [currentDate, setCurrentDate] = useState(() => new Date());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [filterType, setFilterType] = useState<'ALL' | 'RECEIVED' | 'EXPECTED'>('ALL');
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -47,17 +42,28 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ dividends }) => {
     setSelectedDay(null);
   };
 
+  const handleToday = () => {
+    setCurrentDate(new Date());
+    setSelectedDay(null);
+  };
+
+  // Filter dividends by selected tab
+  const filteredDividends = useMemo(() => {
+    if (filterType === 'ALL') return dividends;
+    return dividends.filter(d => (d.status === filterType || (filterType === 'EXPECTED' && d.status === 'FORECAST')));
+  }, [dividends, filterType]);
+
   // Group dividends by date: 'YYYY-MM-DD' -> DividendEvent[]
   const dateMap = useMemo(() => {
     const map = new Map<string, DividendEvent[]>();
-    for (const d of dividends) {
+    for (const d of filteredDividends) {
       const dateKey = (d.payment_date || '').slice(0, 10);
       if (!dateKey) continue;
       if (!map.has(dateKey)) map.set(dateKey, []);
       map.get(dateKey)!.push(d);
     }
     return map;
-  }, [dividends]);
+  }, [filteredDividends]);
 
   // Calendar cells calculation
   const calendarDays = useMemo(() => {
@@ -71,6 +77,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ dividends }) => {
       isCurrentMonth: boolean;
       events: DividendEvent[];
       totalAmount: number;
+      hasForecast: boolean;
+      hasReceived: boolean;
     }> = [];
 
     // Empty padding
@@ -81,6 +89,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ dividends }) => {
         isCurrentMonth: false,
         events: [],
         totalAmount: 0,
+        hasForecast: false,
+        hasReceived: false,
       });
     }
 
@@ -88,6 +98,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ dividends }) => {
       const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       const events = dateMap.get(dateKey) || [];
       const totalAmount = events.reduce((acc, e) => acc + e.amount, 0);
+      const hasForecast = events.some(e => e.status === 'EXPECTED' || e.status === 'FORECAST');
+      const hasReceived = events.some(e => e.status === 'RECEIVED');
 
       days.push({
         dayNum: day,
@@ -95,57 +107,130 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ dividends }) => {
         isCurrentMonth: true,
         events,
         totalAmount,
+        hasForecast,
+        hasReceived,
       });
     }
 
     return days;
   }, [year, month, dateMap]);
 
-  // Month Total
-  const monthTotal = useMemo(() => {
+  // Month KPI breakdown
+  const monthStats = useMemo(() => {
     const monthPrefix = `${year}-${String(month + 1).padStart(2, '0')}`;
-    let total = 0;
+    let receivedTotal = 0;
+    let forecastTotal = 0;
     let count = 0;
-    for (const [key, evts] of dateMap.entries()) {
-      if (key.startsWith(monthPrefix)) {
-        for (const e of evts) {
-          total += e.amount;
-          count++;
+
+    for (const d of dividends) {
+      const dateKey = (d.payment_date || '').slice(0, 7);
+      if (dateKey === monthPrefix) {
+        if (d.status === 'RECEIVED') {
+          receivedTotal += d.amount;
+        } else {
+          forecastTotal += d.amount;
         }
+        count++;
       }
     }
-    return { total, count };
-  }, [year, month, dateMap]);
+
+    return {
+      receivedTotal,
+      forecastTotal,
+      grandTotal: receivedTotal + forecastTotal,
+      count,
+    };
+  }, [year, month, dividends]);
 
   const selectedEvents = useMemo(() => {
     if (!selectedDay) return [];
     return dateMap.get(selectedDay) || [];
   }, [selectedDay, dateMap]);
 
+  const todayStr = useMemo(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  }, []);
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Month Navigation Strip */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.navBtn} onPress={handlePrevMonth}>
-          <MaterialCommunityIcons name="chevron-left" size={24} color="#1e293b" />
+      <View style={[styles.header, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder, borderBottomWidth: isSketch ? 2 : 1 }]}>
+        <TouchableOpacity style={[styles.navBtn, { borderColor: theme.cardBorder, borderWidth: isSketch ? 1 : 0 }]} onPress={handlePrevMonth}>
+          <MaterialCommunityIcons name="chevron-left" size={24} color={theme.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.monthTitle}>
-          {monthNames[month]} {year}
-        </Text>
-        <TouchableOpacity style={styles.navBtn} onPress={handleNextMonth}>
-          <MaterialCommunityIcons name="chevron-right" size={24} color="#1e293b" />
+        
+        <View style={styles.titleCenter}>
+          <Text style={[styles.monthTitle, { color: theme.textPrimary }]}>
+            {monthNames[month]} {year}
+          </Text>
+          <TouchableOpacity onPress={handleToday} style={[styles.todayBadge, isSketch && styles.sketchBorder]}>
+            <Text style={styles.todayText}>Today</Text>
+          </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity style={[styles.navBtn, { borderColor: theme.cardBorder, borderWidth: isSketch ? 1 : 0 }]} onPress={handleNextMonth}>
+          <MaterialCommunityIcons name="chevron-right" size={24} color={theme.textPrimary} />
+        </TouchableOpacity>
+      </View>
+
+      {/* Filter Tabs */}
+      <View style={styles.filterRow}>
+        <TouchableOpacity
+          style={[
+            styles.filterPill,
+            filterType === 'ALL' && styles.filterPillActive,
+            isSketch && styles.sketchBorder,
+          ]}
+          onPress={() => setFilterType('ALL')}
+        >
+          <Text style={[styles.filterPillText, filterType === 'ALL' && styles.filterPillTextActive]}>
+            All ({dividends.length})
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.filterPill,
+            filterType === 'RECEIVED' && styles.filterPillActiveReceived,
+            isSketch && styles.sketchBorder,
+          ]}
+          onPress={() => setFilterType('RECEIVED')}
+        >
+          <Text style={[styles.filterPillText, filterType === 'RECEIVED' && styles.filterPillTextActive]}>
+            Paid
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.filterPill,
+            filterType === 'EXPECTED' && styles.filterPillActiveForecast,
+            isSketch && styles.sketchBorder,
+          ]}
+          onPress={() => setFilterType('EXPECTED')}
+        >
+          <Text style={[styles.filterPillText, filterType === 'EXPECTED' && styles.filterPillTextActive]}>
+            Forecast
+          </Text>
         </TouchableOpacity>
       </View>
 
       {/* Month KPI Strip */}
       <View style={styles.kpiRow}>
-        <View style={styles.kpiBox}>
+        <View style={[styles.kpiBox, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder, borderWidth: isSketch ? 2 : 1 }]}>
           <Text style={styles.kpiLabel}>Month Total</Text>
-          <Text style={styles.kpiValue}>€{monthTotal.total.toFixed(2)}</Text>
+          <Text style={[styles.kpiValue, { color: theme.accent }]}>
+            €{monthStats.grandTotal.toFixed(2)}
+          </Text>
         </View>
-        <View style={styles.kpiBox}>
+        <View style={[styles.kpiBox, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder, borderWidth: isSketch ? 2 : 1 }]}>
+          <Text style={styles.kpiLabel}>Paid / Forecast</Text>
+          <Text style={styles.kpiSubValue}>
+            <Text style={{ color: '#059669' }}>€{monthStats.receivedTotal.toFixed(2)}</Text> / <Text style={{ color: '#3b82f6' }}>€{monthStats.forecastTotal.toFixed(2)}</Text>
+          </Text>
+        </View>
+        <View style={[styles.kpiBoxSmall, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder, borderWidth: isSketch ? 2 : 1 }]}>
           <Text style={styles.kpiLabel}>Payouts</Text>
-          <Text style={styles.kpiValue}>{monthTotal.count}</Text>
+          <Text style={styles.kpiCountValue}>{monthStats.count}</Text>
         </View>
       </View>
 
@@ -166,12 +251,19 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ dividends }) => {
           }
 
           const hasEvents = cell.events.length > 0;
+          const isToday = cell.dateKey === todayStr;
+
           return (
             <TouchableOpacity
               key={idx}
               style={[
                 styles.dayCell,
-                hasEvents && styles.dayCellWithEvents,
+                { backgroundColor: theme.cardBg, borderColor: theme.cardBorder },
+                isSketch && { borderWidth: 1 },
+                cell.hasReceived && styles.dayCellWithReceived,
+                cell.hasForecast && !cell.hasReceived && styles.dayCellWithForecast,
+                cell.hasReceived && cell.hasForecast && styles.dayCellWithBoth,
+                isToday && styles.dayCellToday,
                 selectedDay === cell.dateKey && styles.dayCellSelected,
               ]}
               onPress={() => setSelectedDay(cell.dateKey)}
@@ -181,12 +273,18 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ dividends }) => {
                 style={[
                   styles.dayNumText,
                   hasEvents && styles.dayNumTextHighlight,
+                  isToday && styles.dayNumTextToday,
                 ]}
               >
                 {cell.dayNum}
               </Text>
               {hasEvents && (
-                <View style={styles.eventBadge}>
+                <View
+                  style={[
+                    styles.eventBadge,
+                    cell.hasForecast && !cell.hasReceived && styles.eventBadgeForecast,
+                  ]}
+                >
                   <Text style={styles.eventBadgeText}>
                     €{cell.totalAmount >= 100 ? Math.round(cell.totalAmount) : cell.totalAmount.toFixed(1)}
                   </Text>
@@ -205,37 +303,56 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ dividends }) => {
         onRequestClose={() => setSelectedDay(null)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder, borderWidth: isSketch ? 2 : 0 }]}>
             <View style={styles.modalHeader}>
               <View>
-                <Text style={styles.modalTitle}>Dividends on {selectedDay}</Text>
+                <Text style={[styles.modalTitle, { color: theme.textPrimary }]}>
+                  Dividends on {selectedDay}
+                </Text>
                 <Text style={styles.modalSubtitle}>
-                  {selectedEvents.length} payout{selectedEvents.length > 1 ? 's' : ''} (Total: €{selectedEvents.reduce((a, b) => a + b.amount, 0).toFixed(2)})
+                  {selectedEvents.length} payout{selectedEvents.length > 1 ? 's' : ''} • Total: €{selectedEvents.reduce((a, b) => a + b.amount, 0).toFixed(2)}
                 </Text>
               </View>
               <TouchableOpacity onPress={() => setSelectedDay(null)} style={styles.closeBtn}>
-                <MaterialCommunityIcons name="close" size={20} color="#64748b" />
+                <MaterialCommunityIcons name="close" size={20} color={theme.textSecondary} />
               </TouchableOpacity>
             </View>
 
             <ScrollView style={styles.modalList}>
-              {selectedEvents.map((evt, i) => (
-                <View key={i} style={styles.eventItem}>
-                  <StockLogo ticker={evt.ticker} size={40} />
-                  <View style={styles.eventInfo}>
-                    <Text style={styles.eventTicker}>{evt.ticker}</Text>
-                    <Text style={styles.eventName} numberOfLines={1}>
-                      {evt.company_name || evt.ticker}
-                    </Text>
+              {selectedEvents.map((evt, i) => {
+                const isForecast = evt.status === 'EXPECTED' || evt.status === 'FORECAST';
+                return (
+                  <View key={i} style={styles.eventItem}>
+                    <StockLogo ticker={evt.ticker} size={40} />
+                    <View style={styles.eventInfo}>
+                      <Text style={[styles.eventTicker, { color: theme.textPrimary }]}>{evt.ticker}</Text>
+                      <Text style={styles.eventName} numberOfLines={1}>
+                        {evt.company_name || evt.ticker}
+                      </Text>
+                    </View>
+                    <View style={styles.eventAmountCol}>
+                      <Text style={[styles.eventAmount, isForecast && styles.eventAmountForecast]}>
+                        +€{evt.amount.toFixed(2)}
+                      </Text>
+                      <View
+                        style={[
+                          styles.eventStatusBadge,
+                          isForecast ? styles.eventStatusBadgeForecast : styles.eventStatusBadgePaid,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.eventStatusBadgeText,
+                            isForecast ? styles.eventStatusTextForecast : styles.eventStatusTextPaid,
+                          ]}
+                        >
+                          {isForecast ? 'FORECAST' : 'PAID'}
+                        </Text>
+                      </View>
+                    </View>
                   </View>
-                  <View style={styles.eventAmountCol}>
-                    <Text style={styles.eventAmount}>+€{evt.amount.toFixed(2)}</Text>
-                    <Text style={styles.eventStatusBadge}>
-                      {evt.status === 'RECEIVED' ? 'PAID' : 'FORECAST'}
-                    </Text>
-                  </View>
-                </View>
-              ))}
+                );
+              })}
             </ScrollView>
           </View>
         </View>
@@ -247,7 +364,6 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ dividends }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
   },
   header: {
     flexDirection: 'row',
@@ -255,9 +371,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
+  },
+  titleCenter: {
+    alignItems: 'center',
   },
   navBtn: {
     padding: 6,
@@ -267,29 +383,84 @@ const styles = StyleSheet.create({
   monthTitle: {
     fontSize: 17,
     fontWeight: '800',
-    color: '#0f172a',
+  },
+  todayBadge: {
+    marginTop: 2,
+    backgroundColor: '#eff6ff',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  todayText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#2563eb',
+  },
+  filterRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    gap: 8,
+  },
+  filterPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#f1f5f9',
+  },
+  filterPillActive: {
+    backgroundColor: '#0f172a',
+  },
+  filterPillActiveReceived: {
+    backgroundColor: '#059669',
+  },
+  filterPillActiveForecast: {
+    backgroundColor: '#2563eb',
+  },
+  filterPillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#64748b',
+  },
+  filterPillTextActive: {
+    color: '#ffffff',
   },
   kpiRow: {
     flexDirection: 'row',
-    gap: 12,
-    padding: 16,
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingBottom: 12,
   },
   kpiBox: {
-    flex: 1,
-    backgroundColor: '#ffffff',
+    flex: 2,
     borderRadius: 12,
-    padding: 12,
-    elevation: 1,
+    padding: 10,
+  },
+  kpiBoxSmall: {
+    flex: 1,
+    borderRadius: 12,
+    padding: 10,
+    alignItems: 'center',
   },
   kpiLabel: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#64748b',
     fontWeight: '600',
   },
   kpiValue: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '800',
-    color: '#059669',
+    marginTop: 2,
+  },
+  kpiSubValue: {
+    fontSize: 13,
+    fontWeight: '800',
+    marginTop: 2,
+  },
+  kpiCountValue: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0f172a',
     marginTop: 2,
   },
   weekDaysRow: {
@@ -323,16 +494,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 8,
-    backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: '#f1f5f9',
   },
-  dayCellWithEvents: {
+  dayCellWithReceived: {
     backgroundColor: '#ecfdf5',
     borderColor: '#a7f3d0',
   },
-  dayCellSelected: {
+  dayCellWithForecast: {
+    backgroundColor: '#eff6ff',
+    borderColor: '#bfdbfe',
+  },
+  dayCellWithBoth: {
+    backgroundColor: '#f0fdf4',
+    borderColor: '#6ee7b7',
+  },
+  dayCellToday: {
+    borderWidth: 2,
     borderColor: '#2563eb',
+  },
+  dayCellSelected: {
+    borderColor: '#f59e0b',
     borderWidth: 2,
   },
   dayNumText: {
@@ -341,8 +522,11 @@ const styles = StyleSheet.create({
     color: '#475569',
   },
   dayNumTextHighlight: {
-    color: '#065f46',
     fontWeight: '800',
+  },
+  dayNumTextToday: {
+    color: '#2563eb',
+    fontWeight: '900',
   },
   eventBadge: {
     backgroundColor: '#059669',
@@ -350,6 +534,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 3,
     paddingVertical: 1,
     marginTop: 2,
+  },
+  eventBadgeForecast: {
+    backgroundColor: '#2563eb',
   },
   eventBadgeText: {
     color: '#ffffff',
@@ -362,7 +549,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#ffffff',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 20,
@@ -379,7 +565,6 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#0f172a',
   },
   modalSubtitle: {
     fontSize: 12,
@@ -408,7 +593,6 @@ const styles = StyleSheet.create({
   eventTicker: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#0f172a',
   },
   eventName: {
     fontSize: 12,
@@ -423,14 +607,33 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#059669',
   },
+  eventAmountForecast: {
+    color: '#2563eb',
+  },
   eventStatusBadge: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: '#047857',
-    backgroundColor: '#d1fae5',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
     marginTop: 4,
+  },
+  eventStatusBadgePaid: {
+    backgroundColor: '#d1fae5',
+  },
+  eventStatusBadgeForecast: {
+    backgroundColor: '#dbeafe',
+  },
+  eventStatusBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  eventStatusTextPaid: {
+    color: '#047857',
+  },
+  eventStatusTextForecast: {
+    color: '#1d4ed8',
+  },
+  sketchBorder: {
+    borderWidth: 1,
+    borderColor: '#18181b',
   },
 });

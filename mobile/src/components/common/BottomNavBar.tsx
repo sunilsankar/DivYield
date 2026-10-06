@@ -2,6 +2,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '../../context/ThemeContext';
 import { TabKey } from '../../types';
 
 interface BottomNavBarProps {
@@ -11,6 +12,7 @@ interface BottomNavBarProps {
 
 export const BottomNavBar: React.FC<BottomNavBarProps> = ({ currentTab, onTabChange }) => {
   const insets = useSafeAreaInsets();
+  const { theme, isSketch } = useTheme();
 
   const tabs: Array<{
     key: TabKey;
@@ -38,7 +40,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ currentTab, onTabCha
     },
     {
       key: 'analytics',
-      label: 'Analytics',
+      label: 'Diversification',
       icon: 'chart-pie',
       iconActive: 'chart-pie',
     },
@@ -51,7 +53,17 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ currentTab, onTabCha
   ];
 
   return (
-    <View style={[styles.container, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+    <View
+      style={[
+        styles.container,
+        {
+          paddingBottom: Math.max(insets.bottom, 8),
+          backgroundColor: theme.cardBg,
+          borderTopColor: theme.cardBorder,
+          borderTopWidth: isSketch ? 2 : 1,
+        },
+      ]}
+    >
       {tabs.map(tab => {
         const isActive = currentTab === tab.key;
         return (
@@ -61,14 +73,30 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ currentTab, onTabCha
             onPress={() => onTabChange(tab.key)}
             activeOpacity={0.7}
           >
-            <View style={[styles.iconPill, isActive && styles.iconPillActive]}>
+            <View
+              style={[
+                styles.iconPill,
+                isActive && {
+                  backgroundColor: isSketch ? '#fef3c7' : '#dbeafe',
+                  borderWidth: isSketch ? 1 : 0,
+                  borderColor: '#18181b',
+                },
+              ]}
+            >
               <MaterialCommunityIcons
                 name={isActive ? tab.iconActive : tab.icon}
                 size={22}
-                color={isActive ? '#1d4ed8' : '#64748b'}
+                color={isActive ? theme.accent : theme.textSecondary}
               />
             </View>
-            <Text style={[styles.label, isActive && styles.labelActive]}>
+            <Text
+              style={[
+                styles.label,
+                { color: isActive ? theme.accent : theme.textSecondary },
+                isActive && styles.labelActive,
+              ]}
+              numberOfLines={1}
+            >
               {tab.label}
             </Text>
           </TouchableOpacity>
@@ -81,37 +109,34 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ currentTab, onTabCha
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    backgroundColor: '#ffffff',
-    borderTopWidth: 1,
-    borderTopColor: '#f1f5f9',
+    alignItems: 'center',
+    justifyContent: 'space-around',
     paddingTop: 8,
     elevation: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
   },
   tabItem: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: 2,
   },
   iconPill: {
     paddingHorizontal: 16,
     paddingVertical: 4,
     borderRadius: 16,
-    marginBottom: 4,
-  },
-  iconPillActive: {
-    backgroundColor: '#eff6ff',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   label: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '600',
-    color: '#64748b',
+    marginTop: 2,
   },
   labelActive: {
-    color: '#1d4ed8',
-    fontWeight: '700',
+    fontWeight: '800',
   },
 });
