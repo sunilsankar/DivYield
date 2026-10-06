@@ -516,6 +516,19 @@ export async function exportAllDataAsCsv(): Promise<string> {
   return lines.join('\n');
 }
 
+export async function getUpcomingForecastDividends(limit: number = 50): Promise<DividendEvent[]> {
+  const db = await getDb();
+  const today = new Date().toISOString().slice(0, 10);
+  return db.getAllAsync<DividendEvent>(
+    `SELECT * FROM dividend_events
+     WHERE status = 'EXPECTED' AND payment_date >= ?
+     ORDER BY payment_date ASC
+     LIMIT ?`,
+    today,
+    limit
+  );
+}
+
 export async function clearDatabase(): Promise<void> {
   const db = await getDb();
   await db.execAsync(`

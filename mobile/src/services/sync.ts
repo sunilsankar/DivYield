@@ -11,6 +11,7 @@ import {
 import { getCredentials } from './secureStore';
 import { Trading212Client } from './trading212';
 import { enrichInstrument } from './yfinance';
+import { scheduleUpcomingDividends } from './notifications';
 
 let isSyncingActive = false;
 
@@ -284,6 +285,12 @@ export async function runSync(onProgress?: (progress: SyncProgress) => void): Pr
       'success',
       holdings.length + divEvents.length + forecastDividends.length
     );
+
+    try {
+      await scheduleUpcomingDividends();
+    } catch {
+      // ignore notification schedule warning
+    }
 
     return {
       success: true,

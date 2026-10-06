@@ -24,6 +24,11 @@ import {
   saveCredentials,
 } from '../../services/secureStore';
 import { Trading212Client } from '../../services/trading212';
+import {
+  disableNotifications,
+  isNotificationsEnabled,
+  requestNotificationPermission,
+} from '../../services/notifications';
 
 interface SettingsViewProps {
   onRefreshData: () => void;
@@ -42,11 +47,39 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onRefreshData }) => 
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [dbStats, setDbStats] = useState({ holdings: 0, transactions: 0, dividends: 0 });
+  const [notificationsActive, setNotificationsActive] = useState(false);
 
   useEffect(() => {
     loadCreds();
     loadStats();
+    loadNotificationStatus();
   }, []);
+
+  const loadNotificationStatus = async () => {
+    const active = await isNotificationsEnabled();
+    setNotificationsActive(active);
+  };
+
+  const handleToggleNotifications = async (val: boolean) => {
+    if (val) {
+      const granted = await requestNotificationPermission();
+      setNotificationsActive(granted);
+      if (!granted) {
+        Alert.alert(
+          'Permission Required',
+          'Notification permission was not granted. Please enable notifications for DivYield in your device Settings.'
+        );
+      } else {
+        Alert.alert(
+          'Alerts Enabled',
+          'You will receive reminders at 9:00 AM on scheduled dividend payment dates.'
+        );
+      }
+    } else {
+      await disableNotifications();
+      setNotificationsActive(false);
+    }
+  };
 
   const loadCreds = async () => {
     const creds = await getCredentials();
@@ -358,6 +391,37 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onRefreshData }) => 
               Sketch
             </Text>
           </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Dividend Notifications */}
+      <View
+        style={[
+          styles.card,
+          {
+            backgroundColor: theme.cardBg,
+            borderColor: theme.cardBorder,
+            borderWidth: isSketch ? 2 : 1,
+          },
+        ]}
+      >
+        <View style={styles.cardHeader}>
+          <MaterialCommunityIcons name="bell-ring-outline" size={24} color="#f59e0b" />
+          <Text style={[styles.cardTitle, { color: theme.textPrimary }]}>Dividend Alerts</Text>
+        </View>
+        <Text style={styles.themeSub}>
+          Receive local reminders at 9:00 AM on the day scheduled dividend payouts are due.
+        </Text>
+        <View style={styles.notificationRow}>
+          <Text style={[styles.notificationLabel, { color: theme.textPrimary }]}>
+            Upcoming Payout Reminders
+          </Text>
+          <Switch
+            value={notificationsActive}
+            onValueChange={handleToggleNotifications}
+            trackColor={{ false: '#cbd5e1', true: theme.accent }}
+            thumbColor="#ffffff"
+          />
         </View>
       </View>
 
@@ -963,6 +1027,16 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 15,
     fontWeight: '800',
+  },
+  notificationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+  },
+  notificationLabel: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   sketchBorder: {
     borderWidth: 1,
