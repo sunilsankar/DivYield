@@ -1,7 +1,7 @@
 import os
 import sys
+from dataclasses import dataclass, field
 from pathlib import Path
-from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 def get_data_dir() -> Path:
@@ -29,22 +29,23 @@ def get_data_dir() -> Path:
     data_dir.mkdir(parents=True, exist_ok=True)
     return data_dir
 
-class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
+@dataclass
+class Settings:
     app_name: str = "DivYield"
     app_version: str = "0.1.0-beta"
     api_v1_prefix: str = "/api/v1"
-    cors_origins: list[str] = [
+    cors_origins: list[str] = field(default_factory=lambda: [
         "http://localhost:5173",
         "http://127.0.0.1:5173",
         "http://localhost:3000",
         "http://localhost:8000",
         "http://127.0.0.1:8000",
-    ]
-    base_dir: Path = Path(__file__).resolve().parent.parent.parent
-    data_dir: Path = get_data_dir()
-    db_path: Path = get_data_dir() / "divyield.db"
-    log_path: Path = get_data_dir() / "divyield.log"
+    ])
+    base_dir: Path = field(default_factory=lambda: Path(__file__).resolve().parent.parent.parent)
+    data_dir: Path = field(default_factory=get_data_dir)
+    db_path: Path = field(default_factory=lambda: get_data_dir() / "divyield.db")
+    log_path: Path = field(default_factory=lambda: get_data_dir() / "divyield.log")
+
 
 settings = Settings()

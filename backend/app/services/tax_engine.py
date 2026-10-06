@@ -34,15 +34,7 @@ NETHERLANDS_TAX_RULES: Dict[int, Dict[str, Any]] = {
 }
 
 
-class TaxCalculator:
-    """Base abstract tax calculator."""
-    jurisdiction: str = "Generic"
-
-    def calculate(self, *args, **kwargs) -> Dict[str, Any]:
-        raise NotImplementedError
-
-
-class NetherlandsTaxCalculator(TaxCalculator):
+class NetherlandsTaxCalculator:
     """
     Implements Box 3 (Savings & Investments) wealth tax calculations for the Netherlands.
     Rules are versioned by tax year and strictly outputted as estimates.

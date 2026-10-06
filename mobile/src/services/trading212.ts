@@ -1,9 +1,5 @@
 import { Trading212Credentials } from '../types';
 
-function encodeBase64(str: string): string {
-  return btoa(str);
-}
-
 export class Trading212Client {
   private apiKey: string;
   private apiSecret?: string;
@@ -21,9 +17,7 @@ export class Trading212Client {
   private getAuthHeader(): string {
     if (this.apiSecret) {
       // Basic auth
-      const token = `${this.apiKey}:${this.apiSecret}`;
-      const encoded = encodeBase64(token);
-      return `Basic ${encoded}`;
+      return `Basic ${btoa(`${this.apiKey}:${this.apiSecret}`)}`;
     }
     return this.apiKey;
   }

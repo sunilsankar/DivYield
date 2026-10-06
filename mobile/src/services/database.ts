@@ -2,19 +2,30 @@ import * as SQLite from 'expo-sqlite';
 import { DividendEvent, Holding, PortfolioSummary, Transaction } from '../types';
 
 let dbInstance: SQLite.SQLiteDatabase | null = null;
+let dbInitPromise: Promise<SQLite.SQLiteDatabase> | null = null;
 
 export async function getDb(): Promise<SQLite.SQLiteDatabase> {
-  if (!dbInstance) {
-    dbInstance = await SQLite.openDatabaseAsync('divyield.db');
-    await initDatabase(dbInstance);
+  if (dbInstance) {
+    return dbInstance;
   }
-  return dbInstance;
+  if (!dbInitPromise) {
+    dbInitPromise = (async () => {
+      try {
+        const db = await SQLite.openDatabaseAsync('divyield.db');
+        await initDatabase(db);
+        dbInstance = db;
+        return db;
+      } catch (err) {
+        dbInitPromise = null;
+        throw err;
+      }
+    })();
+  }
+  return dbInitPromise;
 }
 
-export async function initDatabase(db?: SQLite.SQLiteDatabase): Promise<void> {
-  const targetDb = db || (await SQLite.openDatabaseAsync('divyield.db'));
-
-  await targetDb.execAsync(`
+export async function initDatabase(db: SQLite.SQLiteDatabase): Promise<void> {
+  await db.execAsync(`
     PRAGMA journal_mode = WAL;
 
     CREATE TABLE IF NOT EXISTS holdings (
@@ -90,7 +101,7 @@ export async function initDatabase(db?: SQLite.SQLiteDatabase): Promise<void> {
 
 export async function getSetting(key: string, defaultValue: string = ''): Promise<string> {
   const db = await getDb();
-  const row = await db.getFirstAsync<{ value: string }>('SELECT value FROM settings WHERE key = ?', [key]);
+  const row = await db.getFirstAsync<{ value: string }>('SELECT value FROM settings WHERE key = ?', key);
   return row ? row.value : defaultValue;
 }
 
@@ -99,7 +110,8 @@ export async function setSetting(key: string, value: string): Promise<void> {
   await db.runAsync(
     `INSERT INTO settings (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)
      ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP`,
-    [key, value]
+    key,
+    value
   );
 }
 
@@ -160,7 +172,7 @@ export async function getTransactions(limit: number = 100): Promise<Transaction[
     SELECT * FROM transactions
     ORDER BY date DESC
     LIMIT ?
-  `, [limit]);
+  `, limit);
 }
 
 export async function getStats(): Promise<{ holdings: number; dividends: number; transactions: number }> {
@@ -210,7 +222,7 @@ export async function getMonthlyDividends(year?: number): Promise<{ month: strin
     FROM dividend_events
     WHERE strftime('%Y', payment_date) = ?
     GROUP BY strftime('%m', payment_date), status
-  `, [String(targetYear)]);
+  `, String(targetYear));
 
   for (const row of rows) {
     const idx = parseInt(row.month_num, 10) - 1;
@@ -228,117 +240,143 @@ export async function getMonthlyDividends(year?: number): Promise<{ month: strin
 
 export async function batchUpsertHoldings(holdings: Holding[]): Promise<void> {
   const db = await getDb();
-  await db.withTransactionAsync(async () => {
-    // Delete stale holdings not in current set
-    const currentTickers = holdings.map(h => h.ticker);
-    if (currentTickers.length > 0) {
-      const placeholders = currentTickers.map(() => '?').join(',');
-      await db.runAsync(`DELETE FROM holdings WHERE ticker NOT IN (${placeholders})`, currentTickers);
-    }
 
-    for (const h of holdings) {
-      await db.runAsync(`
-        INSERT INTO holdings (
-          ticker, name, isin, quantity, average_price, current_price,
-          market_value, currency, fx_rate, ppl, sector, industry,
-          dividend_yield, annual_dividend, payout_frequency, provider, external_id, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-        ON CONFLICT(provider, external_id) DO UPDATE SET
-          name = excluded.name,
-          isin = excluded.isin,
-          quantity = excluded.quantity,
-          average_price = excluded.average_price,
-          current_price = excluded.current_price,
-          market_value = excluded.market_value,
-          currency = excluded.currency,
-          fx_rate = excluded.fx_rate,
-          ppl = excluded.ppl,
-          sector = COALESCE(excluded.sector, holdings.sector),
-          industry = COALESCE(excluded.industry, holdings.industry),
-          dividend_yield = COALESCE(excluded.dividend_yield, holdings.dividend_yield),
-          annual_dividend = COALESCE(excluded.annual_dividend, holdings.annual_dividend),
-          payout_frequency = COALESCE(excluded.payout_frequency, holdings.payout_frequency),
-          updated_at = CURRENT_TIMESTAMP
-      `, [
-        h.ticker,
-        h.name || null,
-        h.isin || null,
-        h.quantity,
-        h.average_price,
-        h.current_price,
-        h.market_value,
-        h.currency || 'EUR',
-        h.fx_rate || 1.0,
-        h.ppl || 0,
-        h.sector || null,
-        h.industry || null,
-        h.dividend_yield || 0,
-        h.annual_dividend || 0,
-        h.payout_frequency || null,
-        h.provider || 'TRADING212',
-        h.external_id || h.ticker,
-      ]);
-    }
-  });
+  // Delete stale holdings not in current set
+  const currentTickers = holdings.map(h => h.ticker);
+  if (currentTickers.length > 0) {
+    const placeholders = currentTickers.map(() => '?').join(',');
+    await db.runAsync(`DELETE FROM holdings WHERE ticker NOT IN (${placeholders})`, ...currentTickers);
+  }
+
+  if (holdings.length === 0) return;
+
+  const insertSql = `
+    INSERT INTO holdings (
+      ticker, name, isin, quantity, average_price, current_price,
+      market_value, currency, fx_rate, ppl, sector, industry,
+      dividend_yield, annual_dividend, payout_frequency, provider, external_id, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(provider, external_id) DO UPDATE SET
+      name = excluded.name,
+      isin = excluded.isin,
+      quantity = excluded.quantity,
+      average_price = excluded.average_price,
+      current_price = excluded.current_price,
+      market_value = excluded.market_value,
+      currency = excluded.currency,
+      fx_rate = excluded.fx_rate,
+      ppl = excluded.ppl,
+      sector = COALESCE(excluded.sector, holdings.sector),
+      industry = COALESCE(excluded.industry, holdings.industry),
+      dividend_yield = COALESCE(excluded.dividend_yield, holdings.dividend_yield),
+      annual_dividend = COALESCE(excluded.annual_dividend, holdings.annual_dividend),
+      payout_frequency = COALESCE(excluded.payout_frequency, holdings.payout_frequency),
+      updated_at = CURRENT_TIMESTAMP
+  `;
+
+  const statement = await db.prepareAsync(insertSql);
+  try {
+    await db.withExclusiveTransactionAsync(async () => {
+      for (const h of holdings) {
+        await statement.executeAsync([
+          h.ticker,
+          h.name ?? null,
+          h.isin ?? null,
+          h.quantity ?? 0,
+          h.average_price ?? 0,
+          h.current_price ?? 0,
+          h.market_value ?? 0,
+          h.currency ?? 'EUR',
+          h.fx_rate ?? 1.0,
+          h.ppl ?? 0,
+          h.sector ?? null,
+          h.industry ?? null,
+          h.dividend_yield ?? 0,
+          h.annual_dividend ?? 0,
+          h.payout_frequency ?? null,
+          h.provider ?? 'TRADING212',
+          h.external_id ?? h.ticker,
+        ]);
+      }
+    });
+  } finally {
+    await statement.finalizeAsync();
+  }
 }
 
 export async function batchUpsertTransactions(txs: Transaction[]): Promise<void> {
+  if (txs.length === 0) return;
   const db = await getDb();
-  await db.withTransactionAsync(async () => {
-    for (const tx of txs) {
-      await db.runAsync(`
-        INSERT INTO transactions (
-          type, ticker, quantity, price, total_amount, currency, date, provider, external_id, notes
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(external_id) DO UPDATE SET
-          type = excluded.type,
-          ticker = excluded.ticker,
-          quantity = excluded.quantity,
-          price = excluded.price,
-          total_amount = excluded.total_amount,
-          currency = excluded.currency,
-          date = excluded.date,
-          notes = excluded.notes
-      `, [
-        tx.type,
-        tx.ticker || null,
-        tx.quantity || null,
-        tx.price || null,
-        tx.total_amount,
-        tx.currency || 'EUR',
-        tx.date,
-        tx.provider || 'TRADING212',
-        tx.external_id || null,
-        tx.notes || null,
-      ]);
-    }
-  });
+  const insertSql = `
+    INSERT INTO transactions (
+      type, ticker, quantity, price, total_amount, currency, date, provider, external_id, notes
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(external_id) DO UPDATE SET
+      type = excluded.type,
+      ticker = excluded.ticker,
+      quantity = excluded.quantity,
+      price = excluded.price,
+      total_amount = excluded.total_amount,
+      currency = excluded.currency,
+      date = excluded.date,
+      notes = excluded.notes
+  `;
+
+  const statement = await db.prepareAsync(insertSql);
+  try {
+    await db.withExclusiveTransactionAsync(async () => {
+      for (const tx of txs) {
+        await statement.executeAsync([
+          tx.type,
+          tx.ticker ?? null,
+          tx.quantity ?? null,
+          tx.price ?? null,
+          tx.total_amount ?? 0,
+          tx.currency ?? 'EUR',
+          tx.date,
+          tx.provider ?? 'TRADING212',
+          tx.external_id ?? null,
+          tx.notes ?? null,
+        ]);
+      }
+    });
+  } finally {
+    await statement.finalizeAsync();
+  }
 }
 
 export async function batchUpsertDividends(divs: DividendEvent[]): Promise<void> {
+  if (divs.length === 0) return;
   const db = await getDb();
-  await db.withTransactionAsync(async () => {
-    for (const d of divs) {
-      await db.runAsync(`
-        INSERT INTO dividend_events (
-          ticker, amount, currency, payment_date, status, source, external_id, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-        ON CONFLICT(source, external_id) DO UPDATE SET
-          amount = excluded.amount,
-          currency = excluded.currency,
-          payment_date = excluded.payment_date,
-          status = excluded.status
-      `, [
-        d.ticker,
-        d.amount,
-        d.currency || 'EUR',
-        d.payment_date,
-        d.status,
-        d.source || 'TRADING212',
-        d.external_id || `${d.ticker}_${d.payment_date}`,
-      ]);
-    }
-  });
+  const insertSql = `
+    INSERT INTO dividend_events (
+      ticker, amount, currency, payment_date, status, source, external_id, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(source, external_id) DO UPDATE SET
+      amount = excluded.amount,
+      currency = excluded.currency,
+      payment_date = excluded.payment_date,
+      status = excluded.status
+  `;
+
+  const statement = await db.prepareAsync(insertSql);
+  try {
+    await db.withExclusiveTransactionAsync(async () => {
+      for (const d of divs) {
+        await statement.executeAsync([
+          d.ticker,
+          d.amount ?? 0,
+          d.currency ?? 'EUR',
+          d.payment_date,
+          d.status ?? 'RECEIVED',
+          d.source ?? 'TRADING212',
+          d.external_id ?? `${d.ticker}_${d.payment_date}`,
+        ]);
+      }
+    });
+  } finally {
+    await statement.finalizeAsync();
+  }
 }
 
 export async function updateHoldingEnrichment(
@@ -362,40 +400,50 @@ export async function updateHoldingEnrichment(
       payout_frequency = COALESCE(?, payout_frequency),
       updated_at = CURRENT_TIMESTAMP
     WHERE ticker = ?
-  `, [
-    enrichment.sector || null,
-    enrichment.industry || null,
+  `,
+    enrichment.sector ?? null,
+    enrichment.industry ?? null,
     enrichment.dividend_yield ?? null,
     enrichment.annual_dividend ?? null,
-    enrichment.payout_frequency || null,
+    enrichment.payout_frequency ?? null,
     ticker
-  ]);
+  );
 }
 
 export async function replaceForecastDividends(forecasts: DividendEvent[]): Promise<void> {
   const db = await getDb();
-  await db.withTransactionAsync(async () => {
-    // Clean old YFINANCE forecast events so we don't accumulate duplicates or stale projections
-    await db.runAsync(`DELETE FROM dividend_events WHERE source = 'YFINANCE' AND status = 'EXPECTED'`);
-    for (const d of forecasts) {
-      await db.runAsync(`
-        INSERT INTO dividend_events (
-          ticker, amount, currency, payment_date, status, source, external_id, created_at
-        ) VALUES (?, ?, ?, ?, 'EXPECTED', 'YFINANCE', ?, CURRENT_TIMESTAMP)
-        ON CONFLICT(source, external_id) DO UPDATE SET
-          amount = excluded.amount,
-          currency = excluded.currency,
-          payment_date = excluded.payment_date,
-          status = 'EXPECTED'
-      `, [
-        d.ticker,
-        d.amount,
-        d.currency || 'EUR',
-        d.payment_date,
-        d.external_id || `yf_${d.ticker}_${d.payment_date}`,
-      ]);
-    }
-  });
+  // Clean old YFINANCE forecast events so we don't accumulate duplicates or stale projections
+  await db.runAsync(`DELETE FROM dividend_events WHERE source = 'YFINANCE' AND status = 'EXPECTED'`);
+
+  if (forecasts.length === 0) return;
+
+  const insertSql = `
+    INSERT INTO dividend_events (
+      ticker, amount, currency, payment_date, status, source, external_id, created_at
+    ) VALUES (?, ?, ?, ?, 'EXPECTED', 'YFINANCE', ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(source, external_id) DO UPDATE SET
+      amount = excluded.amount,
+      currency = excluded.currency,
+      payment_date = excluded.payment_date,
+      status = 'EXPECTED'
+  `;
+
+  const statement = await db.prepareAsync(insertSql);
+  try {
+    await db.withExclusiveTransactionAsync(async () => {
+      for (const d of forecasts) {
+        await statement.executeAsync([
+          d.ticker,
+          d.amount ?? 0,
+          d.currency ?? 'EUR',
+          d.payment_date,
+          d.external_id ?? `yf_${d.ticker}_${d.payment_date}`,
+        ]);
+      }
+    });
+  } finally {
+    await statement.finalizeAsync();
+  }
 }
 
 export async function exportAllDataAsCsv(): Promise<string> {

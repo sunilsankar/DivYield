@@ -163,6 +163,6 @@ def total_interest_ytd(year: Optional[int] = None) -> float:
 def _parse_date(value: str) -> Optional[date]:
     """Parse an ISO date string. Returns None on failure."""
     try:
-        return datetime.strptime(value[:10], "%Y-%m-%d").date()
+        return date.fromisoformat(value[:10])
     except (ValueError, TypeError):
         return None

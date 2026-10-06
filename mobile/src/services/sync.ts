@@ -280,7 +280,9 @@ export async function runSync(onProgress?: (progress: SyncProgress) => void): Pr
     const db = await getDb();
     await db.runAsync(
       `INSERT INTO sync_log (provider, status, items_synced) VALUES (?, ?, ?)`,
-      ['TRADING212', 'success', holdings.length + divEvents.length + forecastDividends.length]
+      'TRADING212',
+      'success',
+      holdings.length + divEvents.length + forecastDividends.length
     );
 
     return {
@@ -291,11 +293,18 @@ export async function runSync(onProgress?: (progress: SyncProgress) => void): Pr
     };
   } catch (err: any) {
     const errorMsg = err.message || 'Sync failed';
-    const db = await getDb();
-    await db.runAsync(
-      `INSERT INTO sync_log (provider, status, items_synced, error_message) VALUES (?, ?, ?, ?)`,
-      ['TRADING212', 'error', 0, errorMsg]
-    );
+    try {
+      const db = await getDb();
+      await db.runAsync(
+        `INSERT INTO sync_log (provider, status, items_synced, error_message) VALUES (?, ?, ?, ?)`,
+        'TRADING212',
+        'error',
+        0,
+        errorMsg
+      );
+    } catch {
+      // ignore logging failure during error
+    }
     throw err;
   } finally {
     isSyncingActive = false;

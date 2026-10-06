@@ -343,14 +343,6 @@ export function getDataToolsExportUrl(dataset: "holdings" | "transactions" | "di
   return `${API_BASE}/data-tools/export.csv?dataset=${dataset}`;
 }
 
-export function getExportTransactionsUrl(): string {
-  return `${API_BASE}/export/transactions`;
-}
-
-export function getExportDividendsUrl(): string {
-  return `${API_BASE}/export/dividends`;
-}
-
 export function getExportYahooUrl(): string {
   return `${API_BASE}/export/yahoo`;
 }
