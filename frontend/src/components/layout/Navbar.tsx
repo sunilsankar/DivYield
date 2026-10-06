@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { RefreshCw, ShieldCheck, Database, KeyRound, CheckCircle2, Palette, PenTool, ArrowUpCircle } from "lucide-react";
+import { RefreshCw, ShieldCheck, Database, KeyRound, CheckCircle2, Palette, PenTool, ArrowUpCircle, Lock } from "lucide-react";
 import { HealthStatus, ConnectionsResponse, UpdateCheckResult } from "@/types";
 import { useTheme } from "@/context/ThemeContext";
 import { DisplayPreferencesModal } from "@/components/settings/DisplayPreferencesModal";
@@ -14,6 +14,8 @@ interface NavbarProps {
   connections?: ConnectionsResponse | null;
   onOpenConnections?: () => void;
   updateInfo?: UpdateCheckResult | null;
+  hasPassword?: boolean;
+  onLock?: () => void;
   syncProgress?: {
     currentStep: number;
     totalSteps: number;
@@ -31,6 +33,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   connections,
   onOpenConnections,
   updateInfo,
+  hasPassword,
+  onLock,
   syncProgress,
 }) => {
   const { styleTheme, setStyleTheme } = useTheme();
@@ -167,6 +171,18 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               <Palette className="w-4 h-4 text-primary" />
             </button>
+
+            {/* Lock Application Button */}
+            {hasPassword && onLock && (
+              <button
+                type="button"
+                onClick={onLock}
+                title="Lock Application Now"
+                className="p-1.5 rounded-lg border border-black/[0.08] bg-black/[0.03] hover:bg-black/[0.06] text-slate-700 hover:text-slate-900 transition-colors"
+              >
+                <Lock className="w-4 h-4 text-slate-700" />
+              </button>
+            )}
 
             <div className="text-right hidden sm:block ml-1">
               <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400 block leading-none">

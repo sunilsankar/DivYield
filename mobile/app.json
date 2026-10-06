@@ -31,7 +31,8 @@
     "plugins": [
       "expo-sqlite",
       "expo-secure-store",
-      "expo-notifications"
+      "expo-notifications",
+      "expo-local-authentication"
     ]
   }
 }

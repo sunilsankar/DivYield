@@ -9,7 +9,7 @@ from fastapi.responses import FileResponse
 from app.config import settings
 from app.database import init_db
 from app.logging_config import setup_logging
-from app.routers import health, credentials, portfolio, transactions, dividends, sync, analytics, tax, data_tools, export, mappings, system
+from app.routers import health, credentials, portfolio, transactions, dividends, sync, analytics, tax, data_tools, export, mappings, system, security
 
 
 @asynccontextmanager
@@ -46,6 +46,7 @@ app.include_router(data_tools.router, prefix=settings.api_v1_prefix)
 app.include_router(export.router, prefix=settings.api_v1_prefix)
 app.include_router(mappings.router, prefix=settings.api_v1_prefix)
 app.include_router(system.router, prefix=settings.api_v1_prefix)
+app.include_router(security.router, prefix=settings.api_v1_prefix)
 
 # Serve React frontend if running in packaged desktop mode or dist exists
 frontend_dist = None

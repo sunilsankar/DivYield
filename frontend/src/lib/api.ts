@@ -474,4 +474,46 @@ export async function triggerFactoryReset(clearCredentials: boolean = true): Pro
   return res.json();
 }
 
+export async function fetchSecurityStatus(): Promise<{ is_password_set: boolean; has_password: boolean }> {
+  const res = await fetch(`${API_BASE}/security/status`);
+  if (!res.ok) throw new Error("Failed to fetch security status");
+  return res.json();
+}
+
+export async function verifySecurityPassword(password: string): Promise<{ valid: boolean }> {
+  const res = await fetch(`${API_BASE}/security/verify`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password }),
+  });
+  if (!res.ok) throw new Error("Failed to verify password");
+  return res.json();
+}
+
+export async function setSecurityPassword(password: string, currentPassword?: string): Promise<{ success: boolean; message: string }> {
+  const res = await fetch(`${API_BASE}/security/set`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password, current_password: currentPassword }),
+  });
+  if (!res.ok) {
+    const detail = await res.json().catch(() => ({ detail: "Failed to set password" }));
+    throw new Error(detail.detail || "Failed to set password");
+  }
+  return res.json();
+}
+
+export async function removeSecurityPassword(currentPassword: string): Promise<{ success: boolean; message: string }> {
+  const res = await fetch(`${API_BASE}/security/remove`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ current_password: currentPassword }),
+  });
+  if (!res.ok) {
+    const detail = await res.json().catch(() => ({ detail: "Failed to remove password" }));
+    throw new Error(detail.detail || "Failed to remove password");
+  }
+  return res.json();
+}
+
 

@@ -252,10 +252,13 @@ export async function runSync(onProgress?: (progress: SyncProgress) => void): Pr
           });
 
           for (const proj of enriched.futureDividends) {
+            // Apply FX conversion to base account currency (EUR) matching desktop backend
+            const fxRate = typeof h.fx_rate === 'number' && h.fx_rate > 0 ? h.fx_rate : 1.0;
+            const amountEur = Number((proj.projectedTotal * fxRate).toFixed(2));
             forecastDividends.push({
               ticker: proj.ticker,
-              amount: proj.projectedTotal,
-              currency: h.currency || 'EUR',
+              amount: amountEur,
+              currency: 'EUR',
               payment_date: proj.paymentDate,
               status: 'EXPECTED',
               source: 'YFINANCE',

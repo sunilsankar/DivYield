@@ -133,3 +133,30 @@ def delete_trading212_credentials() -> None:
     delete_secret("trading212_api_key")
     delete_secret("trading212_api_secret")
     delete_secret("trading212_environment")
+
+
+# Desktop App Lock Security
+
+def set_app_password(password: str) -> None:
+    """Store app lock password securely in OS keychain."""
+    set_secret("app_password", password)
+
+
+def get_app_password() -> Optional[str]:
+    return get_secret("app_password")
+
+
+def has_app_password() -> bool:
+    pwd = get_secret("app_password")
+    return bool(pwd and pwd.strip())
+
+
+def verify_app_password(password: str) -> bool:
+    pwd = get_secret("app_password")
+    if not pwd:
+        return True
+    return pwd == password
+
+
+def delete_app_password() -> None:
+    delete_secret("app_password")

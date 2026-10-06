@@ -7,18 +7,14 @@ const KEY_ENVIRONMENT = 'dy_t212_env';
 
 export async function saveCredentials(
   apiKey: string,
-  apiSecret?: string,
+  apiSecret: string,
   environment: 'live' | 'demo' = 'live'
 ): Promise<void> {
   const cleanKey = apiKey.trim();
-  const cleanSecret = (apiSecret || '').trim();
+  const cleanSecret = apiSecret.trim();
 
   await SecureStore.setItemAsync(KEY_API_KEY, cleanKey);
-  if (cleanSecret) {
-    await SecureStore.setItemAsync(KEY_API_SECRET, cleanSecret);
-  } else {
-    await SecureStore.deleteItemAsync(KEY_API_SECRET);
-  }
+  await SecureStore.setItemAsync(KEY_API_SECRET, cleanSecret);
   await SecureStore.setItemAsync(KEY_ENVIRONMENT, environment);
 }
 
@@ -27,7 +23,7 @@ export async function getCredentials(): Promise<Trading212Credentials | null> {
   if (!apiKey) {
     return null;
   }
-  const apiSecret = (await SecureStore.getItemAsync(KEY_API_SECRET)) || undefined;
+  const apiSecret = (await SecureStore.getItemAsync(KEY_API_SECRET)) || '';
   const envRaw = await SecureStore.getItemAsync(KEY_ENVIRONMENT);
   const environment: 'live' | 'demo' = envRaw === 'demo' ? 'demo' : 'live';
 

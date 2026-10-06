@@ -69,7 +69,7 @@ export interface SyncProgress {
 
 export interface Trading212Credentials {
   apiKey: string;
-  apiSecret?: string;
+  apiSecret: string;
   environment: 'live' | 'demo';
 }
 

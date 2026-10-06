@@ -29,6 +29,14 @@ import {
   isNotificationsEnabled,
   requestNotificationPermission,
 } from '../../services/notifications';
+import {
+  isPinSet,
+  setAppPin,
+  removeAppPin,
+  isBiometricsAvailable,
+  isBiometricsEnabled,
+  setBiometricsEnabled,
+} from '../../services/security';
 
 interface SettingsViewProps {
   onRefreshData: () => void;
@@ -49,11 +57,83 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onRefreshData }) => 
   const [dbStats, setDbStats] = useState({ holdings: 0, transactions: 0, dividends: 0 });
   const [notificationsActive, setNotificationsActive] = useState(false);
 
+  // App Lock & Biometrics state
+  const [pinEnabled, setPinEnabled] = useState(false);
+  const [biometricsAvailable, setBiometricsAvailable] = useState(false);
+  const [biometricsOn, setBiometricsOn] = useState(false);
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [pinInput, setPinInput] = useState('');
+  const [pinConfirm, setPinConfirm] = useState('');
+  const [pinStep, setPinStep] = useState<'create' | 'confirm'>('create');
+  const [pinError, setPinError] = useState('');
+
   useEffect(() => {
     loadCreds();
     loadStats();
     loadNotificationStatus();
+    loadSecurityStatus();
   }, []);
+
+  const loadSecurityStatus = async () => {
+    const hasPin = await isPinSet();
+    setPinEnabled(hasPin);
+    const hasBio = await isBiometricsAvailable();
+    setBiometricsAvailable(hasBio);
+    const bioOn = await isBiometricsEnabled();
+    setBiometricsOn(bioOn);
+  };
+
+  const handleTogglePin = async () => {
+    if (pinEnabled) {
+      Alert.alert(
+        'Disable App Lock',
+        'Are you sure you want to disable PIN and biometric protection?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Disable',
+            style: 'destructive',
+            onPress: async () => {
+              await removeAppPin();
+              setPinEnabled(false);
+              setBiometricsOn(false);
+            },
+          },
+        ]
+      );
+    } else {
+      setPinInput('');
+      setPinConfirm('');
+      setPinStep('create');
+      setPinError('');
+      setShowPinModal(true);
+    }
+  };
+
+  const handleToggleBiometrics = async (val: boolean) => {
+    await setBiometricsEnabled(val);
+    setBiometricsOn(val);
+  };
+
+  const handleSavePinStep = async () => {
+    if (pinStep === 'create') {
+      if (pinInput.length !== 4) {
+        setPinError('PIN must be 4 digits');
+        return;
+      }
+      setPinStep('confirm');
+      setPinError('');
+    } else {
+      if (pinConfirm !== pinInput) {
+        setPinError('PINs do not match. Try again.');
+        return;
+      }
+      await setAppPin(pinInput);
+      setPinEnabled(true);
+      setShowPinModal(false);
+      Alert.alert('App Lock Enabled', 'Your 4-digit PIN is active.');
+    }
+  };
 
   const loadNotificationStatus = async () => {
     const active = await isNotificationsEnabled();
@@ -101,6 +181,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onRefreshData }) => 
       Alert.alert('Error', 'Please enter your Trading 212 API Key');
       return;
     }
+    if (!apiSecret.trim()) {
+      Alert.alert('Error', 'Please enter your Trading 212 API Secret');
+      return;
+    }
     await saveCredentials(apiKey, apiSecret, isDemo ? 'demo' : 'live');
     setIsSaved(true);
     setTestResult(null);
@@ -108,8 +192,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onRefreshData }) => 
   };
 
   const handleTest = async () => {
-    if (!apiKey.trim()) {
-      Alert.alert('Error', 'Please enter your API Key first.');
+    if (!apiKey.trim() || !apiSecret.trim()) {
+      Alert.alert('Error', 'Please enter both your API Key and API Secret first.');
       return;
     }
     setIsTesting(true);
@@ -243,7 +327,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onRefreshData }) => 
           secureTextEntry={isSaved && apiKey.length > 10}
         />
 
-        <Text style={styles.inputLabel}>API Secret (Optional)</Text>
+        <Text style={styles.inputLabel}>API Secret</Text>
         <TextInput
           style={[
             styles.input,
@@ -253,7 +337,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onRefreshData }) => 
               color: theme.textPrimary,
             },
           ]}
-          placeholder="Paste API Secret (if using Basic Auth)"
+          placeholder="Paste Trading 212 API Secret"
           placeholderTextColor="#94a3b8"
           value={apiSecret}
           onChangeText={setApiSecret}
@@ -423,6 +507,62 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onRefreshData }) => 
             thumbColor="#ffffff"
           />
         </View>
+      </View>
+
+      {/* App Lock & Biometrics */}
+      <View
+        style={[
+          styles.card,
+          {
+            backgroundColor: theme.cardBg,
+            borderColor: theme.cardBorder,
+            borderWidth: isSketch ? 2 : 1,
+          },
+        ]}
+      >
+        <View style={styles.cardHeader}>
+          <MaterialCommunityIcons name="shield-key-outline" size={24} color="#6366f1" />
+          <Text style={[styles.cardTitle, { color: theme.textPrimary }]}>App Lock & Security</Text>
+        </View>
+        <Text style={styles.themeSub}>
+          Protect your portfolio and dividend data with a 4-digit PIN or fingerprint / face biometric unlock.
+        </Text>
+
+        <View style={styles.notificationRow}>
+          <View style={{ flex: 1, marginRight: 12 }}>
+            <Text style={[styles.notificationLabel, { color: theme.textPrimary }]}>
+              4-Digit PIN Lock
+            </Text>
+            <Text style={styles.securityToggleSub}>
+              {pinEnabled ? 'PIN protection active' : 'Disabled (tap switch to set PIN)'}
+            </Text>
+          </View>
+          <Switch
+            value={pinEnabled}
+            onValueChange={handleTogglePin}
+            trackColor={{ false: '#cbd5e1', true: theme.accent }}
+            thumbColor="#ffffff"
+          />
+        </View>
+
+        {pinEnabled && biometricsAvailable && (
+          <View style={[styles.notificationRow, { borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingTop: 10, marginTop: 4 }]}>
+            <View style={{ flex: 1, marginRight: 12 }}>
+              <Text style={[styles.notificationLabel, { color: theme.textPrimary }]}>
+                Biometric Unlock
+              </Text>
+              <Text style={styles.securityToggleSub}>
+                Use Fingerprint or Face ID when opening DivYield
+              </Text>
+            </View>
+            <Switch
+              value={biometricsOn}
+              onValueChange={handleToggleBiometrics}
+              trackColor={{ false: '#cbd5e1', true: theme.accent }}
+              thumbColor="#ffffff"
+            />
+          </View>
+        )}
       </View>
 
       {/* Export to CSV */}
@@ -679,6 +819,95 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onRefreshData }) => 
             >
               <Text style={styles.gotItBtnText}>Got it, thanks!</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* PIN Setup Modal */}
+      <Modal
+        visible={showPinModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowPinModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View
+            style={[
+              styles.modalContent,
+              {
+                backgroundColor: theme.cardBg,
+                borderColor: theme.cardBorder,
+                borderWidth: isSketch ? 2 : 0,
+              },
+            ]}
+          >
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <MaterialCommunityIcons name="numeric" size={24} color="#6366f1" />
+                <Text style={[styles.modalTitle, { color: theme.textPrimary }]}>
+                  {pinStep === 'create' ? 'Set 4-Digit PIN' : 'Confirm Your PIN'}
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowPinModal(false)}>
+                <MaterialCommunityIcons name="close" size={24} color="#64748b" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={[styles.stepDesc, { marginVertical: 12 }]}>
+              {pinStep === 'create'
+                ? 'Enter a 4-digit PIN to lock DivYield.'
+                : 'Re-enter your 4-digit PIN to confirm.'}
+            </Text>
+
+            <TextInput
+              style={[
+                styles.pinInputBox,
+                {
+                  backgroundColor: isSketch ? '#faf7f2' : '#f8fafc',
+                  borderColor: theme.cardBorder,
+                  color: theme.textPrimary,
+                },
+                isSketch && styles.sketchBorder,
+              ]}
+              value={pinStep === 'create' ? pinInput : pinConfirm}
+              onChangeText={pinStep === 'create' ? setPinInput : setPinConfirm}
+              keyboardType="number-pad"
+              maxLength={4}
+              secureTextEntry
+              autoFocus
+              textAlign="center"
+              placeholder="••••"
+              placeholderTextColor="#94a3b8"
+            />
+
+            {pinError ? <Text style={styles.pinErrorText}>{pinError}</Text> : null}
+
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
+              {pinStep === 'confirm' && (
+                <TouchableOpacity
+                  style={[styles.pinBackBtn, isSketch && styles.sketchBorder]}
+                  onPress={() => {
+                    setPinStep('create');
+                    setPinConfirm('');
+                    setPinError('');
+                  }}
+                >
+                  <Text style={styles.pinBackBtnText}>Back</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                style={[
+                  styles.gotItBtn,
+                  { flex: 1, backgroundColor: isSketch ? '#18181b' : '#6366f1' },
+                  isSketch && styles.sketchBorder,
+                ]}
+                onPress={handleSavePinStep}
+              >
+                <Text style={styles.gotItBtnText}>
+                  {pinStep === 'create' ? 'Next' : 'Save PIN'}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -1037,6 +1266,41 @@ const styles = StyleSheet.create({
   notificationLabel: {
     fontSize: 14,
     fontWeight: '600',
+  },
+  securityToggleSub: {
+    fontSize: 11,
+    color: '#64748b',
+    marginTop: 2,
+  },
+  pinInputBox: {
+    height: 56,
+    borderRadius: 14,
+    borderWidth: 1,
+    fontSize: 28,
+    fontWeight: '800',
+    letterSpacing: 14,
+    marginVertical: 8,
+  },
+  pinErrorText: {
+    color: '#dc2626',
+    fontSize: 12,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  pinBackBtn: {
+    height: 46,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    backgroundColor: '#f1f5f9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+  pinBackBtnText: {
+    color: '#475569',
+    fontSize: 14,
+    fontWeight: '700',
   },
   sketchBorder: {
     borderWidth: 1,

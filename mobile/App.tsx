@@ -1,8 +1,9 @@
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
+import { Alert, AppState, AppStateStatus, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { AnalyticsView } from './src/components/analytics/AnalyticsView';
+import { LockScreen } from './src/components/auth/LockScreen';
 import { CalendarView } from './src/components/calendar/CalendarView';
 import { BottomNavBar } from './src/components/common/BottomNavBar';
 import { SyncProgressBar } from './src/components/common/SyncProgressBar';
@@ -19,6 +20,7 @@ import {
   getSetting,
 } from './src/services/database';
 import { hasCredentials } from './src/services/secureStore';
+import { isPinSet } from './src/services/security';
 import { runSync } from './src/services/sync';
 import {
   DividendEvent,
@@ -55,6 +57,34 @@ function MainApp() {
     total_steps: 8,
     step_message: '',
   });
+
+  const [isLocked, setIsLocked] = useState(false);
+  const [appState, setAppState] = useState<AppStateStatus>(AppState.currentState);
+
+  useEffect(() => {
+    checkLockState();
+
+    const subscription = AppState.addEventListener('change', async (nextState) => {
+      if (appState.match(/inactive|background/) && nextState === 'active') {
+        const hasPin = await isPinSet();
+        if (hasPin) {
+          setIsLocked(true);
+        }
+      }
+      setAppState(nextState);
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [appState]);
+
+  const checkLockState = async () => {
+    const hasPin = await isPinSet();
+    if (hasPin) {
+      setIsLocked(true);
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -112,6 +142,18 @@ function MainApp() {
       setSyncProgress(prev => ({ ...prev, is_syncing: false }));
     }
   };
+
+  if (isLocked) {
+    return (
+      <SafeAreaView
+        style={[styles.safeArea, { backgroundColor: theme.background }]}
+        edges={['top', 'left', 'right', 'bottom']}
+      >
+        <StatusBar style="dark" />
+        <LockScreen onUnlock={() => setIsLocked(false)} />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView

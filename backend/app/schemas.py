@@ -40,6 +40,28 @@ class ResetDatabaseRequest(BaseModel):
     clear_credentials: bool = Field(True, description="Whether to also remove API credentials from OS Keychain")
 
 
+# Security & Password Lock Schemas
+class SecurityStatusResponse(BaseModel):
+    is_password_set: bool
+
+
+class PasswordVerifyRequest(BaseModel):
+    password: str = Field(..., min_length=1)
+
+
+class PasswordVerifyResponse(BaseModel):
+    valid: bool
+
+
+class PasswordSetRequest(BaseModel):
+    password: str = Field(..., min_length=1)
+    current_password: Optional[str] = None
+
+
+class PasswordRemoveRequest(BaseModel):
+    current_password: str = Field(..., min_length=1)
+
+
 
 # Holdings & Portfolio Schemas
 class HoldingItem(BaseModel):

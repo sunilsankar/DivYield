@@ -123,6 +123,10 @@ export const ConnectionsManager: React.FC<Props> = ({ onConnectionChange }) => {
       setT212Feedback({ type: "error", message: "API Key cannot be empty." });
       return;
     }
+    if (!connections?.trading212.configured && !t212ApiSecret.trim()) {
+      setT212Feedback({ type: "error", message: "API Secret cannot be empty." });
+      return;
+    }
 
     try {
       setT212Saving(true);
@@ -348,14 +352,14 @@ export const ConnectionsManager: React.FC<Props> = ({ onConnectionChange }) => {
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
-              API Secret <span className="text-slate-400 font-normal">(Optional for API v0 Basic Auth)</span>
+              API Secret
             </label>
             <div className="relative">
               <input
                 type={showT212Secret ? "text" : "password"}
                 value={t212ApiSecret}
                 onChange={(e) => setT212ApiSecret(e.target.value)}
-                placeholder={connections?.trading212.configured ? "Enter new secret or leave blank..." : "Optional API Secret..."}
+                placeholder={connections?.trading212.configured ? "Enter new secret or leave blank to keep existing..." : "Paste Trading 212 API Secret..."}
                 className="w-full text-xs font-mono px-3.5 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50/50"
               />
               <button
