@@ -212,16 +212,30 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onRefreshData }) => 
         <View style={styles.checklist}>
           <View style={styles.checkItem}>
             <MaterialCommunityIcons name="check" size={16} color="#059669" />
-            <Text style={styles.checkText}>Account & Cash: ON</Text>
+            <Text style={styles.checkText}>Account data: ON</Text>
           </View>
           <View style={styles.checkItem}>
             <MaterialCommunityIcons name="check" size={16} color="#059669" />
-            <Text style={styles.checkText}>History & Dividends: ON</Text>
+            <Text style={styles.checkText}>History (Dividends, Orders, Tx): ON</Text>
+          </View>
+          <View style={styles.checkItem}>
+            <MaterialCommunityIcons name="check" size={16} color="#059669" />
+            <Text style={styles.checkText}>Metadata: ON</Text>
+          </View>
+          <View style={styles.checkItem}>
+            <MaterialCommunityIcons name="check" size={16} color="#059669" />
+            <Text style={styles.checkText}>Pies - Read & Portfolio: ON</Text>
           </View>
           <View style={styles.checkItem}>
             <MaterialCommunityIcons name="close" size={16} color="#dc2626" />
             <Text style={[styles.checkText, { color: '#dc2626', fontWeight: '700' }]}>
               Orders - Execute: OFF (Forbidden)
+            </Text>
+          </View>
+          <View style={styles.checkItem}>
+            <MaterialCommunityIcons name="close" size={16} color="#dc2626" />
+            <Text style={[styles.checkText, { color: '#dc2626', fontWeight: '700' }]}>
+              Pies - Write: OFF (Forbidden)
             </Text>
           </View>
         </View>

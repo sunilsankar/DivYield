@@ -350,7 +350,10 @@ After opening DivYield, click **Settings > API Connections** in the sidebar:
    History - Orders          ON
    History - Transactions    ON
    Metadata                  ON
-   Orders - Execute         OFF  <-- MUST BE OFF
+   Pies - Read               ON
+   Portfolio                 ON
+   Orders - Execute         OFF  <-- MUST BE OFF (Forbidden)
+   Pies - Write             OFF  <-- MUST BE OFF (Forbidden)
    ```
    *Note: DivYield's security layer strictly rejects order execution and trade manipulation.*
 3. Copy your **API Key** and **API Secret** into the DivYield connection form.
@@ -370,7 +373,7 @@ DivYield includes built-in financial enrichment via Yahoo Finance with rate limi
 
 - **Zero Plaintext Credentials**: API keys and tokens are stored in the host OS Keychain using `keyring` (macOS Keychain, Windows Credential Manager, Linux SecretService). If no keychain daemon is available, secrets fall back to local Fernet encryption (`data/.secrets.enc` with file permission `0600`).
 - **Strict Read-Only Enforcement**: DivYield code contains an explicit allowlist of permissible Trading 212 endpoints. Any request containing trading verbs (`order`, `buy`, `sell`, `cancel`, `transfer`) is blocked by both software rules and automated security tests.
-- **Local SQLite Database**: All portfolio holdings, transactions, and dividend records are stored locally in `data/divyield.db`. No financial data is sent to external servers other than direct read queries to Trading 212 and EODHD.
+- **Local SQLite Database**: All portfolio holdings, transactions, and dividend records are stored locally in `data/divyield.db`. No financial data is sent to external servers other than direct read queries to Trading 212 and Yahoo Finance.
 
 ---
 

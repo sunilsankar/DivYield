@@ -409,12 +409,14 @@ export const ConnectionsManager: React.FC<Props> = ({ onConnectionChange }) => {
               <span>✓ History - Orders: <strong className="text-emerald-700">ON</strong></span>
               <span>✓ History - Transactions: <strong className="text-emerald-700">ON</strong></span>
               <span>✓ Metadata: <strong className="text-emerald-700">ON</strong></span>
+              <span>✓ Pies - Read: <strong className="text-emerald-700">ON</strong></span>
+              <span>✓ Portfolio: <strong className="text-emerald-700">ON</strong></span>
             </div>
-            <div className="mt-2 pt-2 border-t border-slate-200 flex items-center justify-between">
+            <div className="mt-2 pt-2 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
               <span className="text-xs font-semibold text-rose-600 flex items-center gap-1.5">
-                <XCircle className="w-3.5 h-3.5 flex-shrink-0" /> Orders - Execute: <span className="uppercase font-bold text-rose-700">OFF (Forbidden)</span>
+                <XCircle className="w-3.5 h-3.5 flex-shrink-0" /> Orders - Execute & Pies - Write: <span className="uppercase font-bold text-rose-700">OFF (Forbidden)</span>
               </span>
-              <span className="text-[10px] text-slate-400">Never grant trading permissions</span>
+              <span className="text-[10px] text-slate-400">Strict read-only security</span>
             </div>
           </div>
 

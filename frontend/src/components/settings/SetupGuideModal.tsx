@@ -93,7 +93,10 @@ export function SetupGuideModal({ isOpen, onClose }: SetupGuideModalProps) {
                       <div className="flex justify-between items-center"><span className="text-slate-600">History - Orders</span> <span className="text-emerald-600 font-semibold">ON</span></div>
                       <div className="flex justify-between items-center"><span className="text-slate-600">History - Transactions</span> <span className="text-emerald-600 font-semibold">ON</span></div>
                       <div className="flex justify-between items-center"><span className="text-slate-600">Metadata</span> <span className="text-emerald-600 font-semibold">ON</span></div>
-                      <div className="flex justify-between items-center pt-2 border-t border-slate-200"><span className="text-slate-700 font-semibold">Orders - Execute</span> <span className="text-red-500 font-bold">OFF</span></div>
+                      <div className="flex justify-between items-center"><span className="text-slate-600">Pies - Read</span> <span className="text-emerald-600 font-semibold">ON</span></div>
+                      <div className="flex justify-between items-center"><span className="text-slate-600">Portfolio</span> <span className="text-emerald-600 font-semibold">ON</span></div>
+                      <div className="flex justify-between items-center pt-2 border-t border-slate-200"><span className="text-slate-700 font-semibold">Orders - Execute</span> <span className="text-red-500 font-bold">OFF (Forbidden)</span></div>
+                      <div className="flex justify-between items-center"><span className="text-slate-700 font-semibold">Pies - Write</span> <span className="text-red-500 font-bold">OFF (Forbidden)</span></div>
                     </div>
                   </div>
                 </div>
