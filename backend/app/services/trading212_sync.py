@@ -341,7 +341,8 @@ async def sync_trading212(progress_cb: Optional[Callable[[int, int, str], None]]
                         ext_div_id = f"t212-div-{ref}"
                         ticker_raw = div.get("ticker", "")
                         base_ticker = ticker_raw.split("_")[0] if "_" in ticker_raw else ticker_raw
-                        pay_date = div.get("paidOn") or now_iso
+                        raw_pay = str(div.get("paidOn") or now_iso)
+                        pay_date = raw_pay[:10]
                         amount = float(div.get("amountInEuro") or div.get("amount") or div.get("grossAmount") or 0.0)
                         currency = account_currency if div.get("amountInEuro") is not None else (div.get("currency") or account_currency)
 

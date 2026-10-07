@@ -126,7 +126,7 @@ export const DividendCalendarView: React.FC<DividendCalendarViewProps> = ({
     const currentM = new Date().getMonth();
 
     const hasEventsInCurrentMonth = allEvents.some((e) => {
-      const dStr = e.payment_date || e.ex_dividend_date;
+      const dStr = (e.payment_date || e.ex_dividend_date || "").slice(0, 10);
       if (!dStr) return false;
       const parts = dStr.split("-");
       return (
@@ -139,15 +139,15 @@ export const DividendCalendarView: React.FC<DividendCalendarViewProps> = ({
       const todayIso = new Date().toISOString().slice(0, 10);
       // Try to find closest upcoming event first
       const upcoming = allEvents
-        .filter((e) => (e.payment_date || e.ex_dividend_date || "") >= todayIso)
+        .filter((e) => (e.payment_date || e.ex_dividend_date || "").slice(0, 10) >= todayIso)
         .sort((a, b) =>
-          (a.payment_date || "").localeCompare(b.payment_date || "")
+          (a.payment_date || "").slice(0, 10).localeCompare((b.payment_date || "").slice(0, 10))
         )[0];
 
       // Fallback to most recent received event
       const target = upcoming || allEvents[0];
       if (target) {
-        const dStr = target.payment_date || target.ex_dividend_date;
+        const dStr = (target.payment_date || target.ex_dividend_date || "").slice(0, 10);
         if (dStr) {
           const parts = dStr.split("-");
           setSelectedYear(parseInt(parts[0], 10));
@@ -173,7 +173,7 @@ export const DividendCalendarView: React.FC<DividendCalendarViewProps> = ({
         }
       }
 
-      const dateStr = item.payment_date || item.ex_dividend_date;
+      const dateStr = (item.payment_date || item.ex_dividend_date || "").slice(0, 10);
       if (!dateStr) return false;
 
       if (viewMode === "month") {
@@ -255,7 +255,7 @@ export const DividendCalendarView: React.FC<DividendCalendarViewProps> = ({
     for (let day = 1; day <= totalDays; day++) {
       const dStr = `${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
       const dayEvents = filteredEvents.filter((ev) => {
-        const evDate = ev.payment_date || ev.ex_dividend_date;
+        const evDate = (ev.payment_date || ev.ex_dividend_date || "").slice(0, 10);
         return evDate === dStr;
       });
 
@@ -297,7 +297,7 @@ export const DividendCalendarView: React.FC<DividendCalendarViewProps> = ({
     }));
 
     allEvents.forEach((ev) => {
-      const d = ev.payment_date || ev.ex_dividend_date;
+      const d = (ev.payment_date || ev.ex_dividend_date || "").slice(0, 10);
       if (!d) return;
       const parts = d.split("-");
       if (parts.length >= 2 && parseInt(parts[0], 10) === selectedYear) {

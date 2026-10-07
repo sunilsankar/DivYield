@@ -189,12 +189,20 @@ class ConcentrationItem(BaseModel):
     warning: bool = False
 
 
+class ExposureHolding(BaseModel):
+    ticker: str
+    name: str
+    value: float
+    percentage: float
+
+
 class SectorConcentrationItem(BaseModel):
     sector: str
     value: float
     percentage: float
     count: int
     warning: bool = False
+    holdings: List[ExposureHolding] = []
 
 
 class FrequencyItem(BaseModel):
@@ -427,6 +435,7 @@ class GeographicExposureItem(BaseModel):
     value: float
     percentage: float
     holdings_count: int
+    holdings: List[ExposureHolding] = []
 
 
 class IncomeRiskItem(BaseModel):
@@ -489,7 +498,6 @@ class CreateMappingRequest(BaseModel):
 class MappingsResponse(BaseModel):
     mappings: List[InstrumentMappingItem]
     count: int
-
 
 
 

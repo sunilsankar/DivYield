@@ -1,5 +1,5 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Modal,
   ScrollView,
@@ -23,6 +23,38 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ dividends }) => {
   const [currentDate, setCurrentDate] = useState(() => new Date());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [filterType, setFilterType] = useState<'ALL' | 'RECEIVED' | 'EXPECTED'>('ALL');
+
+  // ponytail: auto-jump to active month on load when current month has 0 dividends, matching web parity
+  const hasInitializedMonth = React.useRef(false);
+  useEffect(() => {
+    if (hasInitializedMonth.current || dividends.length === 0) return;
+
+    const now = new Date();
+    const currentY = now.getFullYear();
+    const currentM = now.getMonth();
+    const monthPrefix = `${currentY}-${String(currentM + 1).padStart(2, '0')}`;
+
+    const hasEventsInCurrentMonth = dividends.some((e) => {
+      const dStr = (e.payment_date || e.ex_dividend_date || '').slice(0, 7);
+      return dStr === monthPrefix;
+    });
+
+    if (!hasEventsInCurrentMonth) {
+      const todayIso = now.toISOString().slice(0, 10);
+      const upcoming = dividends
+        .filter((e) => (e.payment_date || e.ex_dividend_date || '').slice(0, 10) >= todayIso)
+        .sort((a, b) => ((a.payment_date || a.ex_dividend_date || '')).localeCompare(b.payment_date || b.ex_dividend_date || ''))[0];
+      const target = upcoming || dividends[0];
+      const targetDate = target ? (target.payment_date || target.ex_dividend_date) : null;
+      if (targetDate) {
+        const parts = targetDate.slice(0, 10).split('-');
+        if (parts.length >= 2) {
+          setCurrentDate(new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, 1));
+        }
+      }
+    }
+    hasInitializedMonth.current = true;
+  }, [dividends]);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -57,7 +89,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ dividends }) => {
   const dateMap = useMemo(() => {
     const map = new Map<string, DividendEvent[]>();
     for (const d of filteredDividends) {
-      const dateKey = (d.payment_date || '').slice(0, 10);
+      const dateKey = (d.payment_date || d.ex_dividend_date || '').slice(0, 10);
       if (!dateKey) continue;
       if (!map.has(dateKey)) map.set(dateKey, []);
       map.get(dateKey)!.push(d);
@@ -122,8 +154,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ dividends }) => {
     let forecastTotal = 0;
     let count = 0;
 
-    for (const d of dividends) {
-      const dateKey = (d.payment_date || '').slice(0, 7);
+    for (const d of filteredDividends) {
+      const dateKey = (d.payment_date || d.ex_dividend_date || '').slice(0, 7);
       if (dateKey === monthPrefix) {
         if (d.status === 'RECEIVED') {
           receivedTotal += d.amount;
@@ -140,7 +172,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ dividends }) => {
       grandTotal: receivedTotal + forecastTotal,
       count,
     };
-  }, [year, month, dividends]);
+  }, [year, month, filteredDividends]);
 
   const selectedEvents = useMemo(() => {
     if (!selectedDay) return [];

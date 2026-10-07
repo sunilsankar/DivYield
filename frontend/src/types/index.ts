@@ -203,6 +203,14 @@ export interface SectorConcentrationItem {
   percentage: number;
   count: number;
   warning: boolean;
+  holdings: ExposureHolding[];
+}
+
+export interface ExposureHolding {
+  ticker: string;
+  name: string;
+  value: number;
+  percentage: number;
 }
 
 export interface FrequencyItem {
@@ -343,6 +351,7 @@ export interface GeographicExposureItem {
   value: number;
   percentage: number;
   holdings_count: number;
+  holdings: ExposureHolding[];
 }
 
 export interface IncomeRiskItem {
@@ -370,11 +379,10 @@ export interface DiversificationResponse {
   top5_concentration: number;
   top10_concentration: number;
   metrics: DiversificationMetric[];
-  sectors: SectorAllocation[];
+  sectors: SectorConcentrationItem[];
   geographic_exposure: GeographicExposureItem[];
   income_risks: IncomeRiskItem[];
   recommendations: DiversificationRecommendation[];
 }
-
 
 

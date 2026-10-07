@@ -18,6 +18,7 @@ from app.schemas import (
     DiversificationResponse,
     DiversificationMetric,
     GeographicExposureItem,
+    ExposureHolding,
     IncomeRiskItem,
     DiversificationRecommendation,
 )
@@ -534,7 +535,7 @@ def get_analytics_diversification():
     # Geographic / Regional Exposure
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT ticker, market_value FROM holdings")
+        cursor.execute("SELECT ticker, name, market_value, sector FROM holdings")
         raw_rows = cursor.fetchall()
 
     geo_map = {
@@ -545,10 +546,21 @@ def get_analytics_diversification():
         "International / Other": 0.0,
     }
     geo_counts = {k: 0 for k in geo_map}
+    sector_holdings = {}
+    geo_holdings = {k: [] for k in geo_map}
 
     for r in raw_rows:
         t = (r["ticker"] or "").upper()
         mv = float(r["market_value"] or 0)
+        detail = ExposureHolding(
+            ticker=r["ticker"] or "",
+            name=r["name"] or r["ticker"] or "Unknown holding",
+            value=round(mv, 2),
+            percentage=round((mv / total_val * 100.0) if total_val > 0 else 0.0, 2),
+        )
+        sector = (r["sector"] or "Unclassified").strip() or "Unclassified"
+        sector_holdings.setdefault(sector, []).append(detail)
+        # ponytail: heuristic ticker suffix mapping; upgrade to country/exchange column from provider sync when added
         if t.endswith("_US_EQ") or ".US" in t or (not "_" in t and not "." in t and len(t) <= 5 and not t.endswith("L") and not t.endswith("D") and not t.endswith("A")):
             reg = "United States"
         elif t.endswith("_NL_EQ") or ".AS" in t or t.endswith("A"):
@@ -561,6 +573,10 @@ def get_analytics_diversification():
             reg = "International / Other"
         geo_map[reg] += mv
         geo_counts[reg] += 1
+        geo_holdings[reg].append(detail)
+
+    for sector in sectors:
+        sector.holdings = sorted(sector_holdings.get(sector.sector, []), key=lambda h: h.value, reverse=True)
 
     geo_exposure: List[GeographicExposureItem] = []
     for reg, val in sorted(geo_map.items(), key=lambda x: x[1], reverse=True):
@@ -572,6 +588,7 @@ def get_analytics_diversification():
                     value=round(val, 2),
                     percentage=round(pct, 2),
                     holdings_count=geo_counts[reg],
+                    holdings=sorted(geo_holdings[reg], key=lambda h: h.value, reverse=True),
                 )
             )
 
@@ -677,4 +694,3 @@ def get_analytics_diversification():
         income_risks=income_risks,
         recommendations=recommendations,
     )
-

@@ -20,7 +20,7 @@
       "package": "com.divyield.app",
       "versionCode": 1,
       "adaptiveIcon": {
-        "backgroundColor": "#0f172a",
+        "backgroundColor": "#0B1F33",
         "foregroundImage": "./assets/android-icon-foreground.png"
       },
       "predictiveBackGestureEnabled": false
@@ -32,7 +32,8 @@
       "expo-sqlite",
       "expo-secure-store",
       "expo-notifications",
-      "expo-local-authentication"
+      "expo-local-authentication",
+      "expo-font"
     ]
   }
 }

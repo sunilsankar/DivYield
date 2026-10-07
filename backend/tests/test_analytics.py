@@ -176,3 +176,9 @@ def test_diversification_populated_portfolio():
     assert len(data["income_risks"]) == 5
     assert len(data["recommendations"]) >= 1
 
+    technology = next(sector for sector in data["sectors"] if sector["sector"] == "Technology")
+    assert [holding["ticker"] for holding in technology["holdings"]] == ["ASML_NL_EQ", "AAPL_US_EQ"]
+    assert round(technology["holdings"][0]["percentage"], 2) == 36.36
+
+    united_states = next(region for region in data["geographic_exposure"] if region["region"] == "United States")
+    assert [holding["ticker"] for holding in united_states["holdings"]] == ["AAPL_US_EQ"]

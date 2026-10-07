@@ -9,6 +9,8 @@ import {
   Coins,
   RefreshCw,
   Sparkles,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { fetchDiversification } from "../../lib/api";
 import { DiversificationResponse } from "../../types";
@@ -26,6 +28,8 @@ export const DiversificationView: React.FC<DiversificationViewProps> = ({
   const [data, setData] = useState<DiversificationResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [expandedSector, setExpandedSector] = useState<string | null>(null);
+  const [expandedRegion, setExpandedRegion] = useState<string | null>(null);
 
   const loadData = async () => {
     try {
@@ -274,11 +278,18 @@ export const DiversificationView: React.FC<DiversificationViewProps> = ({
           </div>
 
           <div className="flex flex-col gap-3.5 flex-1">
-            {data.sectors.map((sec, idx) => {
+            {data.sectors.map((sec) => {
               const isOver = sec.percentage > 25.0;
+              const isExpanded = expandedSector === sec.sector;
               return (
-                <div key={idx} className="flex flex-col gap-1">
-                  <div className="flex items-center justify-between text-xs">
+                <div key={sec.sector} className="flex flex-col gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setExpandedSector(isExpanded ? null : sec.sector)}
+                    aria-expanded={isExpanded}
+                    className="w-full text-left"
+                  >
+                    <div className="flex items-center justify-between text-xs">
                     <span className="font-medium text-slate-700 flex items-center gap-1.5">
                       {sec.sector}
                       {isOver && (
@@ -287,8 +298,12 @@ export const DiversificationView: React.FC<DiversificationViewProps> = ({
                         </span>
                       )}
                     </span>
-                    <span className="font-semibold text-slate-900">{sec.percentage.toFixed(1)}%</span>
-                  </div>
+                      <span className="font-semibold text-slate-900 flex items-center gap-1">
+                        {sec.percentage.toFixed(1)}%
+                        {isExpanded ? <ChevronUp className="w-3.5 h-3.5 text-slate-400" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-400" />}
+                      </span>
+                    </div>
+                  </button>
                   <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden relative">
                     {/* 25% guideline marker */}
                     <div className="absolute top-0 bottom-0 left-1/4 w-[1.5px] bg-slate-300 z-10" />
@@ -299,6 +314,25 @@ export const DiversificationView: React.FC<DiversificationViewProps> = ({
                       style={{ width: `${Math.min(100, sec.percentage)}%` }}
                     />
                   </div>
+                  {isExpanded && (
+                    <div className="ml-2 mt-1 space-y-2 rounded-xl bg-slate-50/70 border border-slate-100 p-3">
+                      {sec.holdings.map((holding) => (
+                        <div key={holding.ticker} className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <StockLogo ticker={holding.ticker} name={holding.name} size="sm" />
+                            <div className="min-w-0">
+                              <div className="text-xs font-semibold text-slate-800">{holding.ticker}</div>
+                              <div className="text-[11px] text-slate-400 truncate">{holding.name}</div>
+                            </div>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <div className="text-xs font-semibold text-slate-900">{holding.percentage.toFixed(1)}%</div>
+                            <div className="text-[11px] text-slate-500">{holding.value.toLocaleString(undefined, { style: "currency", currency: "EUR" })}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -323,18 +357,50 @@ export const DiversificationView: React.FC<DiversificationViewProps> = ({
           </div>
 
           <div className="flex flex-col gap-3 flex-1">
-            {data.geographic_exposure.map((geo, idx) => (
-              <div key={idx} className="p-3 bg-slate-50/70 rounded-xl border border-slate-100 flex items-center justify-between">
-                <div className="flex flex-col">
-                  <span className="text-xs font-semibold text-slate-800">{geo.region}</span>
-                  <span className="text-[11px] text-slate-400">{geo.holdings_count} position{geo.holdings_count !== 1 ? "s" : ""}</span>
+            {data.geographic_exposure.map((geo) => {
+              const isExpanded = expandedRegion === geo.region;
+              return (
+                <div key={geo.region} className="rounded-xl border border-slate-100 bg-slate-50/70">
+                  <button
+                    type="button"
+                    onClick={() => setExpandedRegion(isExpanded ? null : geo.region)}
+                    aria-expanded={isExpanded}
+                    className="w-full p-3 flex items-center justify-between text-left"
+                  >
+                    <div className="flex flex-col">
+                      <span className="text-xs font-semibold text-slate-800">{geo.region}</span>
+                      <span className="text-[11px] text-slate-400">{geo.holdings_count} position{geo.holdings_count !== 1 ? "s" : ""}</span>
+                    </div>
+                    <div className="text-right flex items-center gap-2">
+                      <div>
+                        <div className="text-xs font-bold text-slate-900">{geo.percentage.toFixed(1)}%</div>
+                        <div className="text-[11px] text-slate-500">€{geo.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                      </div>
+                      {isExpanded ? <ChevronUp className="w-3.5 h-3.5 text-slate-400" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-400" />}
+                    </div>
+                  </button>
+                  {isExpanded && (
+                    <div className="mx-3 mb-3 space-y-2 border-t border-slate-200/70 pt-3">
+                      {geo.holdings.map((holding) => (
+                        <div key={holding.ticker} className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <StockLogo ticker={holding.ticker} name={holding.name} size="sm" />
+                            <div className="min-w-0">
+                              <div className="text-xs font-semibold text-slate-800">{holding.ticker}</div>
+                              <div className="text-[11px] text-slate-400 truncate">{holding.name}</div>
+                            </div>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <div className="text-xs font-semibold text-slate-900">{holding.percentage.toFixed(1)}%</div>
+                            <div className="text-[11px] text-slate-500">{holding.value.toLocaleString(undefined, { style: "currency", currency: "EUR" })}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <div className="text-right">
-                  <div className="text-xs font-bold text-slate-900">{geo.percentage.toFixed(1)}%</div>
-                  <div className="text-[11px] text-slate-500">€{geo.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>

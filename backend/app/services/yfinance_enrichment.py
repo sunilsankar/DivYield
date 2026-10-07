@@ -290,7 +290,7 @@ class YahooFinanceEnrichmentService:
             cursor = conn.cursor()
             cursor.execute(
                 """
-                SELECT ticker, quantity, fx_rate
+                SELECT ticker, external_id, quantity, fx_rate
                 FROM holdings
                 WHERE quantity > 0
                 ORDER BY market_value DESC;
@@ -299,6 +299,12 @@ class YahooFinanceEnrichmentService:
             raw_holdings = cursor.fetchall()
 
         if not raw_holdings:
+            # ponytail: clear stale expected YFINANCE events when no holdings exist
+            with get_db() as conn:
+                conn.execute(
+                    "DELETE FROM dividend_events WHERE status = 'EXPECTED' AND source = 'YFINANCE';"
+                )
+                conn.commit()
             return {"enriched_count": 0, "projected_events": 0, "status": "no_holdings"}
 
         # Prepare items with resolved Yahoo symbols
@@ -306,7 +312,10 @@ class YahooFinanceEnrichmentService:
         with get_db() as conn:
             for r in raw_holdings:
                 t212_tick = r["ticker"]
-                yf_sym = resolve_yahoo_symbol(t212_tick, conn)
+                lookup_sym = r["external_id"] or t212_tick
+                yf_sym = resolve_yahoo_symbol(lookup_sym, conn)
+                if not yf_sym or yf_sym == lookup_sym:
+                    yf_sym = resolve_yahoo_symbol(t212_tick, conn)
                 items.append(
                     {
                         "ticker": t212_tick,
@@ -335,6 +344,11 @@ class YahooFinanceEnrichmentService:
         projected_events_count = 0
 
         with get_db() as conn:
+            # ponytail: clear prior forecast events so sold holdings or changed dates leave no phantom rows
+            conn.execute(
+                "DELETE FROM dividend_events WHERE status = 'EXPECTED' AND source = 'YFINANCE';"
+            )
+
             # 1. Update holdings sector, industry, yield, annual dividend
             for r in enrichment_results:
                 tick = r["ticker"]

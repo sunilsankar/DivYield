@@ -46,6 +46,7 @@ export function mapT212ToYahoo(ticker: string): string {
       ES: '.MC',
       IT: '.MI',
       CH: '.SW',
+      BE: '.BR',
     };
     const suffix = suffixMap[exch] ?? '';
     return `${sym}${suffix}`;
@@ -157,21 +158,22 @@ export function projectFutureDividends(
     dividendYield = Number(((annualDividend / regularMarketPrice) * 100).toFixed(2));
   }
 
-  // Project next 12 months of dividends
-  const stepMonths = 12 / paymentsPerYear;
+  // Project next 12 months of dividends using day intervals consistent with backend
+  // ponytail: fixed step day projection matching backend intervals
+  const stepDays = paymentsPerYear === 12 ? 30 : paymentsPerYear === 4 ? 91 : paymentsPerYear === 2 ? 182 : 365;
+  const stepMs = stepDays * 24 * 60 * 60 * 1000;
   const now = new Date();
-  let nextDate = new Date(lastDiv.date);
+  let nextDate = new Date(lastDiv.date.getTime() + stepMs);
 
   // Advance to the next future date
   while (nextDate <= now) {
-    nextDate.setMonth(nextDate.getMonth() + stepMonths);
+    nextDate = new Date(nextDate.getTime() + stepMs);
   }
 
-  const oneYearAhead = new Date();
-  oneYearAhead.setFullYear(oneYearAhead.getFullYear() + 1);
+  const oneYearAhead = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000);
 
   while (nextDate <= oneYearAhead) {
-    const dateStr = nextDate.toISOString().split('T')[0];
+    const dateStr = nextDate.toISOString().slice(0, 10);
     futureDividends.push({
       ticker: t212Ticker,
       companyName: companyName || t212Ticker,
@@ -180,8 +182,7 @@ export function projectFutureDividends(
       projectedTotal: Number((lastAmount * (shares > 0 ? shares : 1)).toFixed(2)),
       frequency,
     });
-    nextDate = new Date(nextDate);
-    nextDate.setMonth(nextDate.getMonth() + stepMonths);
+    nextDate = new Date(nextDate.getTime() + stepMs);
   }
 
   return { futureDividends, frequency, annualDividend, dividendYield };

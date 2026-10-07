@@ -209,7 +209,7 @@ export async function runSync(onProgress?: (progress: SyncProgress) => void): Pr
     updateProgress(6, 'Synchronizing received dividends...');
     let rawDividends: any[] = [];
     try {
-      rawDividends = await client.getAllDividends(12);
+      rawDividends = await client.getAllDividends(100);
     } catch (e) {
       console.warn('Dividends fetch warning:', e);
     }
@@ -271,9 +271,8 @@ export async function runSync(onProgress?: (progress: SyncProgress) => void): Pr
       }
     }
 
-    if (forecastDividends.length > 0) {
-      await replaceForecastDividends(forecastDividends);
-    }
+    // ponytail: always replace forecasts so sold holdings do not leave orphaned projections
+    await replaceForecastDividends(forecastDividends);
 
     // Step 8: Finalizing & updating sync log
     updateProgress(8, 'Finalizing sync & cache...');

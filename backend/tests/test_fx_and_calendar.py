@@ -137,3 +137,14 @@ def test_calendar_and_dividends_company_name_resolution():
     assert exp_data["count"] == 1
     assert exp_data["dividends"][0]["ticker"] == "O"
     assert exp_data["dividends"][0]["company_name"] == "Realty Income Corp"
+
+
+def test_exchange_ticker_resolution_and_sync_parity():
+    """Test Yahoo Finance resolver handles exchange-qualified tickers identically to mobile."""
+    from app.services.yfinance_enrichment import resolve_yahoo_symbol
+
+    assert resolve_yahoo_symbol("ASML_NL_EQ") == "ASML.AS"
+    assert resolve_yahoo_symbol("BMW_DE_EQ") == "BMW.DE"
+    assert resolve_yahoo_symbol("VOD_GB_EQ") == "VOD.L"
+    assert resolve_yahoo_symbol("MC_FR_EQ") == "MC.PA"
+    assert resolve_yahoo_symbol("AAPL_US_EQ") == "AAPL"
