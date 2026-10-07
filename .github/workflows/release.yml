@@ -104,6 +104,9 @@ jobs:
           - os: macos-latest
             platform: macos-arm64
             artifact_name: DivYield-macOS-AppleSilicon.dmg
+          - os: macos-13
+            platform: macos-x64
+            artifact_name: DivYield-macOS-Intel.dmg
           - os: windows-latest
             platform: windows-x64
             artifact_name: DivYield-Windows.msi
