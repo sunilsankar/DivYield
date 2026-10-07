@@ -1,4 +1,5 @@
 # DivYield 📈
+If it is useful to you, you can click on the ```Star``` in the upper right corner of this repo to show your support. 
 
 > **A fast, smooth, local-first portfolio & dividend tracker with strict read-only security.**
 
