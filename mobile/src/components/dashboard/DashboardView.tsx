@@ -65,7 +65,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return max;
   }, [monthlyDividends]);
 
-  const recentDividends = useMemo(() => dividends.slice(0, 6), [dividends]);
+  const recentDividends = useMemo(
+    () => dividends.filter((div) => div.status === 'RECEIVED').slice(0, 6),
+    [dividends]
+  );
 
   if (holdings.length === 0) {
     return (
