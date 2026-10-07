@@ -352,7 +352,7 @@ export const ConnectionsManager: React.FC<Props> = ({ onConnectionChange }) => {
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
-              API Secret
+              API Secret *
             </label>
             <div className="relative">
               <input

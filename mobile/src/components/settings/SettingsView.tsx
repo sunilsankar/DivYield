@@ -327,7 +327,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onRefreshData }) => 
           secureTextEntry={isSaved && apiKey.length > 10}
         />
 
-        <Text style={styles.inputLabel}>API Secret</Text>
+        <Text style={styles.inputLabel}>API Secret *</Text>
         <TextInput
           style={[
             styles.input,
