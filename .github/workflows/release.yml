@@ -6,6 +6,7 @@ on:
       - main
     tags:
       - 'v*'
+      - '[0-9]*'
   pull_request:
     branches:
       - main
@@ -199,7 +200,7 @@ jobs:
           Compress-Archive -Path dist/DivYield/* -DestinationPath DivYield-Windows.zip
 
       - name: Publish Desktop Release to GitHub
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           name: DivYield ${{ github.ref_name }}
@@ -255,7 +256,7 @@ jobs:
         run: cp mobile/android/app/build/outputs/apk/release/app-release.apk DivYield-Android.apk
 
       - name: Publish Android Release to GitHub
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           name: DivYield ${{ github.ref_name }}
