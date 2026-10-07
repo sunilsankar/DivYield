@@ -24,7 +24,7 @@ export interface YahooEnrichmentResult {
 // Map Trading 212 ticker format to Yahoo Finance ticker
 export function mapT212ToYahoo(ticker: string): string {
   if (!ticker) return '';
-  let t = ticker.trim().toUpperCase();
+  const t = ticker.trim().toUpperCase();
 
   // Common overrides
   const overrides: Record<string, string> = {
@@ -48,8 +48,8 @@ export function mapT212ToYahoo(ticker: string): string {
       CH: '.SW',
       BE: '.BR',
     };
-    const suffix = suffixMap[exch] ?? '';
-    return `${sym}${suffix}`;
+    if (exch in suffixMap) return `${sym}${suffixMap[exch]}`;
+    return sym;
   }
 
   // T212 often uses lowercase trailing letter for exchange: e.g. ASMLa -> ASML.AS
@@ -201,7 +201,7 @@ export async function enrichInstrument(
     const [secInd, chartData] = await Promise.all([
       fetchSectorIndustry(yahooTicker),
       fetchWithRetry(
-        `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooTicker)}?interval=1mo&range=2y&events=div`,
+        `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooTicker)}?interval=1mo&range=max&events=div`,
         2,
         300
       ),
@@ -222,7 +222,8 @@ export async function enrichInstrument(
         .map((d: any) => ({
           amount: Number(d.amount) || 0,
           date: new Date(Number(d.date) * 1000),
-        }));
+        }))
+        .filter(d => d.amount > 0 && !Number.isNaN(d.date.getTime()));
 
       const proj = projectFutureDividends(
         t212Ticker,

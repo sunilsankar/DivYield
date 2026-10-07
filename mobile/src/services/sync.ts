@@ -56,19 +56,26 @@ export async function runSync(onProgress?: (progress: SyncProgress) => void): Pr
 
     // Step 2: Instruments metadata
     updateProgress(2, 'Loading instrument metadata & ISINs...');
-    let instruments: Array<{ ticker: string; name: string; isin: string; currencyCode: string }> = [];
+    let instruments: Array<{
+      ticker: string;
+      name: string;
+      isin: string;
+      currencyCode: string;
+      type?: string;
+    }> = [];
     try {
       instruments = await client.getInstruments();
     } catch (e) {
       console.warn('Metadata fetch fallback:', e);
     }
-    const metaMap = new Map<string, { name: string; isin: string; currency: string }>();
+    const metaMap = new Map<string, { name: string; isin: string; currency: string; type?: string }>();
     const instrumentCurrencies = new Map<string, string>();
     for (const inst of instruments) {
       metaMap.set(inst.ticker, {
         name: inst.name,
         isin: inst.isin,
         currency: inst.currencyCode,
+        type: inst.type,
       });
       instrumentCurrencies.set(inst.ticker, inst.currencyCode);
     }
@@ -241,7 +248,9 @@ export async function runSync(onProgress?: (progress: SyncProgress) => void): Pr
     const forecastDividends: DividendEvent[] = [];
     for (const h of holdings) {
       try {
-        const enriched = await enrichInstrument(h.ticker, h.name, h.quantity);
+        // Use the original Trading 212 identifier for Yahoo resolution, matching the web sync.
+        const trading212Ticker = h.external_id || h.ticker;
+        const enriched = await enrichInstrument(trading212Ticker, h.name, h.quantity);
         if (enriched) {
           await updateHoldingEnrichment(h.ticker, {
             sector: enriched.sector,

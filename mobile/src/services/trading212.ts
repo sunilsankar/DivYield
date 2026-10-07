@@ -91,7 +91,13 @@ export class Trading212Client {
     return this.request('/equity/account/cash');
   }
 
-  async getInstruments(): Promise<Array<{ ticker: string; name: string; isin: string; currencyCode: string }>> {
+  async getInstruments(): Promise<Array<{
+    ticker: string;
+    name: string;
+    isin: string;
+    currencyCode: string;
+    type?: string;
+  }>> {
     return this.request('/equity/metadata/instruments');
   }
 
