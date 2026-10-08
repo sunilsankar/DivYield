@@ -5,7 +5,7 @@ If it is useful to you, you can click on the ```Star``` in the upper right corne
 
 DivYield connects to your **Trading 212** account with **strict read-only permissions** and enriches your holdings with **Yahoo Finance** dividend data. It gives you a complete view of your actual received dividends, forward cashflow forecasts, diversification health, and Netherlands Box 3 wealth tax estimates.
 
-Available as a **native desktop application** (macOS & Windows), a **native mobile app** (Android), and a **local web dashboard**.
+Available as a **native desktop application** (Windows), a **native mobile app** (Android), and a **local web dashboard**.
 
 ---
 
@@ -41,7 +41,6 @@ Get the pre-compiled standalone app directly from [GitHub Releases](https://gith
 
 | Platform | Installer / Package | Features |
 | :--- | :--- | :--- |
-| 🍏 **macOS** | [`DivYield-macOS-AppleSilicon.dmg`](https://github.com/sunilsankar/DivYield/releases) | Native borderless desktop window, Apple HIG interface |
 | 🪟 **Windows** | [`DivYield-Windows.msi`](https://github.com/sunilsankar/DivYield/releases) | MSI Installer with custom directory, Desktop shortcut, and uninstaller |
 | 📱 **Android** | [`DivYield-Android.apk`](https://github.com/sunilsankar/DivYield/releases) | Standalone APK, on-device SQLite, hardware SecureStore |
 | 🌐 **Web** | Self-hosted via FastAPI + Vite | Local browser dashboard at `localhost:8000` |
@@ -53,7 +52,7 @@ Get the pre-compiled standalone app directly from [GitHub Releases](https://gith
 ### 🛡️ 1. Strict Read-Only Security & App Lock
 - **No Mutation Capability**: Code-level allowlist explicitly blocks and rejects order placement, buying, selling, or money transfers.
 - **Hardware-Backed Encryption**: Credentials are never stored in browser storage (`localStorage`) or plaintext database. Desktop uses the **OS Keychain** (`keyring` / Fernet AES-256), and mobile uses **Android Keystore** (`expo-secure-store`).
-- **Desktop Password Protection**: Lock standalone Windows and macOS apps with an OS keychain-backed password and instant lock button.
+- **Desktop Password Protection**: Lock the standalone Windows app with an OS keychain-backed password and instant lock button.
 - **Mobile Biometric & PIN Security**: Android app supports native biometric unlock (Fingerprint / Face Unlock via `expo-local-authentication`) with a secure 4-digit PIN fallback and automatic background relock.
 - **Local-First Privacy**: Your portfolio and dividend history remain 100% on your device in SQLite (WAL mode).
 
@@ -63,25 +62,29 @@ Get the pre-compiled standalone app directly from [GitHub Releases](https://gith
 - **Full Android 10+ Compatibility**: Handles Android 13+ `POST_NOTIFICATIONS` runtime permissions gracefully with fallback for Android 10–12.
 
 ### 📅 3. Visual Dividend Calendar
-- **Interactive 31-Day Grid**: Visual calendar showing payment dates, day totals, ticker symbols, company names, and direct Trading 212 CDN stock logos.
+- **Interactive 31-Day Grid**: Visual calendar showing payment dates, individual ticker payouts, day totals, company names, and direct Trading 212 CDN stock logos.
 - **Forecast & Received Tracking**: Distinguishes between verified cash received from Trading 212 and upcoming forward dividend events enriched by Yahoo Finance.
 - **Smart Month Selection**: Auto-jumps to active dividend months and features day drawers to inspect high-volume payout dates.
 
-### ⚖️ 4. Portfolio Diversification & Risk Engine
+### 🧾 4. Order & Activity History
+- **Read-Only Activity Log**: Android displays synchronized Trading 212 orders, dividend receipts, deposits, withdrawals, and interest.
+- **Simple Filters**: Switch between all activity, order executions, and cash/dividend history.
+
+### ⚖️ 5. Portfolio Diversification & Risk Engine
 - **Diversification Health Score (0–100)**: Composite rating assessing holding balance, sector spread, income spread, and asset count.
 - **Concentration Analysis**: Calculates the Herfindahl-Hirschman Index (HHI) and highlights concentration warnings when single positions exceed 15% or sectors exceed 25%.
 - **Geographic & Income Breakdown**: Evaluates currency exposure (USD, EUR, GBP) and ranks top income-generating assets.
 
-### 📈 5. Forward Planning & Compounding Simulator
+### 📈 6. Forward Planning & Compounding Simulator
 - **Multi-Year Compounding Engine**: Simulates dividend reinvestment (DRIP), annual dividend growth (CAGR), periodic cash contributions, and capital appreciation.
 - **Annual Run-Rate & TTM**: Tracks Trailing 12 Months (TTM) income and projected 12-month forward annual dividend run-rate.
 
-### 🇳🇱 6. Netherlands Box 3 Wealth Tax Estimator
+### 🇳🇱 7. Netherlands Box 3 Wealth Tax Estimator
 - **Versioned Tax Rules**: Built-in statutory schedules for 2024, 2025, and 2026.
 - **Deemed Return Calculations**: Accounts for bank savings vs. investment deemed yields, single vs. fiscal partner tax-free allowances, and 15% creditable dividend withholding tax.
 - **Audit Export**: Generates compliant CSV tax estimate exports with legal disclaimers.
 
-### 🎨 7. Modern Apple HIG UI & Theme Switcher
+### 🎨 8. Modern Apple HIG UI & Theme Switcher
 - **Apple Human Interface Guidelines (HIG)**: Crisp San Francisco typography, flush sidebar navigation, and fluid transitions.
 - **Dual Aesthetic Modes**: Instantly toggle between the clean **Modern Apple UI** and a playful **Hand-Drawn Sketch UI**.
 - **Color Grading**: 5 custom palettes (Indigo Slate, Forest Mint, Warm Amber, Ruby Rose, Ocean Teal).
@@ -216,7 +219,7 @@ bandit -r backend/app/ -ll
 
 ```text
 DivYield/
-├── .github/workflows/       # CI/CD: Automated multi-platform release pipeline
+├── .github/workflows/       # CI/CD: Automated Windows and Android release pipeline
 ├── assets/                  # Brand SVG, PNG, ICO, and ICNS assets
 ├── backend/
 │   ├── app/
@@ -237,7 +240,7 @@ DivYield/
 │   └── tests/               # Frontend Vitest suites
 ├── mobile/                  # Native Android React Native Expo application
 │   ├── src/
-│   │   ├── components/      # Material 3 screens (Dashboard, Calendar, Holdings)
+│   │   ├── components/      # Material 3 screens (Dashboard, Calendar, History, Holdings)
 │   │   └── services/        # Local SQLite database & secure credentials storage
 │   └── app.json             # Expo configuration & app identity
 ├── wix/                     # WiX Toolset v3 XML installer configuration (.msi)
