@@ -39,6 +39,12 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ currentTab, onTabCha
       iconActive: 'calendar-month',
     },
     {
+      key: 'history',
+      label: 'History',
+      icon: 'history',
+      iconActive: 'history',
+    },
+    {
       key: 'analytics',
       label: 'Diversification',
       icon: 'chart-pie',

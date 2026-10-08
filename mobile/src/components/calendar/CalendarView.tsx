@@ -108,7 +108,6 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ dividends }) => {
       dateKey: string;
       isCurrentMonth: boolean;
       events: DividendEvent[];
-      totalAmount: number;
       hasForecast: boolean;
       hasReceived: boolean;
     }> = [];
@@ -120,7 +119,6 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ dividends }) => {
         dateKey: '',
         isCurrentMonth: false,
         events: [],
-        totalAmount: 0,
         hasForecast: false,
         hasReceived: false,
       });
@@ -129,7 +127,6 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ dividends }) => {
     for (let day = 1; day <= totalDaysInMonth; day++) {
       const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       const events = dateMap.get(dateKey) || [];
-      const totalAmount = events.reduce((acc, e) => acc + e.amount, 0);
       const hasForecast = events.some(e => e.status === 'EXPECTED' || e.status === 'FORECAST');
       const hasReceived = events.some(e => e.status === 'RECEIVED');
 
@@ -138,7 +135,6 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ dividends }) => {
         dateKey,
         isCurrentMonth: true,
         events,
-        totalAmount,
         hasForecast,
         hasReceived,
       });
@@ -311,15 +307,26 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ dividends }) => {
                 {cell.dayNum}
               </Text>
               {hasEvents && (
-                <View
-                  style={[
-                    styles.eventBadge,
-                    cell.hasForecast && !cell.hasReceived && styles.eventBadgeForecast,
-                  ]}
-                >
-                  <Text style={styles.eventBadgeText}>
-                    €{cell.totalAmount >= 100 ? Math.round(cell.totalAmount) : cell.totalAmount.toFixed(1)}
-                  </Text>
+                <View style={styles.cellEvents}>
+                  {cell.events.slice(0, 2).map((event, eventIndex) => {
+                    const isForecast = event.status === 'EXPECTED' || event.status === 'FORECAST';
+                    return (
+                      <View
+                        key={`${event.external_id || event.ticker}-${eventIndex}`}
+                        style={[styles.cellEvent, isForecast ? styles.cellEventForecast : styles.cellEventPaid]}
+                      >
+                        <Text style={[styles.cellEventTicker, isForecast ? styles.cellEventTickerForecast : styles.cellEventTickerPaid]} numberOfLines={1}>
+                          {event.ticker}
+                        </Text>
+                        <Text style={[styles.cellEventAmount, isForecast ? styles.cellEventTickerForecast : styles.cellEventTickerPaid]}>
+                          €{event.amount.toFixed(2)}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                  {cell.events.length > 2 && (
+                    <Text style={styles.cellMore}>+{cell.events.length - 2} more</Text>
+                  )}
                 </View>
               )}
             </TouchableOpacity>
@@ -520,11 +527,10 @@ const styles = StyleSheet.create({
   },
   dayCell: {
     width: '14.28%',
-    aspectRatio: 1,
+    minHeight: 76,
     padding: 4,
     marginVertical: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'stretch',
     borderRadius: 8,
     borderWidth: 1,
   },
@@ -552,6 +558,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#475569',
+    textAlign: 'center',
   },
   dayNumTextHighlight: {
     fontWeight: '800',
@@ -560,20 +567,46 @@ const styles = StyleSheet.create({
     color: '#2563eb',
     fontWeight: '900',
   },
-  eventBadge: {
-    backgroundColor: '#059669',
-    borderRadius: 4,
+  cellEvents: {
+    width: '100%',
+    gap: 2,
+    marginTop: 3,
+  },
+  cellEvent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderRadius: 3,
     paddingHorizontal: 3,
-    paddingVertical: 1,
-    marginTop: 2,
+    paddingVertical: 2,
   },
-  eventBadgeForecast: {
-    backgroundColor: '#2563eb',
+  cellEventPaid: {
+    backgroundColor: '#d1fae5',
   },
-  eventBadgeText: {
-    color: '#ffffff',
-    fontSize: 8,
+  cellEventForecast: {
+    backgroundColor: '#dbeafe',
+  },
+  cellEventTicker: {
+    flex: 1,
+    fontSize: 7,
     fontWeight: '800',
+  },
+  cellEventAmount: {
+    fontSize: 7,
+    fontWeight: '800',
+    marginLeft: 2,
+  },
+  cellEventTickerPaid: {
+    color: '#047857',
+  },
+  cellEventTickerForecast: {
+    color: '#1d4ed8',
+  },
+  cellMore: {
+    color: '#64748b',
+    fontSize: 7,
+    fontWeight: '700',
+    textAlign: 'center',
   },
   modalOverlay: {
     flex: 1,

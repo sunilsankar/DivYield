@@ -101,12 +101,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-latest
-            platform: macos-arm64
-            artifact_name: DivYield-macOS-AppleSilicon.dmg
-          - os: macos-15
-            platform: macos-x64
-            artifact_name: DivYield-macOS-Intel.dmg
           - os: windows-latest
             platform: windows-x64
             artifact_name: DivYield-Windows.msi
@@ -144,13 +138,6 @@ jobs:
       - name: Build with PyInstaller
         run: pyinstaller DivYield.spec --clean
         
-      - name: Create DMG (macOS)
-        if: runner.os == 'macOS'
-        run: |
-          if [ -d "dist/DivYield.app" ]; then
-            hdiutil create -volname "DivYield" -srcfolder "dist/DivYield.app" -ov -format UDZO "${{ matrix.artifact_name }}"
-          fi
-          
       - name: Build Windows MSI (WiX Toolset)
         if: runner.os == 'Windows'
         shell: powershell

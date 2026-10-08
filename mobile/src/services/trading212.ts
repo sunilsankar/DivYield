@@ -28,7 +28,9 @@ export class Trading212Client {
 
   private async request<T>(path: string, options: { retries?: number; delayMs?: number } = {}): Promise<T> {
     const { retries = 3, delayMs = 600 } = options;
-    const url = path.startsWith('http') ? path : `${this.baseUrl}${path}`;
+    const url = path.startsWith('http')
+      ? path
+      : `${this.baseUrl}${path.startsWith('/api/v0') ? path.slice('/api/v0'.length) : path}`;
     const headers: Record<string, string> = {
       Authorization: this.getAuthHeader(),
       Accept: 'application/json',

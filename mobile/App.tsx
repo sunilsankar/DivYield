@@ -9,6 +9,7 @@ import { BottomNavBar } from './src/components/common/BottomNavBar';
 import { SyncProgressBar } from './src/components/common/SyncProgressBar';
 import { TopAppBar } from './src/components/common/TopAppBar';
 import { DashboardView } from './src/components/dashboard/DashboardView';
+import { HistoryView } from './src/components/history/HistoryView';
 import { HoldingsView } from './src/components/holdings/HoldingsView';
 import { SettingsView } from './src/components/settings/SettingsView';
 import { ThemeProvider, useTheme } from './src/context/ThemeContext';
@@ -18,6 +19,7 @@ import {
   getMonthlyDividends,
   getPortfolioSummary,
   getSetting,
+  getTransactions,
 } from './src/services/database';
 import { hasCredentials } from './src/services/secureStore';
 import { isPinSet } from './src/services/security';
@@ -28,6 +30,7 @@ import {
   PortfolioSummary,
   SyncProgress,
   TabKey,
+  Transaction,
 } from './src/types';
 
 function MainApp() {
@@ -46,6 +49,7 @@ function MainApp() {
   });
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [dividends, setDividends] = useState<DividendEvent[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [monthlyDividends, setMonthlyDividends] = useState<
     Array<{ month: string; received: number; forecast: number }>
   >([]);
@@ -91,12 +95,14 @@ function MainApp() {
       const s = await getPortfolioSummary();
       const h = await getHoldings();
       const d = await getDividends();
+      const tx = await getTransactions(2000);
       const m = await getMonthlyDividends();
       const ls = await getSetting('last_synced', '');
 
       setSummary(s);
       setHoldings(h);
       setDividends(d);
+      setTransactions(tx);
       setMonthlyDividends(m);
       if (ls) setLastSynced(ls);
     } catch (e) {
@@ -187,6 +193,8 @@ function MainApp() {
         {currentTab === 'holdings' && <HoldingsView holdings={holdings} />}
 
         {currentTab === 'calendar' && <CalendarView dividends={dividends} />}
+
+        {currentTab === 'history' && <HistoryView transactions={transactions} />}
 
         {currentTab === 'analytics' && (
           <AnalyticsView

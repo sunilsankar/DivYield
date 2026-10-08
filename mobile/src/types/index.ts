@@ -74,4 +74,4 @@ export interface Trading212Credentials {
   environment: 'live' | 'demo';
 }
 
-export type TabKey = 'dashboard' | 'holdings' | 'calendar' | 'analytics' | 'settings';
+export type TabKey = 'dashboard' | 'holdings' | 'calendar' | 'history' | 'analytics' | 'settings';
