@@ -474,7 +474,7 @@ export async function triggerFactoryReset(clearCredentials: boolean = true): Pro
   return res.json();
 }
 
-export async function fetchSecurityStatus(): Promise<{ is_password_set: boolean; has_password: boolean }> {
+export async function fetchSecurityStatus(): Promise<{ is_password_set: boolean }> {
   const res = await fetch(`${API_BASE}/security/status`);
   if (!res.ok) throw new Error("Failed to fetch security status");
   return res.json();

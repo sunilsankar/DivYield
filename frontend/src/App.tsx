@@ -170,8 +170,8 @@ export function App() {
   const checkSecurity = async () => {
     try {
       const res = await fetchSecurityStatus();
-      setHasPassword(res.has_password);
-      if (res.has_password) {
+      setHasPassword(res.is_password_set);
+      if (res.is_password_set) {
         setIsLocked(true);
       }
     } catch {
