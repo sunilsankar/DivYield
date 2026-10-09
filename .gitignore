@@ -10,7 +10,10 @@ env/
 venv/
 
 # Local agent / editor workspaces
+AGENTS.md
+mobile/AGENTS.md
 .opencode/
+opencode/
 
 # Build artifacts
 dist/

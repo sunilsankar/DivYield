@@ -2,7 +2,6 @@
 
 **Version:** 1.0  
 **Date:** 2026-10-02  
-**Target:** OpenCode  
 **Platforms:** Web first; Android and iOS later
 
 ## 1. Product
@@ -192,8 +191,6 @@ divyield/
 │   └── DEVELOPMENT.md
 ├── data/
 │   └── .gitkeep
-├── opencode/
-│   └── HANDOFF.md
 ├── AGENTS.md
 ├── README.md
 ├── .env.example
