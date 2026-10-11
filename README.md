@@ -11,25 +11,34 @@ Available as a **native desktop application** (Windows), a **native mobile app**
 
 ## 📸 Screenshots & Visual Preview
 
+### 💻 Desktop Application
+
 <div align="center">
 
-### Desktop Dashboard & Real-Time Tracking
-![Desktop Dashboard Preview](docs/assets/dashboard-preview.svg)
+#### Portfolio Overview & Dashboard
+![Desktop Dashboard](docs/assets/desktop-dashboard.jpg)
 
 <br/>
 
-### Interactive Dividend Calendar & Payout Forecasts
-![Visual Dividend Calendar Preview](docs/assets/calendar-preview.svg)
+#### Interactive Dividend Calendar
+![Desktop Dividend Calendar](docs/assets/desktop-calendar.jpg)
 
 <br/>
 
-### Biometric, PIN & Desktop Password Lock
-![Security Lock Preview](docs/assets/security-lock-preview.svg)
+#### API Connections & Permissions
+![Desktop API Connections](docs/assets/desktop-connections.jpg)
+
+</div>
 
 <br/>
 
-### Android Mobile App & Upcoming Dividend Notifications
-![Android Mobile App Preview](docs/assets/mobile-preview.svg)
+### 📱 Android Mobile App
+
+<div align="center">
+
+| Mobile Dashboard | Dividend Calendar | Day Details Drawer | API Setup |
+| :---: | :---: | :---: | :---: |
+| <img src="docs/assets/mobile-dashboard.jpg" width="220" alt="Mobile Dashboard" /> | <img src="docs/assets/mobile-calendar.jpg" width="220" alt="Mobile Calendar" /> | <img src="docs/assets/mobile-calendar-details.jpg" width="220" alt="Mobile Calendar Details" /> | <img src="docs/assets/mobile-settings.jpg" width="220" alt="Mobile Settings" /> |
 
 </div>
 
