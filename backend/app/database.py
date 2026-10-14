@@ -1,4 +1,5 @@
 import sqlite3
+import time
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Generator
@@ -105,6 +106,17 @@ CREATE TABLE IF NOT EXISTS instrument_mappings (
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_mappings_t212 ON instrument_mappings(trading212_ticker);
+
+CREATE TABLE IF NOT EXISTS sync_jobs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    source TEXT NOT NULL DEFAULT 'MANUAL',
+    status TEXT NOT NULL DEFAULT 'RUNNING',
+    lease_expires_at REAL,
+    error_message TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_sync_jobs_status ON sync_jobs(status);
 """
 
 DEFAULT_SETTINGS = [
@@ -241,6 +253,7 @@ def reset_database(db_path: Path | None = None) -> None:
         cursor.execute("DELETE FROM cash_interest;")
         cursor.execute("DELETE FROM sync_log;")
         cursor.execute("DELETE FROM instrument_mappings;")
+        cursor.execute("DELETE FROM sync_jobs;")
         cursor.execute("DELETE FROM settings;")
         for key, value in DEFAULT_SETTINGS:
             cursor.execute(
@@ -248,4 +261,78 @@ def reset_database(db_path: Path | None = None) -> None:
                 (key, value),
             )
         conn.commit()
+
+
+def try_acquire_sync_job(
+    source: str = "MANUAL",
+    lease_seconds: int = 600,
+    db_path: Path | None = None,
+) -> int | None:
+    # ponytail: single-row SQLite lease; upgrade to multi-worker job queue if concurrent tasks ever split
+    target_path = db_path or settings.db_path
+    now = time.time()
+    with sqlite3.connect(target_path, timeout=10.0) as conn:
+        conn.execute("BEGIN IMMEDIATE;")
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            UPDATE sync_jobs
+            SET status = 'FAILED', error_message = 'lease_expired', updated_at = CURRENT_TIMESTAMP
+            WHERE status = 'RUNNING' AND lease_expires_at <= ?;
+            """,
+            (now,),
+        )
+        cursor.execute(
+            "SELECT id FROM sync_jobs WHERE status = 'RUNNING' AND lease_expires_at > ? LIMIT 1;",
+            (now,),
+        )
+        if cursor.fetchone():
+            conn.commit()
+            return None
+
+        cursor.execute(
+            """
+            INSERT INTO sync_jobs (source, status, lease_expires_at)
+            VALUES (?, 'RUNNING', ?);
+            """,
+            (source, now + lease_seconds),
+        )
+        job_id = cursor.lastrowid
+        conn.commit()
+        return job_id
+
+
+def release_sync_job(
+    job_id: int,
+    status: str = "COMPLETED",
+    error_message: str | None = None,
+    db_path: Path | None = None,
+) -> None:
+    target_path = db_path or settings.db_path
+    with sqlite3.connect(target_path, timeout=10.0) as conn:
+        conn.execute(
+            """
+            UPDATE sync_jobs
+            SET status = ?, error_message = ?, lease_expires_at = NULL, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?;
+            """,
+            (status, error_message, job_id),
+        )
+        conn.commit()
+
+
+def is_sync_job_active(db_path: Path | None = None) -> bool:
+    target_path = db_path or settings.db_path
+    now = time.time()
+    try:
+        with sqlite3.connect(target_path, timeout=5.0) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT id FROM sync_jobs WHERE status = 'RUNNING' AND lease_expires_at > ? LIMIT 1;",
+                (now,),
+            )
+            return cursor.fetchone() is not None
+    except Exception:
+        return False
+
 

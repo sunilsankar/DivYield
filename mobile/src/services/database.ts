@@ -115,6 +115,48 @@ export async function setSetting(key: string, value: string): Promise<void> {
   );
 }
 
+export async function tryAcquireSyncLock(leaseMs: number = 300000): Promise<boolean> {
+  // ponytail: settings table timestamp lease; upgrade to dedicated lock table if concurrent workers expand
+  const db = await getDb();
+  const now = Date.now();
+  let acquired = false;
+  await db.withExclusiveTransactionAsync(async () => {
+    const row = await db.getFirstAsync<{ value: string }>(
+      "SELECT value FROM settings WHERE key = 'sync_lock_until'"
+    );
+    const lockUntil = row ? parseInt(row.value, 10) : 0;
+    if (lockUntil > now) {
+      acquired = false;
+      return;
+    }
+    const nextLock = String(now + leaseMs);
+    await db.runAsync(
+      `INSERT INTO settings (key, value, updated_at) VALUES ('sync_lock_until', ?, CURRENT_TIMESTAMP)
+       ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP`,
+      nextLock
+    );
+    acquired = true;
+  });
+  return acquired;
+}
+
+export async function releaseSyncLock(): Promise<void> {
+  const db = await getDb();
+  await db.runAsync(
+    `INSERT INTO settings (key, value, updated_at) VALUES ('sync_lock_until', '0', CURRENT_TIMESTAMP)
+     ON CONFLICT(key) DO UPDATE SET value = '0', updated_at = CURRENT_TIMESTAMP`
+  );
+}
+
+export async function isSyncLocked(): Promise<boolean> {
+  const db = await getDb();
+  const row = await db.getFirstAsync<{ value: string }>(
+    "SELECT value FROM settings WHERE key = 'sync_lock_until'"
+  );
+  const lockUntil = row ? parseInt(row.value, 10) : 0;
+  return lockUntil > Date.now();
+}
+
 export async function getPortfolioSummary(): Promise<PortfolioSummary> {
   const db = await getDb();
   const holdingsRow = await db.getFirstAsync<{

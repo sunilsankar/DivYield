@@ -165,6 +165,26 @@ export async function fetchSyncStatus(): Promise<{
   return res.json();
 }
 
+export async function fetchSyncSettings(): Promise<{ sync_frequency: string }> {
+  const res = await fetch(`${API_BASE}/sync/settings`);
+  if (!res.ok) {
+    throw new Error(`Failed to load sync settings (${res.status})`);
+  }
+  return res.json();
+}
+
+export async function updateSyncSettings(payload: { sync_frequency: string }): Promise<{ success: boolean; sync_frequency: string }> {
+  const res = await fetch(`${API_BASE}/sync/settings`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to update sync settings (${res.status})`);
+  }
+  return res.json();
+}
+
 export async function fetchAnalyticsOverview(): Promise<AnalyticsOverview> {
   const res = await fetch(`${API_BASE}/analytics/overview`);
   if (!res.ok) {

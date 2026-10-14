@@ -1,3 +1,4 @@
+import asyncio
 import os
 import sys
 from pathlib import Path
@@ -9,6 +10,7 @@ from fastapi.responses import FileResponse
 from app.config import settings
 from app.database import init_db
 from app.logging_config import setup_logging
+from app.services.scheduler import run_scheduler_loop
 from app.routers import health, credentials, portfolio, transactions, dividends, sync, analytics, tax, data_tools, export, mappings, system, security
 
 
@@ -16,7 +18,9 @@ from app.routers import health, credentials, portfolio, transactions, dividends,
 async def lifespan(app: FastAPI):
     setup_logging()
     init_db()
+    scheduler_task = asyncio.create_task(run_scheduler_loop())
     yield
+    scheduler_task.cancel()
 
 
 app = FastAPI(

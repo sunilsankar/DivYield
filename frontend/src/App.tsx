@@ -42,6 +42,8 @@ import {
   fetchSecurityStatus,
   setSecurityPassword,
   removeSecurityPassword,
+  fetchSyncSettings,
+  updateSyncSettings,
 } from "./lib/api";
 
 const SECTOR_COLORS = [
@@ -152,6 +154,7 @@ export function App() {
     totalSteps: number;
     stepMessage: string;
   } | null>(null);
+  const [syncFrequency, setSyncFrequency] = useState<string>("manual");
   const [updateInfo, setUpdateInfo] = useState<UpdateCheckResult | null>(null);
   const [isResetting, setIsResetting] = useState<boolean>(false);
   const [resetModalOpen, setResetModalOpen] = useState<boolean>(false);
@@ -314,6 +317,11 @@ export function App() {
     loadConnections();
     loadLiveData();
     fetchUpdateCheck().then(setUpdateInfo).catch(() => {});
+    fetchSyncSettings()
+      .then((s) => {
+        if (s?.sync_frequency) setSyncFrequency(s.sync_frequency);
+      })
+      .catch(() => {});
     const interval = setInterval(() => {
       checkHealth();
       loadConnections();
@@ -321,6 +329,21 @@ export function App() {
     }, 30000);
     return () => clearInterval(interval);
   }, []);
+
+  const handleSyncFrequencyChange = async (newFreq: string) => {
+    setSyncFrequency(newFreq);
+    try {
+      await updateSyncSettings({ sync_frequency: newFreq });
+      setNotification(
+        newFreq === "daily"
+          ? "Daily auto-sync enabled. DivYield will sync daily in the background."
+          : "Sync schedule set to manual."
+      );
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to update sync frequency";
+      setNotification(`Error: ${msg}`);
+    }
+  };
 
   // Primary Sync handler calling FastAPI /api/v1/sync
   const handleSyncNow = async () => {
@@ -762,9 +785,19 @@ export function App() {
                 </div>
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1.5">Sync Frequency</label>
-                  <select className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                  <select
+                    value={syncFrequency}
+                    onChange={(e) => handleSyncFrequencyChange(e.target.value)}
+                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
                     <option value="manual">Manual ("Sync Now" button only)</option>
+                    <option value="daily">Daily Auto-Sync (Background)</option>
                   </select>
+                  {syncFrequency === "daily" && (
+                    <p className="text-[11px] text-slate-500 mt-1">
+                      Runs daily in the background. If you click "Sync Now" while auto-sync is running, it safely attaches without conflicting.
+                    </p>
+                  )}
                 </div>
               </div>
 

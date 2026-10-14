@@ -141,7 +141,11 @@ function MainApp() {
       });
 
       await loadData();
-      Alert.alert('Sync Successful', res.message);
+      if (res.success) {
+        Alert.alert('Sync Successful', res.message);
+      } else {
+        Alert.alert('Sync Notice', res.message);
+      }
     } catch (err: any) {
       Alert.alert('Sync Error', err.message || 'Failed to sync with Trading 212');
     } finally {

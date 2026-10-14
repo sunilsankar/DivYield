@@ -54,7 +54,20 @@ def main():
 
         parser = argparse.ArgumentParser(description="DivYield Desktop App")
         parser.add_argument("--port", type=int, help="Specify a port for the local server", default=0)
+        parser.add_argument("--worker-once", action="store_true", help="Run one headless background sync job and exit")
         args = parser.parse_args()
+
+        if args.worker_once:
+            # ponytail: headless background sync worker via CLI flag; upgrade to separate service binary if packaging requires it
+            import asyncio
+            from app.database import init_db
+            from app.services.combined_sync import run_combined_sync
+
+            init_db()
+            logger.info("Executing standalone background sync worker...")
+            res = asyncio.run(run_combined_sync(source="AUTO"))
+            logger.info("Background sync worker finished: status=%s, success=%s", res.get("status"), res.get("success"))
+            sys.exit(0 if res.get("success") else 1)
 
         port = args.port
         if port == 0:

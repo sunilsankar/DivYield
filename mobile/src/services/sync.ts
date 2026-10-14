@@ -7,6 +7,8 @@ import {
   replaceForecastDividends,
   setSetting,
   updateHoldingEnrichment,
+  tryAcquireSyncLock,
+  releaseSyncLock,
 } from './database';
 import { getCredentials } from './secureStore';
 import { Trading212Client } from './trading212';
@@ -22,6 +24,11 @@ export async function runSync(onProgress?: (progress: SyncProgress) => void): Pr
   dividendsCount?: number;
 }> {
   if (isSyncingActive) {
+    return { success: false, message: 'Sync is already running' };
+  }
+
+  const acquired = await tryAcquireSyncLock();
+  if (!acquired) {
     return { success: false, message: 'Sync is already running' };
   }
 
@@ -326,6 +333,7 @@ export async function runSync(onProgress?: (progress: SyncProgress) => void): Pr
     throw err;
   } finally {
     isSyncingActive = false;
+    await releaseSyncLock().catch(() => {});
     if (onProgress) {
       onProgress({
         is_syncing: false,

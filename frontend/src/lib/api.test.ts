@@ -15,6 +15,8 @@ import {
   fetchUpdateCheck,
   fetchDiversification,
   triggerFactoryReset,
+  fetchSyncSettings,
+  updateSyncSettings,
 } from "./api";
 
 describe("API Client Tests", () => {
@@ -329,6 +331,33 @@ describe("API Client Tests", () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ clear_credentials: true }),
+      })
+    );
+  });
+
+  it("fetchSyncSettings and updateSyncSettings manage daily sync config", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ sync_frequency: "daily" }),
+    } as unknown as Response);
+
+    const getRes = await fetchSyncSettings();
+    expect(getRes.sync_frequency).toBe("daily");
+
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true, sync_frequency: "daily" }),
+    } as unknown as Response);
+
+    const postRes = await updateSyncSettings({ sync_frequency: "daily" });
+    expect(postRes.success).toBe(true);
+    expect(postRes.sync_frequency).toBe("daily");
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      "/api/v1/sync/settings",
+      expect.objectContaining({
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sync_frequency: "daily" }),
       })
     );
   });

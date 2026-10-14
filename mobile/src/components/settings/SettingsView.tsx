@@ -22,6 +22,7 @@ import {
   deleteCredentials,
   getCredentials,
   saveCredentials,
+  hasCredentials,
 } from '../../services/secureStore';
 import { Trading212Client } from '../../services/trading212';
 import {
@@ -29,6 +30,11 @@ import {
   isNotificationsEnabled,
   requestNotificationPermission,
 } from '../../services/notifications';
+import {
+  isDailySyncEnabled,
+  registerDailySync,
+  unregisterDailySync,
+} from '../../services/backgroundSync';
 import {
   isPinSet,
   setAppPin,
@@ -56,6 +62,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onRefreshData }) => 
   const [isExporting, setIsExporting] = useState(false);
   const [dbStats, setDbStats] = useState({ holdings: 0, transactions: 0, dividends: 0 });
   const [notificationsActive, setNotificationsActive] = useState(false);
+  const [dailySyncActive, setDailySyncActive] = useState(false);
 
   // App Lock & Biometrics state
   const [pinEnabled, setPinEnabled] = useState(false);
@@ -71,6 +78,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onRefreshData }) => 
     loadCreds();
     loadStats();
     loadNotificationStatus();
+    loadDailySyncStatus();
     loadSecurityStatus();
   }, []);
 
@@ -161,6 +169,35 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onRefreshData }) => 
     }
   };
 
+  const loadDailySyncStatus = async () => {
+    const active = await isDailySyncEnabled();
+    setDailySyncActive(active);
+  };
+
+  const handleToggleDailySync = async (val: boolean) => {
+    if (val) {
+      const creds = await hasCredentials();
+      if (!creds) {
+        Alert.alert(
+          'API Credentials Required',
+          'Please configure and save your Trading 212 API Key before enabling daily background sync.'
+        );
+        return;
+      }
+      const success = await registerDailySync();
+      setDailySyncActive(success);
+      if (success) {
+        Alert.alert(
+          'Daily Auto-Sync Enabled',
+          'DivYield will automatically synchronize portfolio and dividend data daily in the background.'
+        );
+      }
+    } else {
+      await unregisterDailySync();
+      setDailySyncActive(false);
+    }
+  };
+
   const loadCreds = async () => {
     const creds = await getCredentials();
     if (creds && creds.apiKey) {
@@ -221,6 +258,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onRefreshData }) => 
           style: 'destructive',
           onPress: async () => {
             await deleteCredentials();
+            await unregisterDailySync();
+            setDailySyncActive(false);
             setApiKey('');
             setApiSecret('');
             setIsSaved(false);
@@ -503,6 +542,37 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onRefreshData }) => 
           <Switch
             value={notificationsActive}
             onValueChange={handleToggleNotifications}
+            trackColor={{ false: '#cbd5e1', true: theme.accent }}
+            thumbColor="#ffffff"
+          />
+        </View>
+      </View>
+
+      {/* Daily Background Sync */}
+      <View
+        style={[
+          styles.card,
+          {
+            backgroundColor: theme.cardBg,
+            borderColor: theme.cardBorder,
+            borderWidth: isSketch ? 2 : 1,
+          },
+        ]}
+      >
+        <View style={styles.cardHeader}>
+          <MaterialCommunityIcons name="sync" size={24} color="#3b82f6" />
+          <Text style={[styles.cardTitle, { color: theme.textPrimary }]}>Daily Background Sync</Text>
+        </View>
+        <Text style={styles.themeSub}>
+          Automatically synchronize Trading 212 and Yahoo Finance dividend data once daily in the background.
+        </Text>
+        <View style={styles.notificationRow}>
+          <Text style={[styles.notificationLabel, { color: theme.textPrimary }]}>
+            Auto Sync Daily
+          </Text>
+          <Switch
+            value={dailySyncActive}
+            onValueChange={handleToggleDailySync}
             trackColor={{ false: '#cbd5e1', true: theme.accent }}
             thumbColor="#ffffff"
           />

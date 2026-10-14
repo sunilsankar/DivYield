@@ -1,11 +1,17 @@
 """Trading 212 Portfolio and Dividend Synchronization Router."""
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 from app.services.combined_sync import run_combined_sync, _combined_sync_lock, get_sync_progress
 from app.services.trading212_sync import _sync_lock as _t212_lock
-from app.database import get_setting
+from app.database import get_setting, set_setting, is_sync_job_active
 from app.schemas import SyncResponse, SyncStatusResponse
+from app.services.scheduler import sync_windows_task_scheduler
 
 router = APIRouter(tags=["sync"])
+
+
+class SyncSettingsPayload(BaseModel):
+    sync_frequency: str
 
 
 @router.post("/sync", response_model=SyncResponse)
@@ -39,11 +45,15 @@ async def run_sync():
 @router.get("/sync/status", response_model=SyncStatusResponse)
 async def get_sync_status():
     """Check current synchronization status, concurrency lock, and last sync timestamp."""
-    is_syncing = _combined_sync_lock.locked() or _t212_lock.locked()
+    is_syncing = _combined_sync_lock.locked() or _t212_lock.locked() or is_sync_job_active()
     last_synced = get_setting("last_synced") or get_setting("trading212_last_synced")
     t212_status = get_setting("trading212_sync_status", "disconnected")
     t212_error = get_setting("trading212_sync_error")
     prog = get_sync_progress()
+
+    step_msg = prog.get("step_message")
+    if is_syncing and not step_msg:
+        step_msg = "Background sync in progress..."
 
     return SyncStatusResponse(
         is_syncing=is_syncing,
@@ -53,7 +63,29 @@ async def get_sync_status():
         eodhd_status=None,
         eodhd_last_enriched=None,
         eodhd_error=None,
-        current_step=prog.get("current_step", 0) if is_syncing else 0,
-        total_steps=prog.get("total_steps", 7) if is_syncing else 0,
-        step_message=prog.get("step_message") if is_syncing else None,
+        current_step=prog.get("current_step", 1) if is_syncing else 0,
+        total_steps=prog.get("total_steps", 8) if is_syncing else 0,
+        step_message=step_msg if is_syncing else None,
     )
+
+
+@router.get("/sync/settings")
+async def get_sync_settings():
+    """Retrieve current synchronization settings."""
+    return {
+        "sync_frequency": get_setting("sync_frequency", "manual"),
+    }
+
+
+@router.post("/sync/settings")
+async def update_sync_settings(payload: SyncSettingsPayload):
+    """Update synchronization schedule frequency."""
+    freq = payload.sync_frequency.lower().strip()
+    if freq not in ("manual", "daily"):
+        raise HTTPException(status_code=400, detail="Sync frequency must be 'manual' or 'daily'")
+    set_setting("sync_frequency", freq)
+    sync_windows_task_scheduler(freq)
+    return {
+        "success": True,
+        "sync_frequency": freq,
+    }

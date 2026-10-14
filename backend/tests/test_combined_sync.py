@@ -129,3 +129,72 @@ def test_sync_progress_tracking():
 
     asyncio.run(_test())
     clear_sync_progress()
+
+
+@pytest.mark.anyio
+async def test_persistent_sync_job_lease_prevents_overlap():
+    from app.database import try_acquire_sync_job, release_sync_job, is_sync_job_active
+
+    job_id = try_acquire_sync_job(source="AUTO")
+    assert job_id is not None
+    assert is_sync_job_active() is True
+
+    # Manual sync attempt while auto sync job is active must not conflict
+    res = await run_combined_sync(source="MANUAL")
+    assert res["success"] is False
+    assert res["status"] == "already_running"
+    assert res["error"] == "concurrent_sync_blocked"
+
+    release_sync_job(job_id, status="COMPLETED")
+    assert is_sync_job_active() is False
+
+
+def test_sync_settings_endpoints():
+    client = TestClient(app)
+
+    # 1. Initial default
+    resp = client.get("/api/v1/sync/settings")
+    assert resp.status_code == 200
+    assert resp.json()["sync_frequency"] == "manual"
+
+    # 2. Update to daily
+    resp = client.post("/api/v1/sync/settings", json={"sync_frequency": "daily"})
+    assert resp.status_code == 200
+    assert resp.json()["sync_frequency"] == "daily"
+
+    # 3. Read back
+    resp = client.get("/api/v1/sync/settings")
+    assert resp.status_code == 200
+    assert resp.json()["sync_frequency"] == "daily"
+
+    # 4. Invalid frequency
+    resp = client.post("/api/v1/sync/settings", json={"sync_frequency": "hourly"})
+    assert resp.status_code == 400
+
+
+@pytest.mark.anyio
+async def test_scheduler_auto_sync_due_check():
+    from app.services.scheduler import check_and_run_auto_sync
+    from app.database import set_setting
+
+    # 1. Frequency manual -> should not run
+    set_setting("sync_frequency", "manual")
+    ran = await check_and_run_auto_sync()
+    assert ran is False
+
+    # 2. Frequency daily and last_synced recent -> should not run
+    from datetime import datetime, timezone
+    set_setting("sync_frequency", "daily")
+    set_setting("last_synced", datetime.now(timezone.utc).isoformat())
+    ran = await check_and_run_auto_sync()
+    assert ran is False
+
+    # 3. Frequency daily and last_synced 25 hours ago -> should trigger run
+    from datetime import timedelta
+    old_time = (datetime.now(timezone.utc) - timedelta(hours=25)).isoformat()
+    set_setting("last_synced", old_time)
+
+    with patch("app.services.combined_sync.get_trading212_credentials", return_value=None):
+        ran = await check_and_run_auto_sync()
+        assert ran is True
+

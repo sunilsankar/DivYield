@@ -10,7 +10,14 @@ from typing import Dict, Any
 from app.credentials import get_trading212_credentials
 from app.services.trading212_sync import sync_trading212, _sync_lock as _t212_lock
 from app.services.yfinance_enrichment import YahooFinanceEnrichmentService
-from app.database import get_db_connection, set_setting, get_setting
+from app.database import (
+    get_db_connection,
+    set_setting,
+    get_setting,
+    try_acquire_sync_job,
+    release_sync_job,
+    is_sync_job_active,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -39,13 +46,13 @@ def clear_sync_progress() -> None:
     _sync_progress["step_message"] = None
 
 
-async def run_combined_sync() -> Dict[str, Any]:
+async def run_combined_sync(source: str = "MANUAL") -> Dict[str, Any]:
     """Execute the full synchronization pipeline:
     1. Trading 212: holdings, transactions, received dividends (Read-Only)
     2. Yahoo Finance: sector, yield, projected upcoming dividends (Free Enrichment)
     3. Update sync logs and status settings.
     """
-    if _combined_sync_lock.locked() or _t212_lock.locked():
+    if _combined_sync_lock.locked() or _t212_lock.locked() or is_sync_job_active():
         return {
             "success": False,
             "status": "already_running",
@@ -53,8 +60,18 @@ async def run_combined_sync() -> Dict[str, Any]:
             "error": "concurrent_sync_blocked",
         }
 
+    job_id = try_acquire_sync_job(source=source)
+    if not job_id:
+        return {
+            "success": False,
+            "status": "already_running",
+            "message": "A synchronization job is already actively running.",
+            "error": "concurrent_sync_blocked",
+        }
+
+    job_released = False
     async with _combined_sync_lock:
-        logger.info("Combined sync pipeline started.")
+        logger.info("Combined sync pipeline started (job %s, source %s).", job_id, source)
         update_sync_progress(1, 8, "Initializing synchronization...")
         try:
             now_iso = datetime.now(timezone.utc).isoformat()
@@ -62,6 +79,8 @@ async def run_combined_sync() -> Dict[str, Any]:
 
             if not t212_creds:
                 logger.warning("Combined sync skipped: Trading 212 API credentials are not configured.")
+                job_released = True
+                release_sync_job(job_id, status="FAILED", error_message="not_configured")
                 return {
                     "success": False,
                     "status": "not_configured",
@@ -129,6 +148,13 @@ async def run_combined_sync() -> Dict[str, Any]:
             )
             logger.info("Combined sync completed. %s", summary_msg)
 
+            job_released = True
+            release_sync_job(
+                job_id,
+                status="COMPLETED" if overall_success else "FAILED",
+                error_message=str(t212_res.get("error") or "")[:250],
+            )
+
             return {
                 "success": overall_success,
                 "status": "completed" if overall_success else "error",
@@ -147,3 +173,6 @@ async def run_combined_sync() -> Dict[str, Any]:
             }
         finally:
             clear_sync_progress()
+            if not job_released:
+                release_sync_job(job_id, status="FAILED", error_message="aborted_or_failed")
+
