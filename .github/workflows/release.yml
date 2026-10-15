@@ -198,6 +198,88 @@ jobs:
             DivYield-Windows.msi
             DivYield-Windows.zip
 
+  build-macos:
+    name: Build & Release macOS Universal (Intel & Apple Silicon)
+    runs-on: macos-14
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build Frontend
+        working-directory: ./frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+          pip install pyinstaller
+
+      - name: Build with PyInstaller
+        env:
+          TARGET_ARCH: universal2
+        run: |
+          # ponytail: universal2 fat binary build with host fallback if runner python is thin
+          pyinstaller DivYield.spec --clean || {
+            echo "Universal2 build not supported by runner python environment, falling back to host arch"
+            TARGET_ARCH="" pyinstaller DivYield.spec --clean
+          }
+
+      - name: Package macOS Universal DMG & ZIP
+        run: |
+          # Create staging folder for DMG with Applications symlink
+          mkdir -p dist/dmg_staging
+          cp -R dist/DivYield.app dist/dmg_staging/
+          ln -s /Applications dist/dmg_staging/Applications
+
+          # Code signing (Apple Developer ID if configured in secrets, else ad-hoc)
+          if [ -n "${{ secrets.APPLE_CERTIFICATE }}" ]; then
+            echo "Importing Apple Developer Certificate..."
+            echo "${{ secrets.APPLE_CERTIFICATE }}" | base64 --decode > certificate.p12
+            KEYCHAIN=build.keychain
+            security create-keychain -p "${{ secrets.KEYCHAIN_PASSWORD || 'build' }}" $KEYCHAIN
+            security default-keychain -s $KEYCHAIN
+            security unlock-keychain -p "${{ secrets.KEYCHAIN_PASSWORD || 'build' }}" $KEYCHAIN
+            security set-keychain-settings -t 3600 -u $KEYCHAIN
+            security import certificate.p12 -k $KEYCHAIN -P "${{ secrets.APPLE_CERTIFICATE_PASSWORD }}" -T /usr/bin/codesign
+            security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "${{ secrets.KEYCHAIN_PASSWORD || 'build' }}" $KEYCHAIN
+            codesign --force --deep --sign "${{ secrets.APPLE_SIGNING_IDENTITY || '-' }}" dist/dmg_staging/DivYield.app
+            rm -f certificate.p12
+          else
+            echo "Applying ad-hoc code signature..."
+            codesign --force --deep --sign - dist/dmg_staging/DivYield.app || true
+          fi
+
+          # Build compressed read-only DMG using native hdiutil
+          hdiutil create -volname "DivYield" -srcfolder dist/dmg_staging -ov -format UDZO DivYield-macOS-Universal.dmg
+
+          # Create zip archive preserving macOS metadata
+          ditto -c -k --sequesterRsrc --keepParent dist/DivYield.app DivYield-macOS-Universal.zip
+
+      - name: Upload macOS Release Assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-macos
+          path: |
+            DivYield-macOS-Universal.dmg
+            DivYield-macOS-Universal.zip
+
   build-android:
     name: Build & Release Android APK
     runs-on: ubuntu-latest
@@ -251,7 +333,7 @@ jobs:
 
   publish-release:
     name: Publish GitHub Release
-    needs: [build-desktop, build-android]
+    needs: [build-desktop, build-macos, build-android]
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     permissions:

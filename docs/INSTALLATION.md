@@ -19,8 +19,7 @@ If you just want to run DivYield without compiling from source, download the pre
 |---|---|---|
 | **Android (10+)** | `DivYield-Android.apk` | Standalone APK for Android phones and tablets. Direct side-load install. Built with Expo, Material 3, and on-device SQLite. |
 | **Windows 10 / 11** | `DivYield-Windows.msi` | Native Windows Installer. Installs to Program Files with Start Menu and Desktop shortcuts and uninstaller. *(Portable `DivYield-Windows.zip` also available)* |
-| **macOS (Apple Silicon)** | `DivYield-macOS-AppleSilicon.dmg` | Native ARM64 disk image for Apple Silicon (M1, M2, M3, M4) Macs. Drag to Applications. |
-| **macOS (Intel Core)** | Build from source | Supported via `npm run build && pyinstaller DivYield.spec`. |
+| **macOS (Universal)** | `DivYield-macOS-Universal.dmg` | Native Universal disk image for both Apple Silicon (M1/M2/M3/M4) and Intel Macs. Drag to Applications. *(Portable `DivYield-macOS-Universal.zip` also available)* |
 
 ---
 

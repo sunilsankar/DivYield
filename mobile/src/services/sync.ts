@@ -91,8 +91,8 @@ export async function runSync(onProgress?: (progress: SyncProgress) => void): Pr
     updateProgress(3, 'Synchronizing open holdings & live FX...');
     const portfolio = await client.getPortfolio();
 
-    // Derive FX rates
-    const rates: Record<string, number> = { EUR: 1.0, GBX: 0.01175, GBP: 1.175, USD: 0.92 };
+    // Derive FX rates (defaults match backend DEFAULT_FX_RATES)
+    const rates: Record<string, number> = { EUR: 1.0, GBX: 0.0117, GBP: 1.17, USD: 0.90 };
     const currencyTotals: Record<string, { localPnl: number; eurPnl: number }> = {};
     for (const pos of portfolio) {
       const curr = instrumentCurrencies.get(pos.ticker) || 'USD';

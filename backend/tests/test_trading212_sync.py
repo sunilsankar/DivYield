@@ -169,3 +169,83 @@ def test_api_endpoints_after_sync():
     assert div_data["count"] == 1
     assert div_data["dividends"][0]["status"] == "RECEIVED"
     assert div_data["total_amount"] == 15.0
+
+
+def test_portfolio_authoritative_valuation():
+    """Verify that when account_total_cash is set, total_value equals T212 authoritative account value."""
+    from app.database import set_setting
+    client = TestClient(app)
+
+    set_setting("account_free_cash", "500.00")
+    set_setting("account_total_cash", "9147.75")
+    set_setting("account_currency", "EUR")
+
+    with get_db() as conn:
+        conn.execute(
+            """
+            INSERT INTO holdings (provider, external_id, ticker, name, currency, quantity, average_price, current_price, market_value)
+            VALUES ('trading212', 'AAPL_US_EQ', 'AAPL', 'Apple Inc.', 'USD', 10.0, 150.0, 180.0, 8568.80);
+            """
+        )
+        conn.commit()
+
+    resp = client.get("/api/v1/portfolio")
+    assert resp.status_code == 200
+    data = resp.json()
+    # Holdings value is 8568.80, free cash is 500.00 (sum=9068.80), but T212 total is 9147.75
+    assert data["total_value"] == 9147.75
+    assert data["free_cash"] == 500.00
+    assert data["total_cash"] == 9147.75
+
+
+def test_holdings_enrichment_fields():
+    """Verify that GET /api/v1/holdings returns all enriched dividend metadata."""
+    client = TestClient(app)
+
+    with get_db() as conn:
+        conn.execute(
+            """
+            INSERT INTO holdings (
+                provider, external_id, ticker, name, currency, quantity, average_price, current_price, market_value,
+                sector, industry, dividend_yield, annual_dividend, payout_frequency
+            ) VALUES (
+                'trading212', 'JNJ_US_EQ', 'JNJ', 'Johnson & Johnson', 'USD', 5.0, 140.0, 160.0, 800.0,
+                'Healthcare', 'Drug Manufacturers', 3.1, 4.96, 'QUARTERLY'
+            );
+            """
+        )
+        conn.commit()
+
+    resp = client.get("/api/v1/holdings")
+    assert resp.status_code == 200
+    item = resp.json()["holdings"][0]
+    assert item["sector"] == "Healthcare"
+    assert item["industry"] == "Drug Manufacturers"
+    assert item["dividend_yield"] == 3.1
+    assert item["annual_dividend"] == 4.96
+    assert item["payout_frequency"] == "QUARTERLY"
+
+
+@pytest.mark.anyio
+async def test_empty_portfolio_cleans_forecast_dividends():
+    """Verify that combined sync cleans up orphaned forecast dividends when portfolio is empty."""
+    from app.services.combined_sync import run_combined_sync
+
+    with get_db() as conn:
+        conn.execute(
+            """
+            INSERT INTO dividend_events (ticker, payment_date, amount, currency, source, status, external_id)
+            VALUES ('OLD', '2026-11-01', 25.0, 'EUR', 'YFINANCE', 'EXPECTED', 'yf-old-1');
+            """
+        )
+        conn.commit()
+
+    with patch("app.services.combined_sync.get_trading212_credentials", return_value={"api_key": "valid_key", "environment": "live"}), \
+         patch("app.services.combined_sync.sync_trading212", return_value={"success": True, "holdings_count": 0}):
+        res = await run_combined_sync(source="TEST")
+        assert res["success"] is True
+
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) as count FROM dividend_events WHERE status = 'EXPECTED' AND source = 'YFINANCE';")
+        assert cursor.fetchone()["count"] == 0

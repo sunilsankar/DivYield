@@ -79,6 +79,11 @@ class HoldingItem(BaseModel):
     unrealized_gain: float
     unrealized_gain_percent: float
     updated_at: Optional[str] = None
+    sector: Optional[str] = None
+    industry: Optional[str] = None
+    dividend_yield: Optional[float] = None
+    annual_dividend: Optional[float] = None
+    payout_frequency: Optional[str] = None
 
 
 class HoldingsResponse(BaseModel):

@@ -116,6 +116,11 @@ async def run_combined_sync(source: str = "MANUAL") -> Dict[str, Any]:
                     logger.warning("Yahoo Finance enrichment encountered non-fatal issue: %s", e)
                     # Non-fatal if Yahoo Finance enrichment encounters an issue
                     update_sync_progress(8, 8, f"Yahoo Finance enrichment completed with notice: {e}")
+            elif overall_success:
+                # ponytail: clean up orphan forecast dividends when portfolio has 0 holdings
+                with get_db_connection() as conn:
+                    conn.execute("DELETE FROM dividend_events WHERE status = 'EXPECTED' AND source = 'YFINANCE';")
+                    conn.commit()
 
             total_items = (
                 t212_res.get("holdings_count", 0)

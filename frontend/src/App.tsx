@@ -424,7 +424,7 @@ export function App() {
   const totalPortfolioValue =
     summary && summary.total_value > 0
       ? summary.total_value
-      : activeHoldings.reduce((sum, h) => sum + h.marketValue, 0);
+      : activeHoldings.reduce((sum, h) => sum + h.marketValue, 0) + (summary?.free_cash || 0);
 
   const totalReceivedAllTime = useMemo(
     () => liveDividends.reduce((sum, d) => sum + d.amount, 0),

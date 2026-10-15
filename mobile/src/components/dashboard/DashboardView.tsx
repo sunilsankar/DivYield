@@ -13,6 +13,16 @@ interface DashboardViewProps {
   onNavigateTab: (tab: any) => void;
 }
 
+function getCurrencySymbol(code?: string): string {
+  switch ((code || 'EUR').toUpperCase()) {
+    case 'USD': return '$';
+    case 'GBP': return '£';
+    case 'GBX': return 'p';
+    case 'EUR': return '€';
+    default: return `${code} `;
+  }
+}
+
 export const DashboardView: React.FC<DashboardViewProps> = ({
   summary,
   holdings,
@@ -22,10 +32,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 }) => {
   const { theme, isSketch } = useTheme();
   const isPositive = summary.unrealized_pnl >= 0;
+  const currSym = getCurrencySymbol(summary.account_currency);
 
   // Derive metrics in a single pass
   const { totalReceivedAllTime, receivedYtd, ttmDividends, forecastNext12Months } = useMemo(() => {
     const currentYear = new Date().getFullYear().toString();
+    const now = new Date();
+    const todayStr = now.toISOString().slice(0, 10);
+    const forward12 = new Date(now);
+    forward12.setFullYear(forward12.getFullYear() + 1);
+    const forward12Str = forward12.toISOString().slice(0, 10);
+
     const cutoff = new Date();
     cutoff.setFullYear(cutoff.getFullYear() - 1);
     const cutoffStr = cutoff.toISOString().slice(0, 10);
@@ -43,7 +60,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         if (date.startsWith(currentYear)) ytd += amt;
         if (date >= cutoffStr) ttm += amt;
       } else {
-        forecast12 += amt;
+        const date = d.payment_date || '';
+        // ponytail: filter upcoming/forecast dividends to forward 12-month window (matches web)
+        if (!date || (date >= todayStr && date <= forward12Str)) {
+          forecast12 += amt;
+        }
       }
     }
 
@@ -118,7 +139,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       >
         <Text style={styles.heroLabel}>Total Portfolio Value</Text>
         <Text style={styles.heroValue}>
-          €{summary.total_value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          {currSym}{summary.total_value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </Text>
 
         <View style={styles.heroReturnRow}>
@@ -129,7 +150,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               color={isPositive ? '#059669' : '#dc2626'}
             />
             <Text style={[styles.pnlText, isPositive ? styles.pnlTextPositive : styles.pnlTextNegative]}>
-              {isPositive ? '+' : ''}€{summary.unrealized_pnl.toFixed(2)} ({isPositive ? '+' : ''}{summary.pnl_percent.toFixed(2)}%)
+              {isPositive ? '+' : ''}{currSym}{summary.unrealized_pnl.toFixed(2)} ({isPositive ? '+' : ''}{summary.pnl_percent.toFixed(2)}%)
             </Text>
           </View>
         </View>
@@ -137,11 +158,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <View style={styles.heroFooter}>
           <View style={styles.heroFooterCol}>
             <Text style={styles.footerLabel}>Invested Basis</Text>
-            <Text style={styles.footerValue}>€{summary.total_invested.toFixed(2)}</Text>
+            <Text style={styles.footerValue}>{currSym}{summary.total_invested.toFixed(2)}</Text>
           </View>
           <View style={styles.heroFooterCol}>
             <Text style={styles.footerLabel}>Free Cash</Text>
-            <Text style={styles.footerValue}>€{summary.free_cash.toFixed(2)}</Text>
+            <Text style={styles.footerValue}>{currSym}{summary.free_cash.toFixed(2)}</Text>
           </View>
           <View style={styles.heroFooterCol}>
             <Text style={styles.footerLabel}>Holdings</Text>
@@ -164,7 +185,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         >
           <Text style={styles.statLabel}>Total Received</Text>
           <Text style={[styles.statValue, { color: theme.textPrimary }]}>
-            €{totalReceivedAllTime.toFixed(2)}
+            {currSym}{totalReceivedAllTime.toFixed(2)}
           </Text>
           <Text style={styles.statSub}>All time cash</Text>
         </View>
@@ -180,7 +201,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         >
           <Text style={styles.statLabel}>Received YTD</Text>
           <Text style={[styles.statValue, { color: theme.textPrimary }]}>
-            €{receivedYtd.toFixed(2)}
+            {currSym}{receivedYtd.toFixed(2)}
           </Text>
           <Text style={styles.statSub}>In {new Date().getFullYear()}</Text>
         </View>
@@ -199,7 +220,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         >
           <Text style={styles.statLabel}>Next 12M Forecast</Text>
           <Text style={[styles.statValue, { color: '#2563eb' }]}>
-            €{forecastNext12Months.toFixed(2)}
+            {currSym}{forecastNext12Months.toFixed(2)}
           </Text>
           <Text style={styles.statSub}>Projected dividends</Text>
         </View>
@@ -215,7 +236,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         >
           <Text style={styles.statLabel}>Monthly Avg</Text>
           <Text style={[styles.statValue, { color: theme.textPrimary }]}>
-            €{((forecastNext12Months > 0 ? forecastNext12Months : ttmDividends) / 12).toFixed(2)}
+            {currSym}{((forecastNext12Months > 0 ? forecastNext12Months : ttmDividends) / 12).toFixed(2)}
           </Text>
           <Text style={styles.statSub}>Run-rate / mo</Text>
         </View>
@@ -326,7 +347,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </View>
               <View style={styles.divAmountCol}>
                 <Text style={[styles.divAmount, isForecast && styles.divAmountForecast]}>
-                  +€{div.amount.toFixed(2)}
+                  +{getCurrencySymbol(div.currency || summary.account_currency)}{div.amount.toFixed(2)}
                 </Text>
                 <Text style={styles.divDate}>
                   {div.payment_date} {isForecast ? '• EST' : ''}

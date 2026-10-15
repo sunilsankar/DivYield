@@ -88,7 +88,8 @@ exe = EXE(
     console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
-    target_arch=None,
+    # ponytail: universal2 on macOS when TARGET_ARCH is set in release CI; otherwise native host arch
+    target_arch=os.environ.get('TARGET_ARCH', None),
     codesign_identity=None,
     entitlements_file=None,
     icon=icon_file,
@@ -111,4 +112,10 @@ if sys.platform == 'darwin':
         name='DivYield.app',
         icon=icon_file,
         bundle_identifier='com.divyield.app',
+        info_plist={
+            'CFBundleShortVersionString': '0.4.0',
+            'CFBundleVersion': '0.4.0',
+            'NSHighResolutionCapable': True,
+            'LSMinimumSystemVersion': '11.0',
+        },
     )

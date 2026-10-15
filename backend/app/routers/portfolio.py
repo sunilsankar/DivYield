@@ -33,7 +33,9 @@ async def get_portfolio_summary():
 
     unrealized_pnl = holdings_val - invested_val
     unrealized_pnl_percent = (unrealized_pnl / invested_val * 100.0) if invested_val > 0 else 0.0
-    total_portfolio_value = holdings_val + free_cash
+    # ponytail: T212 cash.total is authoritative account valuation (cash + investments).
+    # If present, use total_cash directly for portfolio total to match broker app.
+    total_portfolio_value = total_cash if total_cash > 0 else (holdings_val + free_cash)
 
     return PortfolioSummaryResponse(
         total_value=round(total_portfolio_value, 2),
@@ -62,7 +64,8 @@ async def get_holdings():
             """
             SELECT
                 id, provider, external_id, ticker, name, isin, currency,
-                quantity, average_price, current_price, market_value, updated_at
+                quantity, average_price, current_price, market_value, updated_at,
+                sector, industry, dividend_yield, annual_dividend, payout_frequency
             FROM holdings
             WHERE quantity > 0
             ORDER BY market_value DESC;
@@ -96,6 +99,11 @@ async def get_holdings():
                     unrealized_gain=round(gain, 2),
                     unrealized_gain_percent=round(gain_percent, 2),
                     updated_at=r["updated_at"],
+                    sector=r["sector"],
+                    industry=r["industry"],
+                    dividend_yield=float(r["dividend_yield"]) if r["dividend_yield"] is not None else None,
+                    annual_dividend=float(r["annual_dividend"]) if r["annual_dividend"] is not None else None,
+                    payout_frequency=r["payout_frequency"],
                 )
             )
 

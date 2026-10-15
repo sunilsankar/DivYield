@@ -191,7 +191,9 @@ export async function getPortfolioSummary(): Promise<PortfolioSummary> {
   const ppl = holdingsRow?.total_ppl || 0;
   const freeCash = parseFloat(freeCashStr) || 0;
   const totalCash = parseFloat(totalCashStr) || freeCash;
-  const totalValue = holdingsVal + freeCash;
+  // ponytail: T212 cash.total is authoritative account valuation (cash + investments).
+  // Use totalCash if reported > 0, otherwise fall back to holdingsVal + freeCash.
+  const totalValue = totalCash > 0 ? totalCash : holdingsVal + freeCash;
   const pnlPercent = totalInv > 0 ? (ppl / totalInv) * 100 : 0;
 
   return {

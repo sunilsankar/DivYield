@@ -51,6 +51,7 @@ Get the pre-compiled standalone app directly from [GitHub Releases](https://gith
 | Platform | Installer / Package | Features |
 | :--- | :--- | :--- |
 | 🪟 **Windows** | [`DivYield-Windows.msi`](https://github.com/sunilsankar/DivYield/releases) | MSI Installer with custom directory, Desktop shortcut, and uninstaller |
+| 🍏 **macOS** | [`DivYield-macOS-Universal.dmg`](https://github.com/sunilsankar/DivYield/releases) | Universal DMG (Apple Silicon & Intel), drag-to-Applications |
 | 📱 **Android** | [`DivYield-Android.apk`](https://github.com/sunilsankar/DivYield/releases) | Standalone APK, on-device SQLite, hardware SecureStore |
 | 🌐 **Web** | Self-hosted via FastAPI + Vite | Local browser dashboard at `localhost:8000` |
 
