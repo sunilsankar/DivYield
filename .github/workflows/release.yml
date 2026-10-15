@@ -234,13 +234,22 @@ jobs:
       - name: Build with PyInstaller
         run: |
           # ponytail: attempt universal2 fat binary build, fallback to host arch if wheels are thin
-          TARGET_ARCH=universal2 pyinstaller DivYield.spec --clean || {
+          TARGET_ARCH=universal2 pyinstaller DivYield.spec --clean --noconfirm || {
             echo "Universal2 build not supported by runner environment, falling back to host arch"
-            pyinstaller DivYield.spec --clean
+            pyinstaller DivYield.spec --clean --noconfirm
           }
 
-      - name: Package macOS Universal DMG & ZIP
+      - name: Package macOS DMG & ZIP
         run: |
+          # Detect actual architecture (Universal or thin slice like arm64)
+          ARCHS=$(lipo -archs dist/DivYield.app/Contents/MacOS/DivYield 2>/dev/null || echo "arm64")
+          if [[ "$ARCHS" =~ "x86_64" ]] && [[ "$ARCHS" =~ "arm64" ]]; then
+            PKG_ARCH="Universal"
+          else
+            PKG_ARCH=$(echo "$ARCHS" | awk '{print $1}')
+          fi
+          echo "Packaging macOS package with arch: ${PKG_ARCH}"
+
           # Create staging folder for DMG with Applications symlink
           mkdir -p dist/dmg_staging
           cp -R dist/DivYield.app dist/dmg_staging/
@@ -265,18 +274,18 @@ jobs:
           fi
 
           # Build compressed read-only DMG using native hdiutil
-          hdiutil create -volname "DivYield" -srcfolder dist/dmg_staging -ov -format UDZO DivYield-macOS-Universal.dmg
+          hdiutil create -volname "DivYield" -srcfolder dist/dmg_staging -ov -format UDZO "DivYield-macOS-${PKG_ARCH}.dmg"
 
           # Create zip archive preserving macOS metadata
-          ditto -c -k --sequesterRsrc --keepParent dist/DivYield.app DivYield-macOS-Universal.zip
+          ditto -c -k --sequesterRsrc --keepParent dist/DivYield.app "DivYield-macOS-${PKG_ARCH}.zip"
 
       - name: Upload macOS Release Assets
         uses: actions/upload-artifact@v4
         with:
           name: release-macos
           path: |
-            DivYield-macOS-Universal.dmg
-            DivYield-macOS-Universal.zip
+            DivYield-macOS-*.dmg
+            DivYield-macOS-*.zip
 
   build-android:
     name: Build & Release Android APK
