@@ -88,8 +88,8 @@ exe = EXE(
     console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
-    # ponytail: universal2 on macOS when TARGET_ARCH is set in release CI; otherwise native host arch
-    target_arch=os.environ.get('TARGET_ARCH', None),
+    # ponytail: universal2 on macOS when TARGET_ARCH is set in release CI; otherwise None (host arch)
+    target_arch=os.environ.get('TARGET_ARCH') if os.environ.get('TARGET_ARCH') in {'x86_64', 'arm64', 'universal2'} else None,
     codesign_identity=None,
     entitlements_file=None,
     icon=icon_file,

@@ -232,13 +232,11 @@ jobs:
           pip install pyinstaller
 
       - name: Build with PyInstaller
-        env:
-          TARGET_ARCH: universal2
         run: |
-          # ponytail: universal2 fat binary build with host fallback if runner python is thin
-          pyinstaller DivYield.spec --clean || {
-            echo "Universal2 build not supported by runner python environment, falling back to host arch"
-            TARGET_ARCH="" pyinstaller DivYield.spec --clean
+          # ponytail: attempt universal2 fat binary build, fallback to host arch if wheels are thin
+          TARGET_ARCH=universal2 pyinstaller DivYield.spec --clean || {
+            echo "Universal2 build not supported by runner environment, falling back to host arch"
+            pyinstaller DivYield.spec --clean
           }
 
       - name: Package macOS Universal DMG & ZIP
