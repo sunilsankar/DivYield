@@ -3,7 +3,7 @@ import React, { useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { DividendEvent, Holding, PortfolioSummary } from '../../types';
-import { StockLogo } from '../common/StockLogo';
+import { formatTicker, StockLogo } from '../common/StockLogo';
 
 interface DashboardViewProps {
   summary: PortfolioSummary;
@@ -319,9 +319,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <View key={i} style={styles.divRow}>
               <StockLogo ticker={div.ticker} size={36} />
               <View style={styles.divInfo}>
-                <Text style={[styles.divTicker, { color: theme.textPrimary }]}>{div.ticker}</Text>
+                <Text style={[styles.divTicker, { color: theme.textPrimary }]}>{formatTicker(div.ticker)}</Text>
                 <Text style={styles.divName} numberOfLines={1}>
-                  {div.company_name || div.ticker}
+                  {div.company_name || formatTicker(div.ticker)}
                 </Text>
               </View>
               <View style={styles.divAmountCol}>

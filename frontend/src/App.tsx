@@ -13,6 +13,7 @@ import { DividendsView } from "./components/dividends/DividendsView";
 import { DividendCalendarView } from "./components/dividends/DividendCalendarView";
 import { AnalyticsView } from "./components/analytics/AnalyticsView";
 import { DiversificationView } from "./components/diversification/DiversificationView";
+import { IncomePlannerView } from "./components/planner/IncomePlannerView";
 import { TaxEstimatorView } from "./components/tax/TaxEstimatorView";
 import { DataToolsView } from "./components/data/DataToolsView";
 import { LockScreen } from "./components/auth/LockScreen";
@@ -727,6 +728,13 @@ export function App() {
 
           {currentTab === "analytics" && (
             <AnalyticsView />
+          )}
+
+          {currentTab === "planner" && (
+            <IncomePlannerView
+              onNavigateToHoldings={() => setCurrentTab("holdings")}
+              onNavigateToCalendar={() => setCurrentTab("calendar")}
+            />
           )}
 
           {currentTab === "diversification" && (

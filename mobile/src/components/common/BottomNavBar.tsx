@@ -39,6 +39,12 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ currentTab, onTabCha
       iconActive: 'calendar-month',
     },
     {
+      key: 'planner',
+      label: 'Planner',
+      icon: 'target',
+      iconActive: 'target',
+    },
+    {
       key: 'history',
       label: 'History',
       icon: 'history',
@@ -131,7 +137,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   iconPill: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 16,
     alignItems: 'center',

@@ -385,4 +385,36 @@ export interface DiversificationResponse {
   recommendations: DiversificationRecommendation[];
 }
 
+export interface PlannerHoldingRecommendation {
+  ticker: string;
+  name: string;
+  current_shares: number;
+  current_price: number;
+  annual_dividend: number;
+  dividend_yield: number;
+  payout_frequency: string;
+  payout_amount_per_share: number;
+  shares_to_fill_gap: number;
+  capital_needed: number;
+}
+
+export interface PlannerMonth {
+  month: string;
+  month_name: string;
+  total_amount: number;
+  received_amount: number;
+  expected_amount: number;
+  is_gap: boolean;
+  gap_amount: number;
+  recommendations: PlannerHoldingRecommendation[];
+}
+
+export interface IncomePlannerResponse {
+  monthly_average: number;
+  total_annual_income: number;
+  currency: string;
+  gap_months_count: number;
+  months: PlannerMonth[];
+}
+
 

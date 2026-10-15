@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { DividendEvent } from '../../types';
-import { StockLogo } from '../common/StockLogo';
+import { formatTicker, StockLogo } from '../common/StockLogo';
 
 interface CalendarViewProps {
   dividends: DividendEvent[];
@@ -316,7 +316,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ dividends }) => {
                         style={[styles.cellEvent, isForecast ? styles.cellEventForecast : styles.cellEventPaid]}
                       >
                         <Text style={[styles.cellEventTicker, isForecast ? styles.cellEventTickerForecast : styles.cellEventTickerPaid]} numberOfLines={1}>
-                          {event.ticker}
+                          {formatTicker(event.ticker)}
                         </Text>
                         <Text style={[styles.cellEventAmount, isForecast ? styles.cellEventTickerForecast : styles.cellEventTickerPaid]}>
                           €{event.amount.toFixed(2)}
@@ -364,9 +364,9 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ dividends }) => {
                   <View key={i} style={styles.eventItem}>
                     <StockLogo ticker={evt.ticker} size={40} />
                     <View style={styles.eventInfo}>
-                      <Text style={[styles.eventTicker, { color: theme.textPrimary }]}>{evt.ticker}</Text>
+                      <Text style={[styles.eventTicker, { color: theme.textPrimary }]}>{formatTicker(evt.ticker)}</Text>
                       <Text style={styles.eventName} numberOfLines={1}>
-                        {evt.company_name || evt.ticker}
+                        {evt.company_name || formatTicker(evt.ticker)}
                       </Text>
                     </View>
                     <View style={styles.eventAmountCol}>

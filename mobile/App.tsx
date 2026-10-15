@@ -11,6 +11,7 @@ import { TopAppBar } from './src/components/common/TopAppBar';
 import { DashboardView } from './src/components/dashboard/DashboardView';
 import { HistoryView } from './src/components/history/HistoryView';
 import { HoldingsView } from './src/components/holdings/HoldingsView';
+import { PlannerView } from './src/components/planner/PlannerView';
 import { SettingsView } from './src/components/settings/SettingsView';
 import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import {
@@ -197,6 +198,8 @@ function MainApp() {
         {currentTab === 'holdings' && <HoldingsView holdings={holdings} />}
 
         {currentTab === 'calendar' && <CalendarView dividends={dividends} />}
+
+        {currentTab === 'planner' && <PlannerView />}
 
         {currentTab === 'history' && <HistoryView transactions={transactions} />}
 

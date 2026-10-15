@@ -17,6 +17,7 @@ import {
   triggerFactoryReset,
   fetchSyncSettings,
   updateSyncSettings,
+  fetchIncomePlanner,
 } from "./api";
 
 describe("API Client Tests", () => {
@@ -360,5 +361,51 @@ describe("API Client Tests", () => {
         body: JSON.stringify({ sync_frequency: "daily" }),
       })
     );
+  });
+
+  it("fetchIncomePlanner queries /api/v1/analytics/income-planner", async () => {
+    const mockPlanner = {
+      monthly_average: 150.0,
+      total_annual_income: 1800.0,
+      currency: "EUR",
+      gap_months_count: 2,
+      months: [
+        {
+          month: "2026-11",
+          month_name: "November",
+          total_amount: 50.0,
+          received_amount: 0.0,
+          expected_amount: 50.0,
+          is_gap: true,
+          gap_amount: 100.0,
+          recommendations: [
+            {
+              ticker: "O",
+              name: "Realty Income",
+              current_shares: 10,
+              current_price: 55.0,
+              annual_dividend: 30.0,
+              dividend_yield: 5.5,
+              payout_frequency: "MONTHLY",
+              payout_amount_per_share: 0.25,
+              shares_to_fill_gap: 400.0,
+              capital_needed: 22000.0,
+            },
+          ],
+        },
+      ],
+    };
+
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => mockPlanner,
+    } as unknown as Response);
+
+    const res = await fetchIncomePlanner();
+    expect(res.monthly_average).toBe(150.0);
+    expect(res.gap_months_count).toBe(2);
+    expect(res.months[0].is_gap).toBe(true);
+    expect(res.months[0].recommendations[0].ticker).toBe("O");
+    expect(globalThis.fetch).toHaveBeenCalledWith("/api/v1/analytics/income-planner");
   });
 });

@@ -12,6 +12,7 @@ import {
   Lock,
   ArrowLeftRight,
   Edit3,
+  Target,
 } from "lucide-react";
 
 export type NavTab =
@@ -21,6 +22,7 @@ export type NavTab =
   | "dividends"
   | "calendar"
   | "analytics"
+  | "planner"
   | "diversification"
   | "tax"
   | "data-tools"
@@ -63,6 +65,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange }) => 
       id: "analytics",
       label: "Yield & Analytics",
       icon: <TrendingUp className="w-4 h-4" />,
+    },
+    {
+      id: "planner",
+      label: "Income Planner",
+      icon: <Target className="w-4 h-4" />,
     },
     {
       id: "diversification",

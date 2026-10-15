@@ -182,3 +182,71 @@ def test_diversification_populated_portfolio():
 
     united_states = next(region for region in data["geographic_exposure"] if region["region"] == "United States")
     assert [holding["ticker"] for holding in united_states["holdings"]] == ["AAPL_US_EQ"]
+
+
+def test_income_planner_empty_db():
+    response = client.get("/api/v1/analytics/income-planner")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["months"]) == 12
+    assert data["monthly_average"] == 0.0
+    assert data["total_annual_income"] == 0.0
+    assert data["gap_months_count"] == 0
+
+
+def test_income_planner_with_gaps_and_recommendations():
+    from datetime import datetime
+    now = datetime.now()
+    # High month: current month
+    cur_m = f"{now.year:04d}-{now.month:02d}"
+    # Next month
+    next_year = now.year + (now.month // 12)
+    next_month = (now.month % 12) + 1
+    next_m = f"{next_year:04d}-{next_month:02d}"
+
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO holdings (
+                provider, external_id, ticker, name, quantity, average_price, current_price,
+                market_value, sector, dividend_yield, annual_dividend, payout_frequency
+            ) VALUES
+            ('TRADING212', 'h1', 'AAPL', 'Apple Inc', 50, 150.0, 200.0, 10000.0, 'Technology', 1.0, 100.0, 'Quarterly'),
+            ('TRADING212', 'h2', 'O', 'Realty Income Corp', 100, 50.0, 55.0, 5500.0, 'Real Estate', 5.5, 302.5, 'Monthly')
+            """
+        )
+        # Event in cur_m: 120 EUR
+        cursor.execute(
+            """
+            INSERT INTO dividend_events (ticker, payment_date, amount, currency, source, status)
+            VALUES ('AAPL', ?, 120.0, 'EUR', 'YFINANCE', 'EXPECTED')
+            """,
+            (f"{cur_m}-15",)
+        )
+        conn.commit()
+
+    response = client.get("/api/v1/analytics/income-planner")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["months"]) == 12
+    assert data["total_annual_income"] == 120.0
+    # monthly average = 120 / 12 = 10.0
+    assert data["monthly_average"] == 10.0
+    assert data["gap_months_count"] >= 1
+
+    # Check next month: total is 0.0, below average 10.0 -> is_gap = True
+    gap_month = next((m for m in data["months"] if m["month"] == next_m), None)
+    assert gap_month is not None
+    assert gap_month["is_gap"] is True
+    assert gap_month["gap_amount"] == 10.0
+    # O is a monthly payer, so it should be recommended to fill this gap!
+    recs = gap_month["recommendations"]
+    assert any(r["ticker"] == "O" for r in recs)
+    o_rec = next(r for r in recs if r["ticker"] == "O")
+    assert o_rec["dividend_yield"] == 5.5
+    assert o_rec["payout_frequency"] == "MONTHLY"
+    assert o_rec["payout_amount_per_share"] > 0
+    assert o_rec["shares_to_fill_gap"] >= 1
+    assert o_rec["capital_needed"] > 0
+

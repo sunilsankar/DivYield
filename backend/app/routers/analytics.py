@@ -1,4 +1,5 @@
 import math
+from datetime import datetime
 from typing import List, Optional
 from fastapi import APIRouter, Query
 from app.database import get_db, get_setting
@@ -21,6 +22,9 @@ from app.schemas import (
     ExposureHolding,
     IncomeRiskItem,
     DiversificationRecommendation,
+    IncomePlannerResponse,
+    PlannerMonth,
+    PlannerHoldingRecommendation,
 )
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
@@ -694,3 +698,178 @@ def get_analytics_diversification():
         income_risks=income_risks,
         recommendations=recommendations,
     )
+
+
+@router.get("/income-planner", response_model=IncomePlannerResponse)
+def get_income_planner():
+    """Analyses 12-month forward dividend distribution, flags low months, and suggests existing holdings to fill gaps."""
+    # ponytail: derive 12-month schedule and gap recommendations from existing dividend_events and holdings tables
+    currency = get_setting("base_currency") or "EUR"
+    now = datetime.now()
+    cur_year = now.year
+    cur_month = now.month
+
+    # Generate 12 months: from current month forward
+    month_keys = []
+    for i in range(12):
+        m = (cur_month - 1 + i) % 12 + 1
+        y = cur_year + (cur_month - 1 + i) // 12
+        key = f"{y:04d}-{m:02d}"
+        month_keys.append((key, y, m))
+
+    with get_db() as conn:
+        cursor = conn.cursor()
+
+        # 1. Fetch dividend events in this 12-month range
+        start_date = f"{month_keys[0][0]}-01"
+        end_y = cur_year + (cur_month - 1 + 12) // 12
+        end_m = (cur_month - 1 + 12) % 12 + 1
+        end_date = f"{end_y:04d}-{end_m:02d}-01"
+
+        cursor.execute(
+            """
+            SELECT strftime('%Y-%m', payment_date) as yr_mo,
+                   ticker,
+                   status,
+                   amount
+            FROM dividend_events
+            WHERE payment_date IS NOT NULL
+              AND payment_date >= ? AND payment_date < ?
+            """,
+            (start_date, end_date),
+        )
+        event_rows = cursor.fetchall()
+
+        # 2. Fetch all active holdings
+        cursor.execute(
+            """
+            SELECT ticker, name, quantity, current_price, dividend_yield, annual_dividend, payout_frequency
+            FROM holdings
+            WHERE quantity > 0
+            """
+        )
+        holding_rows = cursor.fetchall()
+
+        # 3. Check historical payment months for holdings from past events
+        cursor.execute(
+            """
+            SELECT DISTINCT ticker, CAST(strftime('%m', payment_date) AS INTEGER) as pay_month
+            FROM dividend_events
+            WHERE payment_date IS NOT NULL
+            """
+        )
+        hist_pay_rows = cursor.fetchall()
+
+    ticker_pay_months = {}
+    for r in hist_pay_rows:
+        t, pm = r[0], r[1]
+        if pm:
+            ticker_pay_months.setdefault(t, set()).add(pm)
+
+    holdings_map = {}
+    for r in holding_rows:
+        t = r[0]
+        holdings_map[t] = {
+            "ticker": t,
+            "name": r[1] or t,
+            "quantity": float(r[2] or 0.0),
+            "current_price": float(r[3] or 0.0),
+            "dividend_yield": float(r[4] or 0.0),
+            "annual_dividend": float(r[5] or 0.0),
+            "payout_frequency": (r[6] or "QUARTERLY").upper(),
+        }
+
+    monthly_data = {k[0]: {"received": 0.0, "expected": 0.0, "tickers": set()} for k in month_keys}
+    for row in event_rows:
+        ym, ticker, status, amount = row[0], row[1], row[2], float(row[3] or 0.0)
+        if ym in monthly_data:
+            if status == "RECEIVED":
+                monthly_data[ym]["received"] += amount
+            else:
+                monthly_data[ym]["expected"] += amount
+            if ticker:
+                monthly_data[ym]["tickers"].add(ticker)
+
+    freq_divisors = {
+        "MONTHLY": 12,
+        "QUARTERLY": 4,
+        "SEMI_ANNUAL": 2,
+        "ANNUAL": 1,
+    }
+
+    total_annual_income = sum(monthly_data[k[0]]["received"] + monthly_data[k[0]]["expected"] for k in month_keys)
+    monthly_avg = round(total_annual_income / 12.0, 2)
+
+    planner_months = []
+    gap_count = 0
+
+    for k, y, m in month_keys:
+        month_dt = datetime(y, m, 1)
+        month_name = month_dt.strftime("%b %Y")
+        rec = round(monthly_data[k]["received"], 2)
+        exp = round(monthly_data[k]["expected"], 2)
+        tot = round(rec + exp, 2)
+
+        is_gap = (tot < monthly_avg) if total_annual_income > 0 else False
+        gap_amt = round(max(0.0, monthly_avg - tot), 2) if is_gap else 0.0
+        if is_gap:
+            gap_count += 1
+
+        recs = []
+        if is_gap and gap_amt > 0:
+            for t, h in holdings_map.items():
+                if h["annual_dividend"] <= 0 or h["quantity"] <= 0:
+                    continue
+
+                is_monthly = h["payout_frequency"] == "MONTHLY"
+                pays_this_month = (
+                    t in monthly_data[k]["tickers"]
+                    or m in ticker_pay_months.get(t, set())
+                    or is_monthly
+                )
+
+                if pays_this_month:
+                    div = freq_divisors.get(h["payout_frequency"], 4)
+                    payout_per_share = round((h["annual_dividend"] / h["quantity"]) / div, 4)
+                    if payout_per_share > 0:
+                        shares_needed = math.ceil(gap_amt / payout_per_share)
+                        capital_needed = round(shares_needed * h["current_price"], 2)
+                        recs.append(
+                            PlannerHoldingRecommendation(
+                                ticker=t,
+                                name=h["name"],
+                                current_shares=round(h["quantity"], 4),
+                                current_price=round(h["current_price"], 2),
+                                annual_dividend=round(h["annual_dividend"], 2),
+                                dividend_yield=round(h["dividend_yield"], 2),
+                                payout_frequency=h["payout_frequency"],
+                                payout_amount_per_share=payout_per_share,
+                                shares_to_fill_gap=shares_needed,
+                                capital_needed=capital_needed,
+                            )
+                        )
+
+            recs.sort(key=lambda r: (-r.dividend_yield, r.capital_needed))
+            recs = recs[:5]
+
+        planner_months.append(
+            PlannerMonth(
+                month=k,
+                month_name=month_name,
+                total_amount=tot,
+                received_amount=rec,
+                expected_amount=exp,
+                is_gap=is_gap,
+                gap_amount=gap_amt,
+                recommendations=recs,
+            )
+        )
+
+    return IncomePlannerResponse(
+        monthly_average=monthly_avg,
+        total_annual_income=round(total_annual_income, 2),
+        currency=currency,
+        gap_months_count=gap_count,
+        months=planner_months,
+    )
+

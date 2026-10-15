@@ -500,4 +500,37 @@ class MappingsResponse(BaseModel):
     count: int
 
 
+class PlannerHoldingRecommendation(BaseModel):
+    ticker: str
+    name: str
+    current_shares: float
+    current_price: float
+    annual_dividend: float
+    dividend_yield: float
+    payout_frequency: str
+    payout_amount_per_share: float
+    shares_to_fill_gap: int
+    capital_needed: float
+
+
+class PlannerMonth(BaseModel):
+    month: str  # YYYY-MM
+    month_name: str  # e.g. "Nov 2026"
+    total_amount: float
+    received_amount: float
+    expected_amount: float
+    is_gap: bool
+    gap_amount: float
+    recommendations: List[PlannerHoldingRecommendation] = []
+
+
+class IncomePlannerResponse(BaseModel):
+    monthly_average: float
+    total_annual_income: float
+    currency: str = "EUR"
+    gap_months_count: int
+    months: List[PlannerMonth]
+
+
+
 

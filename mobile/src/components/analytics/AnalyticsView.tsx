@@ -3,7 +3,7 @@ import React, { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { DividendEvent, Holding, PortfolioSummary } from '../../types';
-import { StockLogo } from '../common/StockLogo';
+import { formatTicker, StockLogo } from '../common/StockLogo';
 
 // ponytail: ticker suffix heuristic; upgrade to backend API region metadata when mobile syncs geographic payload
 const getRegion = (ticker: string) => {
@@ -177,7 +177,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
     for (const h of holdings) {
       const pct = (h.market_value / totalValue) * 100;
       if (pct > 15) {
-        list.push(`${h.ticker} is ${pct.toFixed(1)}% of portfolio (exceeds 15% guideline)`);
+        list.push(`${formatTicker(h.ticker)} is ${pct.toFixed(1)}% of portfolio (exceeds 15% guideline)`);
       }
     }
     return list;
@@ -293,8 +293,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
         <View key={`${holding.ticker}-${idx}`} style={styles.holdingRow}>
           <StockLogo ticker={holding.ticker} size={30} />
           <View style={styles.holdingInfo}>
-            <Text style={[styles.holdingTicker, { color: theme.textPrimary }]}>{holding.ticker}</Text>
-            <Text style={styles.holdingName} numberOfLines={1}>{holding.name || 'Unknown holding'}</Text>
+            <Text style={[styles.holdingTicker, { color: theme.textPrimary }]}>{formatTicker(holding.ticker)}</Text>
+            <Text style={styles.holdingName} numberOfLines={1}>{holding.name || formatTicker(holding.ticker)}</Text>
           </View>
           <View style={styles.holdingValue}>
             <Text style={[styles.holdingPercent, { color: theme.textPrimary }]}>
@@ -903,7 +903,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
           <View key={idx} style={styles.incomeRow}>
             <StockLogo ticker={item.ticker} size={36} />
             <View style={styles.incomeInfo}>
-              <Text style={[styles.incomeTicker, { color: theme.textPrimary }]}>{item.ticker}</Text>
+              <Text style={[styles.incomeTicker, { color: theme.textPrimary }]}>{formatTicker(item.ticker)}</Text>
               <Text style={styles.incomeCount}>{item.count} payments</Text>
             </View>
             <View style={styles.incomeAmountCol}>

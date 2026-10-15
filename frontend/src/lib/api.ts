@@ -14,6 +14,7 @@ import {
   TaxRulesData,
   NetherlandsTaxData,
   DiversificationResponse,
+  IncomePlannerResponse,
 } from "../types";
 
 const API_BASE = "/api/v1";
@@ -232,6 +233,14 @@ export async function fetchDividendGrowth(): Promise<DividendGrowthResponse> {
   const res = await fetch(`${API_BASE}/analytics/growth`);
   if (!res.ok) {
     throw new Error(`Failed to load dividend growth (${res.status})`);
+  }
+  return res.json();
+}
+
+export async function fetchIncomePlanner(): Promise<IncomePlannerResponse> {
+  const res = await fetch(`${API_BASE}/analytics/income-planner`);
+  if (!res.ok) {
+    throw new Error(`Failed to load income planner data (${res.status})`);
   }
   return res.json();
 }

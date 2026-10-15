@@ -3,7 +3,7 @@ import React, { useMemo, useState } from 'react';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { Transaction } from '../../types';
-import { StockLogo } from '../common/StockLogo';
+import { formatTicker, StockLogo } from '../common/StockLogo';
 
 interface HistoryViewProps {
   transactions: Transaction[];
@@ -87,7 +87,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ transactions }) => {
               <View style={styles.assetRow}>
                 {item.ticker ? <StockLogo ticker={item.ticker} size={36} /> : <View style={styles.cashIcon}><MaterialCommunityIcons name="wallet-outline" size={20} color="#64748b" /></View>}
                 <View style={styles.assetInfo}>
-                  <Text style={[styles.ticker, { color: theme.textPrimary }]}>{item.ticker || 'Account activity'}</Text>
+                  <Text style={[styles.ticker, { color: theme.textPrimary }]}>{item.ticker ? formatTicker(item.ticker) : 'Account activity'}</Text>
                   <Text style={styles.details}>
                     {isOrder && item.quantity ? `${item.quantity.toLocaleString()} shares` : item.notes || 'Trading 212 account activity'}
                     {isOrder && item.price ? ` at ${item.currency} ${item.price.toFixed(2)}` : ''}

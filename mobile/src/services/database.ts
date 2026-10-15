@@ -1,5 +1,13 @@
 import * as SQLite from 'expo-sqlite';
-import { DividendEvent, Holding, PortfolioSummary, Transaction } from '../types';
+import {
+  DividendEvent,
+  Holding,
+  IncomePlannerData,
+  PlannerHoldingRecommendation,
+  PlannerMonth,
+  PortfolioSummary,
+  Transaction,
+} from '../types';
 
 let dbInstance: SQLite.SQLiteDatabase | null = null;
 let dbInitPromise: Promise<SQLite.SQLiteDatabase> | null = null;
@@ -569,6 +577,198 @@ export async function getUpcomingForecastDividends(limit: number = 50): Promise<
     today,
     limit
   );
+}
+
+export async function getIncomePlannerData(): Promise<IncomePlannerData> {
+  // ponytail: local SQLite gap detection and holding recommendations matching web backend logic
+  const db = await getDb();
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+
+  const months: string[] = [];
+  const monthNames = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December',
+  ];
+
+  for (let i = 0; i < 12; i++) {
+    let y = currentYear;
+    let m = currentMonth + i;
+    while (m > 12) {
+      y += 1;
+      m -= 12;
+    }
+    months.push(`${y}-${String(m).padStart(2, '0')}`);
+  }
+
+  const startDate = `${months[0]}-01`;
+  const lastParts = months[11].split('-');
+  let nextY = parseInt(lastParts[0], 10);
+  let nextM = parseInt(lastParts[1], 10) + 1;
+  if (nextM > 12) {
+    nextY += 1;
+    nextM = 1;
+  }
+  const endDate = `${nextY}-${String(nextM).padStart(2, '0')}-01`;
+
+  const events = await db.getAllAsync<{
+    month_key: string;
+    ticker: string;
+    amount: number;
+    status: string;
+  }>(
+    `SELECT
+       strftime('%Y-%m', payment_date) as month_key,
+       ticker,
+       amount,
+       status
+     FROM dividend_events
+     WHERE payment_date >= ? AND payment_date < ?`,
+    startDate,
+    endDate
+  );
+
+  const monthlyTotals: Record<string, { received: number; expected: number; total: number }> = {};
+  const monthlyTickers: Record<string, Set<string>> = {};
+  const monthlyTickerAmounts: Record<string, Record<string, number>> = {};
+
+  for (const m of months) {
+    monthlyTotals[m] = { received: 0, expected: 0, total: 0 };
+    monthlyTickers[m] = new Set<string>();
+    monthlyTickerAmounts[m] = {};
+  }
+
+  for (const ev of events) {
+    if (monthlyTotals[ev.month_key]) {
+      const amt = Number(ev.amount) || 0;
+      if (ev.status === 'RECEIVED') {
+        monthlyTotals[ev.month_key].received += amt;
+      } else {
+        monthlyTotals[ev.month_key].expected += amt;
+      }
+      monthlyTotals[ev.month_key].total += amt;
+      monthlyTickers[ev.month_key].add(ev.ticker);
+      monthlyTickerAmounts[ev.month_key][ev.ticker] =
+        (monthlyTickerAmounts[ev.month_key][ev.ticker] || 0) + amt;
+    }
+  }
+
+  const holdings = await db.getAllAsync<Holding>(
+    'SELECT * FROM holdings WHERE quantity > 0 ORDER BY market_value DESC'
+  );
+
+  const historyRows = await db.getAllAsync<{ ticker: string; month_num: string }>(
+    `SELECT DISTINCT ticker, strftime('%m', payment_date) as month_num
+     FROM dividend_events
+     WHERE payment_date IS NOT NULL`
+  );
+  const historicalPayMonths: Record<string, Set<number>> = {};
+  for (const row of historyRows) {
+    if (!historicalPayMonths[row.ticker]) {
+      historicalPayMonths[row.ticker] = new Set<number>();
+    }
+    const num = parseInt(row.month_num, 10);
+    if (!isNaN(num)) {
+      historicalPayMonths[row.ticker].add(num);
+    }
+  }
+
+  let totalAnnual = 0;
+  for (const m of months) {
+    totalAnnual += monthlyTotals[m].total;
+  }
+  totalAnnual = Math.round(totalAnnual * 100) / 100;
+  const monthlyAverage = Math.round((totalAnnual / 12) * 100) / 100;
+
+  const plannerMonths: PlannerMonth[] = [];
+  let gapMonthsCount = 0;
+
+  for (const mKey of months) {
+    const monthNum = parseInt(mKey.split('-')[1], 10);
+    const monthName = `${monthNames[monthNum - 1]} ${mKey.split('-')[0]}`;
+    const totals = monthlyTotals[mKey];
+    const totalAmt = Math.round(totals.total * 100) / 100;
+    const isGap = monthlyAverage > 0 && totalAmt < monthlyAverage;
+    const gapAmount = isGap ? Math.round((monthlyAverage - totalAmt) * 100) / 100 : 0;
+    if (isGap) gapMonthsCount += 1;
+
+    const recommendations: PlannerHoldingRecommendation[] = [];
+
+    for (const h of holdings) {
+      const scheduledInMonth = monthlyTickers[mKey].has(h.ticker);
+      const paidHistoricallyInMonth = historicalPayMonths[h.ticker]?.has(monthNum) ?? false;
+      const isMonthly = (h.payout_frequency || '').toUpperCase() === 'MONTHLY';
+
+      if (!scheduledInMonth && !paidHistoricallyInMonth && !isMonthly) {
+        continue;
+      }
+
+      let payoutPerShare = 0;
+      const fx = h.fx_rate && h.fx_rate > 0 ? h.fx_rate : 1.0;
+
+      if (scheduledInMonth && monthlyTickerAmounts[mKey][h.ticker] && h.quantity > 0) {
+        payoutPerShare = monthlyTickerAmounts[mKey][h.ticker] / h.quantity;
+      } else if (h.annual_dividend && h.annual_dividend > 0 && h.quantity > 0) {
+        const freq = (h.payout_frequency || 'QUARTERLY').toUpperCase();
+        const divisor = freq === 'MONTHLY' ? 12 : freq === 'SEMI_ANNUAL' ? 2 : freq === 'ANNUAL' ? 1 : 4;
+        payoutPerShare = (h.annual_dividend / h.quantity) / divisor;
+      } else if (h.dividend_yield && h.dividend_yield > 0 && h.current_price > 0) {
+        const freq = (h.payout_frequency || 'QUARTERLY').toUpperCase();
+        const divisor = freq === 'MONTHLY' ? 12 : freq === 'SEMI_ANNUAL' ? 2 : freq === 'ANNUAL' ? 1 : 4;
+        payoutPerShare = (h.current_price * fx * (h.dividend_yield / 100)) / divisor;
+      }
+
+      if (payoutPerShare <= 0.0001) {
+        continue;
+      }
+
+      const sharesToFill = gapAmount > 0 ? Math.ceil(gapAmount / payoutPerShare) : 0;
+      const priceEur = (h.current_price || 0) * fx;
+      const capitalNeeded = Math.round(sharesToFill * priceEur * 100) / 100;
+
+      recommendations.push({
+        ticker: h.ticker,
+        name: h.name || h.ticker,
+        current_shares: Math.round(h.quantity * 100) / 100,
+        current_price: Math.round(priceEur * 100) / 100,
+        annual_dividend: Math.round((h.annual_dividend || 0) * 100) / 100,
+        dividend_yield: Math.round((h.dividend_yield || 0) * 100) / 100,
+        payout_frequency: h.payout_frequency || null,
+        payout_amount_per_share: Math.round(payoutPerShare * 10000) / 10000,
+        shares_to_fill_gap: sharesToFill,
+        capital_needed: capitalNeeded,
+      });
+    }
+
+    recommendations.sort((a, b) => {
+      if (gapAmount > 0) {
+        const scoreA = (a.dividend_yield * 100) - (a.capital_needed * 0.001);
+        const scoreB = (b.dividend_yield * 100) - (b.capital_needed * 0.001);
+        return scoreB - scoreA;
+      }
+      return b.dividend_yield - a.dividend_yield;
+    });
+
+    plannerMonths.push({
+      month: mKey,
+      month_name: monthName,
+      total_amount: totalAmt,
+      received_amount: Math.round(totals.received * 100) / 100,
+      expected_amount: Math.round(totals.expected * 100) / 100,
+      is_gap: isGap,
+      gap_amount: gapAmount,
+      recommendations,
+    });
+  }
+
+  return {
+    monthly_average: monthlyAverage,
+    total_annual_income: totalAnnual,
+    currency: 'EUR',
+    gap_months_count: gapMonthsCount,
+    months: plannerMonths,
+  };
 }
 
 export async function clearDatabase(): Promise<void> {

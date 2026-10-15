@@ -74,4 +74,36 @@ export interface Trading212Credentials {
   environment: 'live' | 'demo';
 }
 
-export type TabKey = 'dashboard' | 'holdings' | 'calendar' | 'history' | 'analytics' | 'settings';
+export interface PlannerHoldingRecommendation {
+  ticker: string;
+  name: string;
+  current_shares: number;
+  current_price: number;
+  annual_dividend: number;
+  dividend_yield: number;
+  payout_frequency: string | null;
+  payout_amount_per_share: number;
+  shares_to_fill_gap: number;
+  capital_needed: number;
+}
+
+export interface PlannerMonth {
+  month: string;
+  month_name: string;
+  total_amount: number;
+  received_amount: number;
+  expected_amount: number;
+  is_gap: boolean;
+  gap_amount: number;
+  recommendations: PlannerHoldingRecommendation[];
+}
+
+export interface IncomePlannerData {
+  monthly_average: number;
+  total_annual_income: number;
+  currency: string;
+  gap_months_count: number;
+  months: PlannerMonth[];
+}
+
+export type TabKey = 'dashboard' | 'holdings' | 'calendar' | 'planner' | 'history' | 'analytics' | 'settings';

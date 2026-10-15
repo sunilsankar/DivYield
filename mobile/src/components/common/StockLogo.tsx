@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 
 interface StockLogoProps {
@@ -6,15 +6,41 @@ interface StockLogoProps {
   size?: number;
 }
 
+export function formatTicker(ticker?: string | null): string {
+  // ponytail: strip Trading212 exchange suffix for display; raw ticker preserved for DB/API
+  if (!ticker) return '';
+  return ticker
+    .split('_')[0]
+    .replace(/\.(US|AS|L|DE|PA|MC|MI|SW)$/i, '')
+    .toUpperCase();
+}
+
 export const StockLogo: React.FC<StockLogoProps> = ({ ticker = '', size = 38 }) => {
+  const [useFallbackUrl, setUseFallbackUrl] = useState(false);
   const [hasError, setHasError] = useState(false);
 
-  const clean = (ticker || '')
-    .toUpperCase()
-    .replace(/_US_EQ|_NL_EQ|_DE_EQ|_GB_EQ|_FR_EQ/g, '')
-    .replace(/[ldp]$/i, '');
+  const raw = (ticker || '').trim();
+  const clean = formatTicker(raw);
 
-  const cdnUrl = `https://trading212equities.s3.eu-central-1.amazonaws.com/${clean}.png`;
+  useEffect(() => {
+    setUseFallbackUrl(false);
+    setHasError(false);
+  }, [ticker]);
+
+  const primaryUrl = `https://trading212equities.s3.eu-central-1.amazonaws.com/${clean}.png`;
+  const fallbackUrl = raw.includes('_')
+    ? `https://trading212equities.s3.eu-central-1.amazonaws.com/${raw}.png`
+    : `https://trading212equities.s3.eu-central-1.amazonaws.com/${clean}_US_EQ.png`;
+
+  const imgUrl = useFallbackUrl ? fallbackUrl : primaryUrl;
+
+  const handleImageError = () => {
+    if (!useFallbackUrl && fallbackUrl !== primaryUrl) {
+      setUseFallbackUrl(true);
+    } else {
+      setHasError(true);
+    }
+  };
 
   // Color generator for avatar fallback
   const getBackgroundColor = (str: string) => {
@@ -59,10 +85,10 @@ export const StockLogo: React.FC<StockLogoProps> = ({ ticker = '', size = 38 }) 
       ]}
     >
       <Image
-        source={{ uri: cdnUrl }}
+        source={{ uri: imgUrl }}
         style={{ width: size, height: size, borderRadius: size / 2 }}
         resizeMode="contain"
-        onError={() => setHasError(true)}
+        onError={handleImageError}
       />
     </View>
   );

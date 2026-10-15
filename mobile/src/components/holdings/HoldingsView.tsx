@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { Holding } from '../../types';
-import { StockLogo } from '../common/StockLogo';
+import { formatTicker, StockLogo } from '../common/StockLogo';
 
 interface HoldingsViewProps {
   holdings: Holding[];
@@ -70,7 +70,7 @@ export const HoldingsView: React.FC<HoldingsViewProps> = ({ holdings }) => {
           <StockLogo ticker={item.ticker} size={40} />
           <View style={styles.headerInfo}>
             <View style={styles.tickerWeightRow}>
-              <Text style={[styles.ticker, { color: theme.textPrimary }]}>{item.ticker}</Text>
+              <Text style={[styles.ticker, { color: theme.textPrimary }]}>{formatTicker(item.ticker)}</Text>
               <Text style={styles.weightBadge}>{weight.toFixed(1)}%</Text>
               {Boolean(item.sector) && (
                 <Text style={styles.sectorBadge} numberOfLines={1}>
@@ -79,7 +79,7 @@ export const HoldingsView: React.FC<HoldingsViewProps> = ({ holdings }) => {
               )}
             </View>
             <Text style={styles.name} numberOfLines={1}>
-              {item.name || item.ticker}
+              {item.name || formatTicker(item.ticker)}
             </Text>
           </View>
           <View style={styles.valueCol}>
