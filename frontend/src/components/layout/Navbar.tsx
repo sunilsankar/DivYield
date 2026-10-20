@@ -55,7 +55,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   DivYield
                 </span>
                 <span className="text-[10px] font-semibold tracking-wide px-1.5 py-0.5 bg-emerald-500/10 text-emerald-700 rounded-md font-sans">
-                  {health?.version ? `v${health.version}` : "v0.1.0-beta"}
+                  {health?.version ? `v${health.version}` : "v0.5.0-beta"}
                 </span>
                 {updateInfo?.update_available && (
                   <a

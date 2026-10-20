@@ -113,8 +113,8 @@ if sys.platform == 'darwin':
         icon=icon_file,
         bundle_identifier='com.divyield.app',
         info_plist={
-            'CFBundleShortVersionString': '0.4.0',
-            'CFBundleVersion': '0.4.0',
+            'CFBundleShortVersionString': '0.5.0-beta',
+            'CFBundleVersion': '0.5.0-beta',
             'NSHighResolutionCapable': True,
             'LSMinimumSystemVersion': '11.0',
         },

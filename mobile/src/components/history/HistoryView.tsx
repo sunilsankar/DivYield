@@ -2,24 +2,51 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import React, { useMemo, useState } from 'react';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
-import { Transaction } from '../../types';
+import { DividendEvent, Transaction } from '../../types';
 import { formatTicker, StockLogo } from '../common/StockLogo';
 
 interface HistoryViewProps {
   transactions: Transaction[];
+  dividends?: DividendEvent[];
 }
 
 type HistoryFilter = 'ALL' | 'ORDERS' | 'CASH';
 
-export const HistoryView: React.FC<HistoryViewProps> = ({ transactions }) => {
+export const HistoryView: React.FC<HistoryViewProps> = ({ transactions, dividends }) => {
   const { theme, isSketch } = useTheme();
   const [filter, setFilter] = useState<HistoryFilter>('ALL');
 
+  const allItems = useMemo<Transaction[]>(() => {
+    const receivedDividends: Transaction[] = (dividends || [])
+      .filter(d => d.status === 'RECEIVED')
+      .map(d => ({
+        type: 'DIVIDEND',
+        ticker: d.ticker,
+        quantity: null,
+        price: null,
+        total_amount: d.amount,
+        currency: d.currency || 'EUR',
+        date: d.payment_date,
+        provider: d.source || 'TRADING212',
+        external_id: d.external_id,
+        notes: 'Dividend payout',
+      }));
+
+    // ponytail: prefer enriched dividend_events over generic cash movements when received dividends exist
+    const baseTxs = receivedDividends.length > 0
+      ? transactions.filter(tx => tx.type !== 'DIVIDEND')
+      : transactions;
+
+    return [...baseTxs, ...receivedDividends].sort(
+      (a, b) => (b.date || '').localeCompare(a.date || '')
+    );
+  }, [transactions, dividends]);
+
   const filteredTransactions = useMemo(() => {
-    if (filter === 'ORDERS') return transactions.filter(tx => tx.type === 'BUY' || tx.type === 'SELL');
-    if (filter === 'CASH') return transactions.filter(tx => tx.type !== 'BUY' && tx.type !== 'SELL');
-    return transactions;
-  }, [filter, transactions]);
+    if (filter === 'ORDERS') return allItems.filter(tx => tx.type === 'BUY' || tx.type === 'SELL');
+    if (filter === 'CASH') return allItems.filter(tx => tx.type !== 'BUY' && tx.type !== 'SELL');
+    return allItems;
+  }, [filter, allItems]);
 
   const filterLabels: Array<{ key: HistoryFilter; label: string }> = [
     { key: 'ALL', label: 'All' },

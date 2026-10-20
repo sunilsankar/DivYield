@@ -201,7 +201,7 @@ function MainApp() {
 
         {currentTab === 'planner' && <PlannerView />}
 
-        {currentTab === 'history' && <HistoryView transactions={transactions} />}
+        {currentTab === 'history' && <HistoryView transactions={transactions} dividends={dividends} />}
 
         {currentTab === 'analytics' && (
           <AnalyticsView

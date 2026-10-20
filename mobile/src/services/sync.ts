@@ -12,7 +12,7 @@ import {
 } from './database';
 import { getCredentials } from './secureStore';
 import { Trading212Client } from './trading212';
-import { enrichInstrument } from './yfinance';
+import { enrichInstrument, YahooEnrichmentResult } from './yfinance';
 import { scheduleUpcomingDividends } from './notifications';
 
 let isSyncingActive = false;
@@ -252,38 +252,50 @@ export async function runSync(onProgress?: (progress: SyncProgress) => void): Pr
 
     // Step 7: Enrich with Yahoo Finance (sectors, industries, and future dividend projections)
     updateProgress(7, 'Enriching with Yahoo Finance (sectors & future dividends)...');
-    const forecastDividends: DividendEvent[] = [];
-    for (const h of holdings) {
-      try {
-        // Use the original Trading 212 identifier for Yahoo resolution, matching the web sync.
-        const trading212Ticker = h.external_id || h.ticker;
-        const enriched = await enrichInstrument(trading212Ticker, h.name, h.quantity);
-        if (enriched) {
-          await updateHoldingEnrichment(h.ticker, {
-            sector: enriched.sector,
-            industry: enriched.industry,
-            dividend_yield: enriched.dividendYield,
-            annual_dividend: enriched.annualDividend,
-            payout_frequency: enriched.payoutFrequency,
-          });
-
-          for (const proj of enriched.futureDividends) {
-            // Apply FX conversion to base account currency (EUR) matching desktop backend
-            const fxRate = typeof h.fx_rate === 'number' && h.fx_rate > 0 ? h.fx_rate : 1.0;
-            const amountEur = Number((proj.projectedTotal * fxRate).toFixed(2));
-            forecastDividends.push({
-              ticker: proj.ticker,
-              amount: amountEur,
-              currency: 'EUR',
-              payment_date: proj.paymentDate,
-              status: 'EXPECTED',
-              source: 'YFINANCE',
-              external_id: `yf_${proj.ticker}_${proj.paymentDate}`,
-            });
-          }
+    // ponytail: bounded concurrency of 2 preserves Yahoo rate limits; upgrade to dynamic limiter if concurrency expands
+    const enrichmentResults: Array<YahooEnrichmentResult | null> = new Array(holdings.length).fill(null);
+    let nextIndex = 0;
+    const worker = async () => {
+      while (nextIndex < holdings.length) {
+        const i = nextIndex++;
+        const h = holdings[i];
+        try {
+          const trading212Ticker = h.external_id || h.ticker;
+          enrichmentResults[i] = await enrichInstrument(trading212Ticker, h.name, h.quantity);
+        } catch (enrichErr) {
+          console.warn(`[Sync] Enrichment skipped for ${h.ticker}:`, enrichErr);
         }
-      } catch (enrichErr) {
-        console.warn(`[Sync] Enrichment skipped for ${h.ticker}:`, enrichErr);
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(2, holdings.length) }, worker));
+
+    const forecastDividends: DividendEvent[] = [];
+    for (let i = 0; i < holdings.length; i++) {
+      const h = holdings[i];
+      const enriched = enrichmentResults[i];
+      if (enriched) {
+        await updateHoldingEnrichment(h.ticker, {
+          sector: enriched.sector,
+          industry: enriched.industry,
+          dividend_yield: enriched.dividendYield,
+          annual_dividend: enriched.annualDividend,
+          payout_frequency: enriched.payoutFrequency,
+        });
+
+        for (const proj of enriched.futureDividends) {
+          // Apply FX conversion to base account currency (EUR) matching desktop backend
+          const fxRate = typeof h.fx_rate === 'number' && h.fx_rate > 0 ? h.fx_rate : 1.0;
+          const amountEur = Number((proj.projectedTotal * fxRate).toFixed(2));
+          forecastDividends.push({
+            ticker: proj.ticker,
+            amount: amountEur,
+            currency: 'EUR',
+            payment_date: proj.paymentDate,
+            status: 'EXPECTED',
+            source: 'YFINANCE',
+            external_id: `yf_${proj.ticker}_${proj.paymentDate}`,
+          });
+        }
       }
     }
 

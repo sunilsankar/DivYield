@@ -2,6 +2,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
+  Linking,
   Modal,
   ScrollView,
   Share,
@@ -769,6 +770,46 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onRefreshData }) => 
         </TouchableOpacity>
       </View>
 
+      {/* About Application */}
+      <View
+        style={[
+          styles.card,
+          {
+            backgroundColor: theme.cardBg,
+            borderColor: theme.cardBorder,
+            borderWidth: isSketch ? 2 : 1,
+          },
+        ]}
+      >
+        <View style={styles.cardHeader}>
+          <MaterialCommunityIcons name="information-outline" size={24} color={theme.accent} />
+          <Text style={[styles.cardTitle, { color: theme.textPrimary }]}>
+            About DivYield
+          </Text>
+        </View>
+
+        <View style={styles.storageRow}>
+          <Text style={styles.storageLabel}>Version</Text>
+          <Text style={[styles.storageValue, { color: theme.textPrimary }]}>v0.5.0-beta</Text>
+        </View>
+
+        <View style={styles.storageRow}>
+          <Text style={styles.storageLabel}>Author</Text>
+          <Text style={[styles.storageValue, { color: theme.textPrimary }]}>Sunil Sankar</Text>
+        </View>
+
+        <View style={[styles.storageRow, { borderBottomWidth: 0 }]}>
+          <Text style={styles.storageLabel}>Source Code</Text>
+          <TouchableOpacity
+            style={styles.githubLinkRow}
+            onPress={() => Linking.openURL('https://github.com/sunilsankar/DivYield')}
+          >
+            <MaterialCommunityIcons name="github" size={18} color={theme.textPrimary} />
+            <Text style={[styles.githubLinkText, { color: theme.accent }]}>GitHub</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
       {/* Help Modal: Step-by-Step API Key Instructions */}
       <Modal
         visible={showHelpModal}
@@ -1233,6 +1274,15 @@ const styles = StyleSheet.create({
   },
   clearBtnText: {
     color: '#dc2626',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  githubLinkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  githubLinkText: {
     fontSize: 13,
     fontWeight: '700',
   },
