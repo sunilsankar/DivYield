@@ -27,8 +27,9 @@ export async function fetchHealth(): Promise<HealthStatus> {
   return res.json();
 }
 
-export async function fetchUpdateCheck(): Promise<UpdateCheckResult> {
-  const res = await fetch(`${API_BASE}/updates`);
+export async function fetchUpdateCheck(force: boolean = false): Promise<UpdateCheckResult> {
+  const url = force ? `${API_BASE}/updates?force=true` : `${API_BASE}/updates`;
+  const res = await fetch(url);
   if (!res.ok) {
     throw new Error(`Update check failed with status ${res.status}`);
   }

@@ -157,6 +157,7 @@ export function App() {
   } | null>(null);
   const [syncFrequency, setSyncFrequency] = useState<string>("manual");
   const [updateInfo, setUpdateInfo] = useState<UpdateCheckResult | null>(null);
+  const [isCheckingUpdate, setIsCheckingUpdate] = useState<boolean>(false);
   const [isResetting, setIsResetting] = useState<boolean>(false);
   const [resetModalOpen, setResetModalOpen] = useState<boolean>(false);
   const [resetWipeCredentials, setResetWipeCredentials] = useState<boolean>(true);
@@ -343,6 +344,25 @@ export function App() {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to update sync frequency";
       setNotification(`Error: ${msg}`);
+    }
+  };
+
+  const handleCheckUpdate = async () => {
+    setIsCheckingUpdate(true);
+    try {
+      const res = await fetchUpdateCheck(true);
+      setUpdateInfo(res);
+      if (res.update_available) {
+        setNotification(`Update available: ${res.latest_version}. Check the banner above to download.`);
+      } else {
+        const latest = res.latest_version || (health?.version ? `v${health.version}` : "v0.5.0-beta");
+        setNotification(`DivYield is up to date (latest tag: ${latest}).`);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to check for updates";
+      setNotification(`Update check failed: ${msg}`);
+    } finally {
+      setIsCheckingUpdate(false);
     }
   };
 
@@ -547,7 +567,7 @@ export function App() {
             </div>
             <div className="flex items-center gap-3">
               <a
-                href={updateInfo.release_url || "https://github.com/sunilsankar/DivYield/releases"}
+                href={updateInfo.download_url || updateInfo.release_url || "https://github.com/sunilsankar/DivYield/releases"}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="font-semibold underline hover:text-amber-700"
@@ -928,10 +948,34 @@ export function App() {
               <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-xl text-xs space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-slate-900 text-xs">Application & System Integration</span>
-                  <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
-                    {health?.version ? `v${health.version}` : "v0.5.0-beta"}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
+                      {health?.version ? `v${health.version}` : "v0.5.0-beta"}
+                    </span>
+                    <button
+                      onClick={handleCheckUpdate}
+                      disabled={isCheckingUpdate}
+                      className="px-2 py-0.5 rounded bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-medium text-[11px] transition-colors cursor-pointer"
+                    >
+                      {isCheckingUpdate ? "Checking..." : "Check Updates"}
+                    </button>
+                  </div>
                 </div>
+                {updateInfo?.update_available && (
+                  <div className="p-2.5 bg-emerald-50 border border-emerald-200/80 rounded-lg flex items-center justify-between gap-2 text-[11px] text-emerald-900">
+                    <span>
+                      Update available: <strong>{updateInfo.latest_version}</strong>
+                    </span>
+                    <a
+                      href={updateInfo.download_url || updateInfo.release_url || "https://github.com/sunilsankar/DivYield/releases"}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[11px] transition-colors"
+                    >
+                      Download Update
+                    </a>
+                  </div>
+                )}
                 <div className="flex items-center justify-between text-[11px] text-slate-600 pt-0.5 border-b border-slate-200/60 pb-2">
                   <span>Author: <strong className="text-slate-800 font-semibold">Sunil Sankar</strong></span>
                   <a

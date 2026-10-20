@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+import sys
 import time
 from typing import Optional
 from fastapi import APIRouter
@@ -25,6 +26,7 @@ class UpdateCheckResponse(BaseModel):
     update_available: bool = False
     release_url: Optional[str] = None
     release_name: Optional[str] = None
+    download_url: Optional[str] = None
 
 
 _cached_update: Optional[UpdateCheckResponse] = None
@@ -52,10 +54,10 @@ def get_health() -> HealthResponse:
 
 
 @router.get("/updates", response_model=UpdateCheckResponse)
-async def check_for_updates() -> UpdateCheckResponse:
+async def check_for_updates(force: bool = False) -> UpdateCheckResponse:
     global _cached_update, _last_update_check_time
     now = time.time()
-    if _cached_update is not None and (now - _last_update_check_time) < UPDATE_CACHE_TTL:
+    if not force and _cached_update is not None and (now - _last_update_check_time) < UPDATE_CACHE_TTL:
         return _cached_update
 
     curr = settings.app_version.lstrip("v")
@@ -73,12 +75,28 @@ async def check_for_updates() -> UpdateCheckResponse:
                 latest_tag = data.get("tag_name", "").strip()
                 latest_clean = latest_tag.lstrip("v")
                 is_newer = bool(latest_clean and latest_clean != curr)
+
+                download_url = ""
+                for asset in data.get("assets", []):
+                    name = asset.get("name", "")
+                    if sys.platform == "win32" and (name.endswith(".msi") or name.endswith(".zip")):
+                        download_url = asset.get("browser_download_url", "")
+                        break
+                    elif sys.platform == "darwin" and name.endswith(".dmg"):
+                        download_url = asset.get("browser_download_url", "")
+                        break
+
+                if not download_url and latest_tag:
+                    fallback_file = "DivYield-Windows.msi" if sys.platform == "win32" else "DivYield-macOS-universal.dmg"
+                    download_url = f"https://github.com/sunilsankar/DivYield/releases/download/{latest_tag}/{fallback_file}"
+
                 res = UpdateCheckResponse(
                     current_version=settings.app_version,
                     latest_version=latest_tag,
                     update_available=is_newer,
                     release_url=data.get("html_url") or f"https://github.com/sunilsankar/DivYield/releases/tag/{latest_tag}",
                     release_name=data.get("name") or latest_tag,
+                    download_url=download_url,
                 )
             else:
                 # Fallback to tags API if releases endpoint is unavailable or empty
@@ -92,12 +110,14 @@ async def check_for_updates() -> UpdateCheckResponse:
                         latest_tag = tags[0].get("name", "").strip()
                         latest_clean = latest_tag.lstrip("v")
                         is_newer = bool(latest_clean and latest_clean != curr)
+                        fallback_file = "DivYield-Windows.msi" if sys.platform == "win32" else "DivYield-macOS-universal.dmg"
                         res = UpdateCheckResponse(
                             current_version=settings.app_version,
                             latest_version=latest_tag,
                             update_available=is_newer,
                             release_url=f"https://github.com/sunilsankar/DivYield/releases/tag/{latest_tag}",
                             release_name=latest_tag,
+                            download_url=f"https://github.com/sunilsankar/DivYield/releases/download/{latest_tag}/{fallback_file}",
                         )
     except Exception:
         # Gracefully handle network timeouts or rate limits

@@ -14,6 +14,7 @@ export interface UpdateCheckResult {
   update_available: boolean;
   release_url?: string | null;
   release_name?: string | null;
+  download_url?: string | null;
 }
 
 export interface Holding {

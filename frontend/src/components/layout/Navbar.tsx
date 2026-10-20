@@ -59,7 +59,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </span>
                 {updateInfo?.update_available && (
                   <a
-                    href={updateInfo.release_url || "https://github.com/sunilsankar/DivYield/releases"}
+                    href={updateInfo.download_url || updateInfo.release_url || "https://github.com/sunilsankar/DivYield/releases"}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-800 border border-amber-500/20 rounded-md transition-colors animate-pulse"
