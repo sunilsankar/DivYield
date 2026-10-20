@@ -808,6 +808,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onRefreshData }) => 
             <Text style={[styles.githubLinkText, { color: theme.accent }]}>GitHub</Text>
           </TouchableOpacity>
         </View>
+
+        <View style={styles.disclaimerBox}>
+          <MaterialCommunityIcons name="alert-circle-outline" size={16} color="#d97706" style={{ marginTop: 1 }} />
+          <Text style={styles.disclaimerText}>
+            Disclaimer: This app is for forecasting purposes only. Dividend projections and financial estimates can differ from official Trading 212 data, so independent investigation is required.
+          </Text>
+        </View>
       </View>
 
       {/* Help Modal: Step-by-Step API Key Instructions */}
@@ -1285,6 +1292,23 @@ const styles = StyleSheet.create({
   githubLinkText: {
     fontSize: 13,
     fontWeight: '700',
+  },
+  disclaimerBox: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 12,
+    padding: 10,
+    backgroundColor: '#fffbeb',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#fef3c7',
+  },
+  disclaimerText: {
+    flex: 1,
+    fontSize: 11,
+    color: '#92400e',
+    lineHeight: 16,
+    fontWeight: '500',
   },
   modalOverlay: {
     flex: 1,

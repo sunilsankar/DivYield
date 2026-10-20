@@ -1,5 +1,6 @@
 import { DividendEvent, Holding, SyncProgress, Transaction } from '../types';
 import {
+  batchUpdateHoldingEnrichment,
   batchUpsertDividends,
   batchUpsertHoldings,
   batchUpsertTransactions,
@@ -252,7 +253,7 @@ export async function runSync(onProgress?: (progress: SyncProgress) => void): Pr
 
     // Step 7: Enrich with Yahoo Finance (sectors, industries, and future dividend projections)
     updateProgress(7, 'Enriching with Yahoo Finance (sectors & future dividends)...');
-    // ponytail: bounded concurrency of 2 preserves Yahoo rate limits; upgrade to dynamic limiter if concurrency expands
+    // ponytail: bounded concurrency of 3 balances sync speed with Yahoo rate limits; upgrade to persistent cache if user permits storage
     const enrichmentResults: Array<YahooEnrichmentResult | null> = new Array(holdings.length).fill(null);
     let nextIndex = 0;
     const worker = async () => {
@@ -267,14 +268,24 @@ export async function runSync(onProgress?: (progress: SyncProgress) => void): Pr
         }
       }
     };
-    await Promise.all(Array.from({ length: Math.min(2, holdings.length) }, worker));
+    await Promise.all(Array.from({ length: Math.min(3, holdings.length) }, worker));
 
+    const holdingUpdates: Array<{
+      ticker: string;
+      sector?: string;
+      industry?: string;
+      dividend_yield?: number;
+      annual_dividend?: number;
+      payout_frequency?: string;
+    }> = [];
     const forecastDividends: DividendEvent[] = [];
+
     for (let i = 0; i < holdings.length; i++) {
       const h = holdings[i];
       const enriched = enrichmentResults[i];
       if (enriched) {
-        await updateHoldingEnrichment(h.ticker, {
+        holdingUpdates.push({
+          ticker: h.ticker,
           sector: enriched.sector,
           industry: enriched.industry,
           dividend_yield: enriched.dividendYield,
@@ -299,6 +310,7 @@ export async function runSync(onProgress?: (progress: SyncProgress) => void): Pr
       }
     }
 
+    await batchUpdateHoldingEnrichment(holdingUpdates);
     // ponytail: always replace forecasts so sold holdings do not leave orphaned projections
     await replaceForecastDividends(forecastDividends);
 

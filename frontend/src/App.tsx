@@ -946,6 +946,12 @@ export function App() {
                     <span>GitHub</span>
                   </a>
                 </div>
+                <div className="p-2.5 bg-amber-50/70 border border-amber-200/60 rounded-lg flex items-start gap-2 text-[11px] text-amber-900 leading-relaxed">
+                  <span className="font-semibold text-amber-800 shrink-0">Disclaimer:</span>
+                  <span>
+                    This app is for forecasting purposes only. Dividend projections and financial estimates can differ from official Trading 212 data, so independent investigation is required.
+                  </span>
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                   <div className="p-3 bg-white rounded-lg border border-slate-200/60 flex flex-col gap-1">
                     <span className="font-semibold text-slate-800">Shortcuts & Launchers</span>

@@ -462,6 +462,48 @@ export async function updateHoldingEnrichment(
   );
 }
 
+export async function batchUpdateHoldingEnrichment(
+  updates: Array<{
+    ticker: string;
+    sector?: string;
+    industry?: string;
+    dividend_yield?: number;
+    annual_dividend?: number;
+    payout_frequency?: string;
+  }>
+): Promise<void> {
+  if (updates.length === 0) return;
+  const db = await getDb();
+  const sql = `
+    UPDATE holdings
+    SET
+      sector = COALESCE(?, sector),
+      industry = COALESCE(?, industry),
+      dividend_yield = COALESCE(?, dividend_yield),
+      annual_dividend = COALESCE(?, annual_dividend),
+      payout_frequency = COALESCE(?, payout_frequency),
+      updated_at = CURRENT_TIMESTAMP
+    WHERE ticker = ?
+  `;
+  const statement = await db.prepareAsync(sql);
+  try {
+    await db.withExclusiveTransactionAsync(async () => {
+      for (const u of updates) {
+        await statement.executeAsync([
+          u.sector ?? null,
+          u.industry ?? null,
+          u.dividend_yield ?? null,
+          u.annual_dividend ?? null,
+          u.payout_frequency ?? null,
+          u.ticker,
+        ]);
+      }
+    });
+  } finally {
+    await statement.finalizeAsync();
+  }
+}
+
 export async function replaceForecastDividends(forecasts: DividendEvent[]): Promise<void> {
   const db = await getDb();
   // Clean old YFINANCE forecast events so we don't accumulate duplicates or stale projections
