@@ -25,6 +25,7 @@ import {
 import { hasCredentials } from './src/services/secureStore';
 import { isPinSet } from './src/services/security';
 import { runSync } from './src/services/sync';
+import { checkAppUpdateSilently } from './src/services/updates';
 import {
   DividendEvent,
   Holding,
@@ -75,6 +76,7 @@ function MainApp() {
         if (hasPin) {
           setIsLocked(true);
         }
+        checkAppUpdateSilently();
       }
       setAppState(nextState);
     });
@@ -113,6 +115,7 @@ function MainApp() {
 
   useEffect(() => {
     loadData();
+    checkAppUpdateSilently();
   }, []);
 
   const handleSync = async () => {

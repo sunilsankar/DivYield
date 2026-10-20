@@ -44,6 +44,12 @@ import {
   isBiometricsEnabled,
   setBiometricsEnabled,
 } from '../../services/security';
+import {
+  APP_VERSION,
+  checkGitHubRelease,
+  promptForUpdate,
+  UpdateInfo,
+} from '../../services/updates';
 
 interface SettingsViewProps {
   onRefreshData: () => void;
@@ -74,6 +80,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onRefreshData }) => 
   const [pinConfirm, setPinConfirm] = useState('');
   const [pinStep, setPinStep] = useState<'create' | 'confirm'>('create');
   const [pinError, setPinError] = useState('');
+
+  // Update check state
+  const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
+  const [availableUpdate, setAvailableUpdate] = useState<UpdateInfo | null>(null);
 
   useEffect(() => {
     loadCreds();
@@ -307,6 +317,43 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onRefreshData }) => 
       Alert.alert('Export Error', err.message || 'Failed to export CSV data');
     } finally {
       setIsExporting(false);
+    }
+  };
+
+  const handleCheckUpdate = async () => {
+    setIsCheckingUpdate(true);
+    try {
+      const info = await checkGitHubRelease();
+      if (!info) {
+        Alert.alert('Check Failed', 'Unable to reach GitHub. Please check your internet connection.');
+        return;
+      }
+      if (info.updateAvailable) {
+        setAvailableUpdate(info);
+        promptForUpdate(info);
+      } else {
+        setAvailableUpdate(null);
+        Alert.alert(
+          'Up to Date',
+          `You are running v${APP_VERSION} (latest tag: ${info.latestVersion}).\n\nWould you like to download the latest APK anyway?`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Download APK',
+              onPress: () => {
+                const targetUrl = info.downloadUrl || info.releaseUrl;
+                Linking.openURL(targetUrl).catch(() => {
+                  Linking.openURL(info.releaseUrl);
+                });
+              },
+            },
+          ]
+        );
+      }
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Failed to check for updates.');
+    } finally {
+      setIsCheckingUpdate(false);
     }
   };
 
@@ -790,8 +837,46 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onRefreshData }) => 
 
         <View style={styles.storageRow}>
           <Text style={styles.storageLabel}>Version</Text>
-          <Text style={[styles.storageValue, { color: theme.textPrimary }]}>v0.5.0-beta</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Text style={[styles.storageValue, { color: theme.textPrimary }]}>v{APP_VERSION}</Text>
+            <TouchableOpacity
+              onPress={handleCheckUpdate}
+              disabled={isCheckingUpdate}
+              style={[
+                styles.checkUpdateBtn,
+                { backgroundColor: theme.background, borderColor: theme.cardBorder },
+              ]}
+            >
+              <Text style={[styles.checkUpdateText, { color: theme.accent }]}>
+                {isCheckingUpdate ? 'Checking...' : 'Check Updates'}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
+
+        {availableUpdate && (
+          <View
+            style={[
+              styles.updateBanner,
+              { backgroundColor: theme.background, borderColor: '#10b981' },
+            ]}
+          >
+            <View style={{ flex: 1, marginRight: 8 }}>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: '#10b981' }}>
+                New version available: {availableUpdate.latestVersion}
+              </Text>
+              <Text style={{ fontSize: 11, color: theme.textSecondary, marginTop: 2 }}>
+                An update is available on GitHub Releases.
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => promptForUpdate(availableUpdate)}
+              style={styles.downloadUpdateBtn}
+            >
+              <Text style={styles.downloadUpdateText}>Download</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         <View style={styles.storageRow}>
           <Text style={styles.storageLabel}>Author</Text>
@@ -1449,5 +1534,36 @@ const styles = StyleSheet.create({
   sketchBorder: {
     borderWidth: 1,
     borderColor: '#18181b',
+  },
+  checkUpdateBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  checkUpdateText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  updateBanner: {
+    marginHorizontal: 16,
+    marginVertical: 8,
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  downloadUpdateBtn: {
+    backgroundColor: '#10b981',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  downloadUpdateText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '700',
   },
 });

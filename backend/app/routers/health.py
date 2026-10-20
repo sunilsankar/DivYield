@@ -64,23 +64,41 @@ async def check_for_updates() -> UpdateCheckResponse:
     try:
         async with httpx.AsyncClient(timeout=4.0) as client:
             resp = await client.get(
-                "https://api.github.com/repos/sunilsankar/DivYield/releases/latest",
+                "https://api.github.com/repos/sunilsankar/DivYield/releases?per_page=5",
                 headers={"Accept": "application/vnd.github.v3+json", "User-Agent": "DivYield-App"},
             )
-            if resp.status_code == 200:
-                data = resp.json()
+            releases = resp.json() if resp.status_code == 200 else []
+            if isinstance(releases, list) and releases:
+                data = releases[0]
                 latest_tag = data.get("tag_name", "").strip()
                 latest_clean = latest_tag.lstrip("v")
-
                 is_newer = bool(latest_clean and latest_clean != curr)
-
                 res = UpdateCheckResponse(
                     current_version=settings.app_version,
                     latest_version=latest_tag,
                     update_available=is_newer,
-                    release_url=data.get("html_url") or "https://github.com/sunilsankar/DivYield/releases",
+                    release_url=data.get("html_url") or f"https://github.com/sunilsankar/DivYield/releases/tag/{latest_tag}",
                     release_name=data.get("name") or latest_tag,
                 )
+            else:
+                # Fallback to tags API if releases endpoint is unavailable or empty
+                tag_resp = await client.get(
+                    "https://api.github.com/repos/sunilsankar/DivYield/tags?per_page=5",
+                    headers={"Accept": "application/vnd.github.v3+json", "User-Agent": "DivYield-App"},
+                )
+                if tag_resp.status_code == 200:
+                    tags = tag_resp.json()
+                    if isinstance(tags, list) and tags:
+                        latest_tag = tags[0].get("name", "").strip()
+                        latest_clean = latest_tag.lstrip("v")
+                        is_newer = bool(latest_clean and latest_clean != curr)
+                        res = UpdateCheckResponse(
+                            current_version=settings.app_version,
+                            latest_version=latest_tag,
+                            update_available=is_newer,
+                            release_url=f"https://github.com/sunilsankar/DivYield/releases/tag/{latest_tag}",
+                            release_name=latest_tag,
+                        )
     except Exception:
         # Gracefully handle network timeouts or rate limits
         pass
