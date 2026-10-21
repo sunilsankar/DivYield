@@ -93,6 +93,17 @@ export async function runSync(onProgress?: (progress: SyncProgress) => void): Pr
       // ponytail: json-stringified ticker array in settings; dedicated table if catalog expands
       const t212Tickers = instruments.map((i) => i.ticker);
       await setSetting('t212_instruments_cache', JSON.stringify(t212Tickers));
+
+      // Cache STOCK and ETF catalog for background future investment discovery
+      const stockEtfCatalog = instruments
+        .filter((i) => !i.type || i.type === 'STOCK' || i.type === 'ETF')
+        .map((i) => ({
+          ticker: i.ticker,
+          name: i.name,
+          type: (i.type || 'STOCK') as 'STOCK' | 'ETF',
+          currency: i.currencyCode,
+        }));
+      await setSetting('t212_instruments_catalog', JSON.stringify(stockEtfCatalog));
     }
 
     // Step 3: Portfolio holdings & FX rates

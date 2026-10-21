@@ -69,7 +69,7 @@ export function mapT212ToYahoo(ticker: string): string {
 // Rate limiter: delay between external requests to avoid 429
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-async function fetchWithRetry(url: string, retries = 2, delayMs = 350): Promise<any> {
+export async function fetchWithRetry(url: string, retries = 2, delayMs = 350): Promise<any> {
   // ponytail: in-memory pacing lock, fine for sequential sync on mobile
   await delay(delayMs);
   for (let i = 0; i <= retries; i++) {

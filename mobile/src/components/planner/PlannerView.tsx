@@ -2,6 +2,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -10,7 +11,8 @@ import {
   View,
 } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
-import { getIncomePlannerData } from '../../services/database';
+import { getIncomePlannerData, getSetting } from '../../services/database';
+import { runFutureInvestmentSync } from '../../services/futureInvestments';
 import { IncomePlannerData, PlannerMonth } from '../../types';
 import { formatTicker, StockLogo } from '../common/StockLogo';
 
@@ -20,6 +22,9 @@ export const PlannerView: React.FC = () => {
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [data, setData] = useState<IncomePlannerData | null>(null);
   const [selectedMonthIndex, setSelectedMonthIndex] = useState<number>(0);
+  const [isSyncingCandidates, setIsSyncingCandidates] = useState<boolean>(false);
+  const [candidateSyncMsg, setCandidateSyncMsg] = useState<string>('');
+  const [lastCandidateSync, setLastCandidateSync] = useState<string | null>(null);
 
   const loadData = async () => {
     try {
@@ -32,11 +37,39 @@ export const PlannerView: React.FC = () => {
       } else {
         setSelectedMonthIndex(0);
       }
+
+      const lastSyncIso = await getSetting('future_investment_last_synced', '');
+      if (lastSyncIso) {
+        const d = new Date(lastSyncIso);
+        setLastCandidateSync(
+          `${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+        );
+      }
     } catch (err) {
       console.error('Error loading income planner data:', err);
     } finally {
       setLoading(false);
       setRefreshing(false);
+    }
+  };
+
+  const handleSyncCandidates = async () => {
+    if (isSyncingCandidates) return;
+    setIsSyncingCandidates(true);
+    setCandidateSyncMsg('Connecting to Trading 212 & Yahoo Finance...');
+    try {
+      const res = await runFutureInvestmentSync(50, (msg) => setCandidateSyncMsg(msg));
+      if (res.success) {
+        Alert.alert('Discovery Complete', res.message);
+        await loadData();
+      } else {
+        Alert.alert('Discovery Notice', res.message);
+      }
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Discovery sync failed');
+    } finally {
+      setIsSyncingCandidates(false);
+      setCandidateSyncMsg('');
     }
   };
 
@@ -399,8 +432,50 @@ export const PlannerView: React.FC = () => {
           </View>
 
           <Text style={[styles.futureSectionSub, { color: theme.textSecondary }]}>
-            Stocks verified on Trading 212 that pay on your open calendar days to build daily dividend cashflow.
+            Stocks and ETFs verified on Trading 212 that pay on your open calendar days to build daily dividend cashflow.
           </Text>
+
+          {/* Sync New Stocks & ETFs Action Bar */}
+          <View
+            style={[
+              styles.discoverySyncBar,
+              {
+                backgroundColor: isSketch ? '#faf5ff' : '#f5f3ff',
+                borderColor: isSketch ? '#c084fc' : '#e9d5ff',
+              },
+            ]}
+          >
+            <View style={styles.discoverySyncInfo}>
+              <Text style={[styles.discoverySyncTitle, { color: '#6b21a8' }]}>
+                Candidate Discovery Sync
+              </Text>
+              <Text style={[styles.discoverySyncSub, { color: theme.textSecondary }]}>
+                {isSyncingCandidates
+                  ? candidateSyncMsg || 'Scanning Trading 212 stocks & ETFs...'
+                  : lastCandidateSync
+                  ? `Last synced: ${lastCandidateSync}`
+                  : 'Sync to validate latest T212 stocks & ETFs'}
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={[
+                styles.discoverySyncBtn,
+                isSyncingCandidates && styles.discoverySyncBtnDisabled,
+              ]}
+              onPress={handleSyncCandidates}
+              disabled={isSyncingCandidates}
+              activeOpacity={0.8}
+            >
+              {isSyncingCandidates ? (
+                <ActivityIndicator size="small" color="#ffffff" />
+              ) : (
+                <View style={styles.discoveryBtnInner}>
+                  <MaterialCommunityIcons name="cloud-sync" size={16} color="#ffffff" />
+                  <Text style={styles.discoveryBtnText}>Sync Candidates</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
 
           {(!selectedMonth.missing_day_suggestions ||
             selectedMonth.missing_day_suggestions.length === 0) ? (
@@ -451,6 +526,15 @@ export const PlannerView: React.FC = () => {
                       <Text style={[styles.futureTicker, { color: theme.textPrimary }]}>
                         {formatTicker(sug.ticker)}
                       </Text>
+                      {sug.instrument_type === 'ETF' ? (
+                        <View style={styles.etfTag}>
+                          <Text style={styles.etfTagText}>ETF</Text>
+                        </View>
+                      ) : (
+                        <View style={styles.stockTag}>
+                          <Text style={styles.stockTagText}>STOCK</Text>
+                        </View>
+                      )}
                       <View style={styles.futureTag}>
                         <Text style={styles.futureTagText}>Future Investment</Text>
                       </View>
@@ -776,7 +860,76 @@ const styles = StyleSheet.create({
   futureSectionSub: {
     fontSize: 11,
     lineHeight: 16,
+    marginBottom: 4,
+  },
+  discoverySyncBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginTop: 8,
     marginBottom: 12,
+    gap: 8,
+  },
+  discoverySyncInfo: {
+    flex: 1,
+  },
+  discoverySyncTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  discoverySyncSub: {
+    fontSize: 10,
+    marginTop: 2,
+  },
+  discoverySyncBtn: {
+    backgroundColor: '#7c3aed',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  discoverySyncBtnDisabled: {
+    opacity: 0.6,
+  },
+  discoveryBtnInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  discoveryBtnText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  etfTag: {
+    backgroundColor: '#fef3c7',
+    borderWidth: 1,
+    borderColor: '#fde68a',
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  etfTagText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#b45309',
+  },
+  stockTag: {
+    backgroundColor: '#e0f2fe',
+    borderWidth: 1,
+    borderColor: '#bae6fd',
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  stockTagText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#0369a1',
   },
   futureCard: {
     padding: 12,

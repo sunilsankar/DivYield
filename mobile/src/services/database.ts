@@ -8,7 +8,11 @@ import {
   PortfolioSummary,
   Transaction,
 } from '../types';
-import { getMissingDaySuggestions, getDaysInMonth } from './futureInvestments';
+import {
+  getMissingDaySuggestions,
+  getDaysInMonth,
+  ValidatedFutureInvestment,
+} from './futureInvestments';
 
 let dbInstance: SQLite.SQLiteDatabase | null = null;
 let dbInitPromise: Promise<SQLite.SQLiteDatabase> | null = null;
@@ -728,6 +732,19 @@ export async function getIncomePlannerData(): Promise<IncomePlannerData> {
     // ignore
   }
 
+  let dynamicCandidates: ValidatedFutureInvestment[] | undefined;
+  try {
+    const candidatesStr = await getSetting('future_investment_candidates', '');
+    if (candidatesStr) {
+      const parsed = JSON.parse(candidatesStr);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        dynamicCandidates = parsed;
+      }
+    }
+  } catch (e) {
+    // ignore
+  }
+
   const historyRows = await db.getAllAsync<{ ticker: string; month_num: string }>(
     `SELECT DISTINCT ticker, strftime('%m', payment_date) as month_num
      FROM dividend_events
@@ -828,7 +845,9 @@ export async function getIncomePlannerData(): Promise<IncomePlannerData> {
       mKey,
       paidDays,
       ownedTickers,
-      t212CatalogSet
+      t212CatalogSet,
+      20,
+      dynamicCandidates
     );
 
     plannerMonths.push({
@@ -861,6 +880,12 @@ export async function clearDatabase(): Promise<void> {
     DELETE FROM transactions;
     DELETE FROM dividend_events;
     DELETE FROM sync_log;
-    DELETE FROM settings WHERE key NOT IN ('app_version', 't212_instruments_cache');
+    DELETE FROM settings WHERE key NOT IN (
+      'app_version',
+      't212_instruments_cache',
+      't212_instruments_catalog',
+      'future_investment_candidates',
+      'future_investment_last_synced'
+    );
   `);
 }

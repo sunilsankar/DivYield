@@ -97,6 +97,7 @@ export interface MissingDaySuggestion {
   payout_amount_per_share?: number;
   current_price?: number;
   is_verified_t212: boolean;
+  instrument_type?: 'STOCK' | 'ETF' | string;
   source: 'yfinance_t212_future_investment';
 }
 

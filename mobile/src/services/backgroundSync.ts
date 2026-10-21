@@ -1,6 +1,7 @@
 import * as BackgroundTask from 'expo-background-task';
 import * as TaskManager from 'expo-task-manager';
 import { runSync } from './sync';
+import { runFutureInvestmentSync } from './futureInvestments';
 import { hasCredentials } from './secureStore';
 import { getSetting, setSetting } from './database';
 
@@ -21,6 +22,15 @@ TaskManager.defineTask(BACKGROUND_SYNC_TASK, async () => {
     }
 
     const result = await runSync();
+    if (result.success) {
+      // Headless discovery sync for new STOCK and ETF candidates
+      try {
+        await runFutureInvestmentSync(50);
+      } catch (e) {
+        console.warn('Background candidate discovery sync error:', e);
+      }
+    }
+
     return result.success
       ? BackgroundTask.BackgroundTaskResult.Success
       : BackgroundTask.BackgroundTaskResult.Failed;
