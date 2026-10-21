@@ -724,8 +724,17 @@ export async function getIncomePlannerData(): Promise<IncomePlannerData> {
     const cachedCatalogStr = await getSetting('t212_instruments_cache', '');
     if (cachedCatalogStr) {
       const parsed = JSON.parse(cachedCatalogStr);
-      if (Array.isArray(parsed)) {
+      if (Array.isArray(parsed) && parsed.length > 0) {
         t212CatalogSet = new Set(parsed.map((s: string) => String(s).toUpperCase()));
+      }
+    }
+    if (!t212CatalogSet || t212CatalogSet.size === 0) {
+      const catalogJson = await getSetting('t212_instruments_catalog', '');
+      if (catalogJson) {
+        const parsed = JSON.parse(catalogJson);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          t212CatalogSet = new Set(parsed.map((item: any) => String(item.ticker).toUpperCase()));
+        }
       }
     }
   } catch (e) {
@@ -738,7 +747,16 @@ export async function getIncomePlannerData(): Promise<IncomePlannerData> {
     if (candidatesStr) {
       const parsed = JSON.parse(candidatesStr);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        dynamicCandidates = parsed;
+        // ponytail: filter out UFI and zombie/stale dividend candidates
+        dynamicCandidates = parsed.filter((c: ValidatedFutureInvestment) => {
+          if (c.ticker.toUpperCase() === 'UFI' || c.name?.toUpperCase().includes('UNIFI')) return false;
+          if (!c.dividend_yield || c.dividend_yield <= 0) return false;
+          if (c.last_dividend_date) {
+            const diffDays = (Date.now() - new Date(c.last_dividend_date).getTime()) / (1000 * 60 * 60 * 24);
+            if (diffDays > 460) return false;
+          }
+          return true;
+        });
       }
     }
   } catch (e) {

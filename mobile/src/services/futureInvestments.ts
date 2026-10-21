@@ -24,6 +24,7 @@ export interface ValidatedFutureInvestment {
   currency: string;
   payout_amount_per_share: number;
   last_validated: string;
+  last_dividend_date?: string;
 }
 
 // Starter pool of verified dividend payers available on Trading 212
@@ -469,9 +470,15 @@ export async function validateCandidateWithYahoo(
         amount: Number(d.amount) || 0,
         date: new Date(Number(d.date) * 1000),
       }))
-      .filter((d) => d.amount > 0 && !Number.isNaN(d.date.getTime()));
+      .filter((d) => d.amount > 0 && !Number.isNaN(d.date.getTime()))
+      .sort((a, b) => a.date.getTime() - b.date.getTime());
 
     if (divList.length === 0) return null;
+
+    // ponytail: reject stale dividends older than 15 months (460 days) to prevent zombie dividend payers like UFI
+    const latestDiv = divList[divList.length - 1];
+    const daysSinceLatest = (Date.now() - latestDiv.date.getTime()) / (1000 * 60 * 60 * 24);
+    if (daysSinceLatest > 460) return null;
 
     const proj = projectFutureDividends(
       candidate.ticker,
@@ -524,6 +531,7 @@ export async function validateCandidateWithYahoo(
       currency: meta?.currency || candidate.currency || 'USD',
       payout_amount_per_share: Number(perShare.toFixed(2)),
       last_validated: new Date().toISOString(),
+      last_dividend_date: latestDiv.date.toISOString().slice(0, 10),
     };
   } catch {
     return null;
@@ -591,7 +599,18 @@ export async function runFutureInvestmentSync(
     const existingStr = await getSetting('future_investment_candidates', '[]');
     try {
       const parsed = JSON.parse(existingStr);
-      if (Array.isArray(parsed)) existingCandidates = parsed;
+      if (Array.isArray(parsed)) {
+        // ponytail: purge inactive dividend payers (such as UFI) or stale records (>460 days)
+        existingCandidates = parsed.filter((c: ValidatedFutureInvestment) => {
+          if (c.ticker.toUpperCase() === 'UFI' || c.name?.toUpperCase().includes('UNIFI')) return false;
+          if (!c.dividend_yield || c.dividend_yield <= 0) return false;
+          if (c.last_dividend_date) {
+            const diffDays = (Date.now() - new Date(c.last_dividend_date).getTime()) / (1000 * 60 * 60 * 24);
+            if (diffDays > 460) return false;
+          }
+          return true;
+        });
+      }
     } catch {
       existingCandidates = [];
     }
@@ -676,14 +695,16 @@ export function isDiscoverySyncActive(): boolean {
  */
 export function isTickerOnTrading212(ticker: string, t212CatalogSet?: Set<string>): boolean {
   if (!t212CatalogSet || t212CatalogSet.size === 0) {
-    return true;
+    return false;
   }
   const upper = ticker.toUpperCase();
   return (
     t212CatalogSet.has(upper) ||
     t212CatalogSet.has(`${upper}_US_EQ`) ||
     t212CatalogSet.has(`${upper}_US`) ||
-    t212CatalogSet.has(`${upper}_EQ`)
+    t212CatalogSet.has(`${upper}_EQ`) ||
+    t212CatalogSet.has(`${upper}_UK_EQ`) ||
+    t212CatalogSet.has(`${upper}_DE_EQ`)
   );
 }
 
@@ -728,15 +749,27 @@ export function getMissingDaySuggestions(
       ? dynamicCandidates
       : STARTER_CANDIDATES;
 
+  const hasT212Catalog = Boolean(t212CatalogSet && t212CatalogSet.size > 0);
+
   // Filter candidates verified on T212, matching the month schedule, and not already owned
   const eligibleCandidates = candidatePool.filter((c) => {
+    // Purge UFI or stale zero-yield candidates defensively
+    if (c.ticker.toUpperCase() === 'UFI' || c.name?.toUpperCase().includes('UNIFI')) return false;
+    if (!c.dividend_yield || c.dividend_yield <= 0) return false;
+    if (c.last_dividend_date) {
+      const diffDays = (Date.now() - new Date(c.last_dividend_date).getTime()) / (1000 * 60 * 60 * 24);
+      if (diffDays > 460) return false;
+    }
     if (ownedTickers.has(c.ticker.toUpperCase())) return false;
-    if (!isTickerOnTrading212(c.ticker, t212CatalogSet)) return false;
+    if (hasT212Catalog && !isTickerOnTrading212(c.ticker, t212CatalogSet)) return false;
     if (c.frequency !== 'monthly' && c.payout_months && !c.payout_months.includes(month)) {
       return false;
     }
     return true;
   });
+
+  const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const monthName = MONTH_NAMES[month - 1] || 'Day';
 
   for (const day of missingDays) {
     if (suggestions.length >= maxSuggestions) break;
@@ -763,13 +796,14 @@ export function getMissingDaySuggestions(
       suggestions.push({
         day,
         date_str: dateStr,
+        credited_date_display: `${monthName} ${day}`,
         ticker: bestCandidate.ticker,
         name: bestCandidate.name,
         dividend_yield: bestCandidate.dividend_yield,
         payout_frequency: bestCandidate.frequency,
         payout_amount_per_share: bestCandidate.payout_amount_per_share,
         current_price: bestCandidate.current_price,
-        is_verified_t212: true,
+        is_verified_t212: hasT212Catalog ? isTickerOnTrading212(bestCandidate.ticker, t212CatalogSet) : true,
         instrument_type: bestCandidate.instrument_type || 'STOCK',
         source: 'yfinance_t212_future_investment',
       });

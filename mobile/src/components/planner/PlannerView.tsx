@@ -16,6 +16,31 @@ import { runFutureInvestmentSync } from '../../services/futureInvestments';
 import { IncomePlannerData, PlannerMonth } from '../../types';
 import { formatTicker, StockLogo } from '../common/StockLogo';
 
+const MONTH_ABBREVS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+function formatSuggestionDate(dateStr?: string, fallbackDay?: number) {
+  if (dateStr) {
+    const parts = dateStr.split('-');
+    if (parts.length >= 3) {
+      const mIdx = parseInt(parts[1], 10) - 1;
+      const day = parseInt(parts[2], 10);
+      if (mIdx >= 0 && mIdx < 12) {
+        return {
+          monthAbbr: MONTH_ABBREVS[mIdx],
+          dayText: String(day),
+          creditedLabel: `${MONTH_NAMES[mIdx]} ${day}`,
+        };
+      }
+    }
+  }
+  return {
+    monthAbbr: 'DAY',
+    dayText: String(fallbackDay || 1),
+    creditedLabel: `Day ${fallbackDay || 1}`,
+  };
+}
+
 export const PlannerView: React.FC = () => {
   const { theme, isSketch } = useTheme();
   const [loading, setLoading] = useState<boolean>(true);
@@ -496,80 +521,84 @@ export const PlannerView: React.FC = () => {
               </Text>
             </View>
           ) : (
-            selectedMonth.missing_day_suggestions.map((sug) => (
-              <View
-                key={`${sug.ticker}-${sug.day}`}
-                style={[
-                  styles.futureCard,
-                  {
-                    backgroundColor: isSketch ? '#faf5ff' : '#f5f3ff',
-                    borderColor: isSketch ? '#7c3aed' : '#ddd6fe',
-                    borderWidth: isSketch ? 2 : 1,
-                  },
-                ]}
-              >
-                <View style={styles.futureCardTop}>
-                  <View
-                    style={[
-                      styles.missingDayBadge,
-                      { backgroundColor: isSketch ? '#6d28d9' : '#7c3aed' },
-                    ]}
-                  >
-                    <Text style={styles.missingDayNum}>{sug.day}</Text>
-                    <Text style={styles.missingDayLabel}>DAY</Text>
-                  </View>
-
-                  <StockLogo ticker={sug.ticker} size={38} />
-
-                  <View style={styles.futureInfoWrap}>
-                    <View style={styles.futureTickerRow}>
-                      <Text style={[styles.futureTicker, { color: theme.textPrimary }]}>
-                        {formatTicker(sug.ticker)}
-                      </Text>
-                      {sug.instrument_type === 'ETF' ? (
-                        <View style={styles.etfTag}>
-                          <Text style={styles.etfTagText}>ETF</Text>
-                        </View>
-                      ) : (
-                        <View style={styles.stockTag}>
-                          <Text style={styles.stockTagText}>STOCK</Text>
-                        </View>
-                      )}
-                      <View style={styles.futureTag}>
-                        <Text style={styles.futureTagText}>Future Investment</Text>
-                      </View>
-                    </View>
-                    <Text
-                      style={[styles.futureName, { color: theme.textSecondary }]}
-                      numberOfLines={1}
-                    >
-                      {sug.name}
-                    </Text>
-                  </View>
-
-                  <View style={styles.futureYieldTag}>
-                    <Text style={styles.futureYieldText}>{sug.dividend_yield.toFixed(2)}%</Text>
-                  </View>
-                </View>
-
+            selectedMonth.missing_day_suggestions.map((sug) => {
+              const dateInfo = formatSuggestionDate(sug.date_str, sug.day);
+              const creditedText = sug.credited_date_display || dateInfo.creditedLabel;
+              return (
                 <View
+                  key={`${sug.ticker}-${sug.day}`}
                   style={[
-                    styles.futureMetaRow,
-                    { borderTopColor: isSketch ? '#e9d5ff' : '#ede9fe' },
+                    styles.futureCard,
+                    {
+                      backgroundColor: isSketch ? '#faf5ff' : '#f5f3ff',
+                      borderColor: isSketch ? '#7c3aed' : '#ddd6fe',
+                      borderWidth: isSketch ? 2 : 1,
+                    },
                   ]}
                 >
-                  <Text style={[styles.futureMetaItem, { color: theme.textSecondary }]}>
-                    Typical payout: ~€{(sug.payout_amount_per_share || 0).toFixed(2)}/sh ({sug.payout_frequency})
-                  </Text>
-                  <View style={styles.t212VerifiedBadge}>
-                    <MaterialCommunityIcons name="check-circle" size={13} color="#16a34a" />
-                    <Text style={[styles.t212VerifiedText, { color: '#15803d' }]}>
-                      Trading 212
+                  <View style={styles.futureCardTop}>
+                    <View
+                      style={[
+                        styles.missingDayBadge,
+                        { backgroundColor: isSketch ? '#6d28d9' : '#7c3aed' },
+                      ]}
+                    >
+                      <Text style={styles.missingDayLabel}>{dateInfo.monthAbbr}</Text>
+                      <Text style={styles.missingDayNum}>{dateInfo.dayText}</Text>
+                    </View>
+
+                    <StockLogo ticker={sug.ticker} size={38} />
+
+                    <View style={styles.futureInfoWrap}>
+                      <View style={styles.futureTickerRow}>
+                        <Text style={[styles.futureTicker, { color: theme.textPrimary }]}>
+                          {formatTicker(sug.ticker)}
+                        </Text>
+                        {sug.instrument_type === 'ETF' ? (
+                          <View style={styles.etfTag}>
+                            <Text style={styles.etfTagText}>ETF</Text>
+                          </View>
+                        ) : (
+                          <View style={styles.stockTag}>
+                            <Text style={styles.stockTagText}>STOCK</Text>
+                          </View>
+                        )}
+                        <View style={styles.futureTag}>
+                          <Text style={styles.futureTagText}>Future Investment</Text>
+                        </View>
+                      </View>
+                      <Text
+                        style={[styles.futureName, { color: theme.textSecondary }]}
+                        numberOfLines={1}
+                      >
+                        {sug.name}
+                      </Text>
+                    </View>
+
+                    <View style={styles.futureYieldTag}>
+                      <Text style={styles.futureYieldText}>{sug.dividend_yield.toFixed(2)}%</Text>
+                    </View>
+                  </View>
+
+                  <View
+                    style={[
+                      styles.futureMetaRow,
+                      { borderTopColor: isSketch ? '#e9d5ff' : '#ede9fe' },
+                    ]}
+                  >
+                    <Text style={[styles.futureMetaItem, { color: theme.textSecondary }]}>
+                      Credited: {creditedText} • ~€{(sug.payout_amount_per_share || 0).toFixed(2)}/sh ({sug.payout_frequency})
                     </Text>
+                    <View style={styles.t212VerifiedBadge}>
+                      <MaterialCommunityIcons name="check-circle" size={13} color="#16a34a" />
+                      <Text style={[styles.t212VerifiedText, { color: '#15803d' }]}>
+                        Trading 212
+                      </Text>
+                    </View>
                   </View>
                 </View>
-              </View>
-            ))
+              );
+            })
           )}
         </View>
       )}
@@ -942,22 +971,25 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   missingDayBadge: {
-    width: 44,
-    height: 44,
+    width: 46,
+    height: 46,
     borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  missingDayNum: {
-    fontSize: 15,
-    fontWeight: '900',
-    color: '#ffffff',
+    paddingVertical: 2,
   },
   missingDayLabel: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: 'rgba(255, 255, 255, 0.85)',
+    fontSize: 10,
+    fontWeight: '800',
+    color: 'rgba(255, 255, 255, 0.9)',
     textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  missingDayNum: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#ffffff',
+    lineHeight: 18,
   },
   futureInfoWrap: {
     flex: 1,

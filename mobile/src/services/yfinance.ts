@@ -134,6 +134,13 @@ export function projectFutureDividends(
 
   const sorted = [...divList].sort((a, b) => a.date.getTime() - b.date.getTime());
   const lastDiv = sorted[sorted.length - 1];
+
+  // ponytail: reject stale dividends older than 15 months (460 days) to prevent zombie dividend payers like UFI
+  const daysSinceLastDiv = (Date.now() - lastDiv.date.getTime()) / (1000 * 60 * 60 * 24);
+  if (daysSinceLastDiv > 460) {
+    return { futureDividends: [], frequency: 'None', annualDividend: 0, dividendYield: 0 };
+  }
+
   const lastAmount = lastDiv.amount;
 
   // Determine payout frequency from historical intervals
