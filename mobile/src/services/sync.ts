@@ -88,6 +88,13 @@ export async function runSync(onProgress?: (progress: SyncProgress) => void): Pr
       instrumentCurrencies.set(inst.ticker, inst.currencyCode);
     }
 
+    if (instruments.length > 0) {
+      // Cache instrument tickers for instant future investment candidate verification
+      // ponytail: json-stringified ticker array in settings; dedicated table if catalog expands
+      const t212Tickers = instruments.map((i) => i.ticker);
+      await setSetting('t212_instruments_cache', JSON.stringify(t212Tickers));
+    }
+
     // Step 3: Portfolio holdings & FX rates
     updateProgress(3, 'Synchronizing open holdings & live FX...');
     const portfolio = await client.getPortfolio();

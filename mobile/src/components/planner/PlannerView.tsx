@@ -374,6 +374,119 @@ export const PlannerView: React.FC = () => {
               </View>
             ))
           )}
+          {/* Missing Dividend Days & Future Investments */}
+          <View style={styles.futureHeaderRow}>
+            <View style={styles.futureSectionTitleWrap}>
+              <MaterialCommunityIcons name="calendar-clock" size={18} color="#7c3aed" />
+              <Text style={[styles.futureSectionTitle, { color: theme.textPrimary }]}>
+                Future Investments on Missing Days
+              </Text>
+            </View>
+            <View
+              style={[
+                styles.futureSectionBadge,
+                {
+                  backgroundColor: isSketch ? '#f3e8ff' : '#ede9fe',
+                },
+              ]}
+            >
+              <Text style={[styles.futureSectionBadgeText, { color: '#6d28d9' }]}>
+                {selectedMonth.missing_days_count !== undefined
+                  ? `${selectedMonth.missing_days_count} Empty Days`
+                  : 'Missing Days'}
+              </Text>
+            </View>
+          </View>
+
+          <Text style={[styles.futureSectionSub, { color: theme.textSecondary }]}>
+            Stocks verified on Trading 212 that pay on your open calendar days to build daily dividend cashflow.
+          </Text>
+
+          {(!selectedMonth.missing_day_suggestions ||
+            selectedMonth.missing_day_suggestions.length === 0) ? (
+            <View
+              style={[
+                styles.emptyWrap,
+                {
+                  backgroundColor: isSketch ? '#faf5ff' : '#f5f3ff',
+                  borderColor: isSketch ? '#7c3aed' : '#ddd6fe',
+                  borderWidth: 1,
+                  borderRadius: 12,
+                },
+              ]}
+            >
+              <MaterialCommunityIcons name="check-decagram" size={28} color="#7c3aed" />
+              <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+                No missing day gaps in this month or all open days have active coverage.
+              </Text>
+            </View>
+          ) : (
+            selectedMonth.missing_day_suggestions.map((sug) => (
+              <View
+                key={`${sug.ticker}-${sug.day}`}
+                style={[
+                  styles.futureCard,
+                  {
+                    backgroundColor: isSketch ? '#faf5ff' : '#f5f3ff',
+                    borderColor: isSketch ? '#7c3aed' : '#ddd6fe',
+                    borderWidth: isSketch ? 2 : 1,
+                  },
+                ]}
+              >
+                <View style={styles.futureCardTop}>
+                  <View
+                    style={[
+                      styles.missingDayBadge,
+                      { backgroundColor: isSketch ? '#6d28d9' : '#7c3aed' },
+                    ]}
+                  >
+                    <Text style={styles.missingDayNum}>{sug.day}</Text>
+                    <Text style={styles.missingDayLabel}>DAY</Text>
+                  </View>
+
+                  <StockLogo ticker={sug.ticker} size={38} />
+
+                  <View style={styles.futureInfoWrap}>
+                    <View style={styles.futureTickerRow}>
+                      <Text style={[styles.futureTicker, { color: theme.textPrimary }]}>
+                        {formatTicker(sug.ticker)}
+                      </Text>
+                      <View style={styles.futureTag}>
+                        <Text style={styles.futureTagText}>Future Investment</Text>
+                      </View>
+                    </View>
+                    <Text
+                      style={[styles.futureName, { color: theme.textSecondary }]}
+                      numberOfLines={1}
+                    >
+                      {sug.name}
+                    </Text>
+                  </View>
+
+                  <View style={styles.futureYieldTag}>
+                    <Text style={styles.futureYieldText}>{sug.dividend_yield.toFixed(2)}%</Text>
+                  </View>
+                </View>
+
+                <View
+                  style={[
+                    styles.futureMetaRow,
+                    { borderTopColor: isSketch ? '#e9d5ff' : '#ede9fe' },
+                  ]}
+                >
+                  <Text style={[styles.futureMetaItem, { color: theme.textSecondary }]}>
+                    Typical payout: ~€{(sug.payout_amount_per_share || 0).toFixed(2)}/sh ({sug.payout_frequency})
+                  </Text>
+                  <View style={styles.t212VerifiedBadge}>
+                    <MaterialCommunityIcons name="check-circle" size={13} color="#16a34a" />
+                    <Text style={[styles.t212VerifiedText, { color: '#15803d' }]}>
+                      Trading 212
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            ))
+          )}
         </View>
       )}
 
@@ -381,8 +494,8 @@ export const PlannerView: React.FC = () => {
       <View style={styles.noteBox}>
         <MaterialCommunityIcons name="lightbulb-on-outline" size={18} color="#94a3b8" />
         <Text style={styles.noteText}>
-          Recommendations only evaluate stocks currently in your portfolio. Payout per share is
-          derived from upcoming declarations, historical payments, or annual dividend rates.
+          Recommendations evaluate stocks currently in your portfolio. Future investment suggestions
+          evaluate Trading 212 verified dividend stocks across missing calendar days for forecasted income expansion.
         </Text>
       </View>
     </ScrollView>
@@ -634,6 +747,128 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#3b82f6',
     marginTop: 3,
+  },
+  futureHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 24,
+    marginBottom: 4,
+  },
+  futureSectionTitleWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  futureSectionTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  futureSectionBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+  },
+  futureSectionBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  futureSectionSub: {
+    fontSize: 11,
+    lineHeight: 16,
+    marginBottom: 12,
+  },
+  futureCard: {
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 10,
+  },
+  futureCardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  missingDayBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  missingDayNum: {
+    fontSize: 15,
+    fontWeight: '900',
+    color: '#ffffff',
+  },
+  missingDayLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: 'rgba(255, 255, 255, 0.85)',
+    textTransform: 'uppercase',
+  },
+  futureInfoWrap: {
+    flex: 1,
+  },
+  futureTickerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  futureTicker: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  futureTag: {
+    backgroundColor: '#ede9fe',
+    borderWidth: 1,
+    borderColor: '#c4b5fd',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  futureTagText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#6d28d9',
+  },
+  futureName: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+  futureYieldTag: {
+    backgroundColor: '#ede9fe',
+    borderColor: '#c4b5fd',
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    alignItems: 'flex-end',
+  },
+  futureYieldText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#6d28d9',
+  },
+  futureMetaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 10,
+    paddingTop: 8,
+    borderTopWidth: 1,
+  },
+  futureMetaItem: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  t212VerifiedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  t212VerifiedText: {
+    fontSize: 10,
+    fontWeight: '700',
   },
   noteBox: {
     flexDirection: 'row',

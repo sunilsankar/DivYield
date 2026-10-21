@@ -10,7 +10,7 @@ def test_health_endpoint():
     data = response.json()
     assert data["status"] == "ok"
     assert data["app"] == "DivYield"
-    assert data["version"] == "0.5.0-beta"
+    assert data["version"] == "0.6.0-beta"
     assert data["database"] == "ok"
     assert "timestamp" in data
     assert "log_path" in data

@@ -3,7 +3,7 @@
     "name": "DivYield",
     "slug": "divyield",
     "scheme": "divyield",
-    "version": "0.5.0-beta",
+    "version": "0.6.0-beta",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -18,7 +18,7 @@
     },
     "android": {
       "package": "com.divyield.app",
-      "versionCode": 2,
+      "versionCode": 3,
       "adaptiveIcon": {
         "backgroundColor": "#0B1F33",
         "foregroundImage": "./assets/android-icon-foreground.png"

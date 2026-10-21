@@ -1,7 +1,7 @@
 import { Alert, Linking } from 'react-native';
 import { getSetting, setSetting } from './database';
 
-export const APP_VERSION = '0.5.0-beta';
+export const APP_VERSION = '0.6.0-beta';
 const GITHUB_TAGS_URL = 'https://api.github.com/repos/sunilsankar/DivYield/tags?per_page=5';
 const GITHUB_RELEASES_URL = 'https://api.github.com/repos/sunilsankar/DivYield/releases?per_page=5';
 const CHECK_INTERVAL_MS = 4 * 60 * 60 * 1000; // 4 hours throttle

@@ -87,6 +87,19 @@ export interface PlannerHoldingRecommendation {
   capital_needed: number;
 }
 
+export interface MissingDaySuggestion {
+  day: number;
+  date_str: string;
+  ticker: string;
+  name: string;
+  dividend_yield: number;
+  payout_frequency: string;
+  payout_amount_per_share?: number;
+  current_price?: number;
+  is_verified_t212: boolean;
+  source: 'yfinance_t212_future_investment';
+}
+
 export interface PlannerMonth {
   month: string;
   month_name: string;
@@ -96,6 +109,8 @@ export interface PlannerMonth {
   is_gap: boolean;
   gap_amount: number;
   recommendations: PlannerHoldingRecommendation[];
+  missing_days_count?: number;
+  missing_day_suggestions?: MissingDaySuggestion[];
 }
 
 export interface IncomePlannerData {

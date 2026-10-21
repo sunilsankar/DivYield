@@ -8,6 +8,7 @@ import {
   PortfolioSummary,
   Transaction,
 } from '../types';
+import { getMissingDaySuggestions, getDaysInMonth } from './futureInvestments';
 
 let dbInstance: SQLite.SQLiteDatabase | null = null;
 let dbInitPromise: Promise<SQLite.SQLiteDatabase> | null = null;
@@ -122,6 +123,8 @@ export async function setSetting(key: string, value: string): Promise<void> {
     value
   );
 }
+
+export const saveSetting = setSetting;
 
 export async function tryAcquireSyncLock(leaseMs: number = 300000): Promise<boolean> {
   // ponytail: settings table timestamp lease; upgrade to dedicated lock table if concurrent workers expand
@@ -658,12 +661,14 @@ export async function getIncomePlannerData(): Promise<IncomePlannerData> {
 
   const events = await db.getAllAsync<{
     month_key: string;
+    day_num: string;
     ticker: string;
     amount: number;
     status: string;
   }>(
     `SELECT
        strftime('%Y-%m', payment_date) as month_key,
+       strftime('%d', payment_date) as day_num,
        ticker,
        amount,
        status
@@ -676,11 +681,13 @@ export async function getIncomePlannerData(): Promise<IncomePlannerData> {
   const monthlyTotals: Record<string, { received: number; expected: number; total: number }> = {};
   const monthlyTickers: Record<string, Set<string>> = {};
   const monthlyTickerAmounts: Record<string, Record<string, number>> = {};
+  const monthlyPaidDays: Record<string, Set<number>> = {};
 
   for (const m of months) {
     monthlyTotals[m] = { received: 0, expected: 0, total: 0 };
     monthlyTickers[m] = new Set<string>();
     monthlyTickerAmounts[m] = {};
+    monthlyPaidDays[m] = new Set<number>();
   }
 
   for (const ev of events) {
@@ -695,12 +702,31 @@ export async function getIncomePlannerData(): Promise<IncomePlannerData> {
       monthlyTickers[ev.month_key].add(ev.ticker);
       monthlyTickerAmounts[ev.month_key][ev.ticker] =
         (monthlyTickerAmounts[ev.month_key][ev.ticker] || 0) + amt;
+
+      const day = parseInt(ev.day_num, 10);
+      if (!isNaN(day) && day >= 1 && day <= 31) {
+        monthlyPaidDays[ev.month_key].add(day);
+      }
     }
   }
 
   const holdings = await db.getAllAsync<Holding>(
     'SELECT * FROM holdings WHERE quantity > 0 ORDER BY market_value DESC'
   );
+  const ownedTickers = new Set<string>(holdings.map((h) => h.ticker.toUpperCase()));
+
+  let t212CatalogSet: Set<string> | undefined;
+  try {
+    const cachedCatalogStr = await getSetting('t212_instruments_cache', '');
+    if (cachedCatalogStr) {
+      const parsed = JSON.parse(cachedCatalogStr);
+      if (Array.isArray(parsed)) {
+        t212CatalogSet = new Set(parsed.map((s: string) => String(s).toUpperCase()));
+      }
+    }
+  } catch (e) {
+    // ignore
+  }
 
   const historyRows = await db.getAllAsync<{ ticker: string; month_num: string }>(
     `SELECT DISTINCT ticker, strftime('%m', payment_date) as month_num
@@ -794,6 +820,17 @@ export async function getIncomePlannerData(): Promise<IncomePlannerData> {
       return b.dividend_yield - a.dividend_yield;
     });
 
+    const paidDays = monthlyPaidDays[mKey] || new Set<number>();
+    const [yStr, mMonthStr] = mKey.split('-');
+    const daysInMonth = getDaysInMonth(parseInt(yStr, 10), parseInt(mMonthStr, 10));
+    const missingDaysCount = Math.max(0, daysInMonth - paidDays.size);
+    const missingDaySuggestions = getMissingDaySuggestions(
+      mKey,
+      paidDays,
+      ownedTickers,
+      t212CatalogSet
+    );
+
     plannerMonths.push({
       month: mKey,
       month_name: monthName,
@@ -803,6 +840,8 @@ export async function getIncomePlannerData(): Promise<IncomePlannerData> {
       is_gap: isGap,
       gap_amount: gapAmount,
       recommendations,
+      missing_days_count: missingDaysCount,
+      missing_day_suggestions: missingDaySuggestions,
     });
   }
 
@@ -822,6 +861,6 @@ export async function clearDatabase(): Promise<void> {
     DELETE FROM transactions;
     DELETE FROM dividend_events;
     DELETE FROM sync_log;
-    DELETE FROM settings WHERE key NOT IN ('app_version');
+    DELETE FROM settings WHERE key NOT IN ('app_version', 't212_instruments_cache');
   `);
 }
