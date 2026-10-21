@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Linking,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -12,12 +13,28 @@ import {
 } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { getIncomePlannerData, getSetting } from '../../services/database';
-import { runFutureInvestmentSync } from '../../services/futureInvestments';
-import { IncomePlannerData, PlannerMonth } from '../../types';
+import { getTrading212InstrumentUrl, runFutureInvestmentSync } from '../../services/futureInvestments';
+import { IncomePlannerData, MissingDaySuggestion, PlannerMonth } from '../../types';
 import { formatTicker, StockLogo } from '../common/StockLogo';
 
 const MONTH_ABBREVS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+type SuggestionSortOption = 'yield_desc' | 'yield_asc' | 'price_desc' | 'price_asc';
+
+const SORT_OPTIONS: { id: SuggestionSortOption; label: string; icon: string }[] = [
+  { id: 'yield_desc', label: 'Yield: High to Low', icon: 'percent-outline' },
+  { id: 'yield_asc', label: 'Yield: Low to High', icon: 'percent-outline' },
+  { id: 'price_desc', label: 'Price: High to Low', icon: 'cash-multiple' },
+  { id: 'price_asc', label: 'Price: Low to High', icon: 'cash-multiple' },
+];
+
+function formatPrice(price?: number, currency?: string): string {
+  if (price === undefined || price === null || isNaN(price)) return '';
+  const curr = (currency || 'USD').toUpperCase();
+  const symbol = curr === 'USD' ? '$' : curr === 'EUR' ? '€' : curr === 'GBP' ? '£' : curr === 'GBX' ? 'p' : `${curr} `;
+  return `${symbol}${price.toFixed(2)}`;
+}
 
 function formatSuggestionDate(dateStr?: string, fallbackDay?: number) {
   if (dateStr) {
@@ -50,6 +67,8 @@ export const PlannerView: React.FC = () => {
   const [isSyncingCandidates, setIsSyncingCandidates] = useState<boolean>(false);
   const [candidateSyncMsg, setCandidateSyncMsg] = useState<string>('');
   const [lastCandidateSync, setLastCandidateSync] = useState<string | null>(null);
+  const [suggestionSort, setSuggestionSort] = useState<SuggestionSortOption>('yield_desc');
+  const [isSortDropdownOpen, setIsSortDropdownOpen] = useState<boolean>(false);
 
   const loadData = async () => {
     try {
@@ -83,7 +102,7 @@ export const PlannerView: React.FC = () => {
     setIsSyncingCandidates(true);
     setCandidateSyncMsg('Connecting to Trading 212 & Yahoo Finance...');
     try {
-      const res = await runFutureInvestmentSync(50, (msg) => setCandidateSyncMsg(msg));
+      const res = await runFutureInvestmentSync(100, (msg) => setCandidateSyncMsg(msg));
       if (res.success) {
         Alert.alert('Discovery Complete', res.message);
         await loadData();
@@ -502,6 +521,101 @@ export const PlannerView: React.FC = () => {
             </TouchableOpacity>
           </View>
 
+          {/* Sort & Filter Controls */}
+          {selectedMonth.missing_day_suggestions &&
+            selectedMonth.missing_day_suggestions.length > 0 && (
+              <View>
+                <View style={styles.sortFilterRow}>
+                  <Text style={[styles.sortFilterLabel, { color: theme.textSecondary }]}>
+                    Order candidates by:
+                  </Text>
+                  <TouchableOpacity
+                    style={[
+                      styles.sortDropdownBtn,
+                      {
+                        backgroundColor: isSketch ? '#faf5ff' : '#f5f3ff',
+                        borderColor: isSketch ? '#c084fc' : '#ddd6fe',
+                      },
+                    ]}
+                    onPress={() => setIsSortDropdownOpen(!isSortDropdownOpen)}
+                    activeOpacity={0.8}
+                  >
+                    <MaterialCommunityIcons
+                      name={
+                        (SORT_OPTIONS.find((o) => o.id === suggestionSort) || SORT_OPTIONS[0])
+                          .icon as any
+                      }
+                      size={14}
+                      color="#7c3aed"
+                    />
+                    <Text style={[styles.sortDropdownBtnText, { color: '#6d28d9' }]}>
+                      {
+                        (SORT_OPTIONS.find((o) => o.id === suggestionSort) || SORT_OPTIONS[0])
+                          .label
+                      }
+                    </Text>
+                    <MaterialCommunityIcons
+                      name={isSortDropdownOpen ? 'chevron-up' : 'chevron-down'}
+                      size={16}
+                      color="#7c3aed"
+                    />
+                  </TouchableOpacity>
+                </View>
+
+                {isSortDropdownOpen && (
+                  <View
+                    style={[
+                      styles.sortDropdownMenu,
+                      {
+                        backgroundColor: isSketch ? '#ffffff' : theme.cardBg,
+                        borderColor: isSketch ? '#c084fc' : '#e2e8f0',
+                      },
+                    ]}
+                  >
+                    {SORT_OPTIONS.map((opt) => {
+                      const isSelected = opt.id === suggestionSort;
+                      return (
+                        <TouchableOpacity
+                          key={opt.id}
+                          style={[
+                            styles.sortDropdownItem,
+                            isSelected && { backgroundColor: isSketch ? '#f5f3ff' : '#f3e8ff' },
+                          ]}
+                          onPress={() => {
+                            setSuggestionSort(opt.id);
+                            setIsSortDropdownOpen(false);
+                          }}
+                          activeOpacity={0.7}
+                        >
+                          <View style={styles.sortDropdownItemLeft}>
+                            <MaterialCommunityIcons
+                              name={opt.icon as any}
+                              size={16}
+                              color={isSelected ? '#7c3aed' : theme.textSecondary}
+                            />
+                            <Text
+                              style={[
+                                styles.sortDropdownItemText,
+                                {
+                                  color: isSelected ? '#6d28d9' : theme.textPrimary,
+                                  fontWeight: isSelected ? '800' : '500',
+                                },
+                              ]}
+                            >
+                              {opt.label}
+                            </Text>
+                          </View>
+                          {isSelected && (
+                            <MaterialCommunityIcons name="check" size={16} color="#7c3aed" />
+                          )}
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                )}
+              </View>
+            )}
+
           {(!selectedMonth.missing_day_suggestions ||
             selectedMonth.missing_day_suggestions.length === 0) ? (
             <View
@@ -520,10 +634,31 @@ export const PlannerView: React.FC = () => {
                 No missing day gaps in this month or all open days have active coverage.
               </Text>
             </View>
-          ) : (
-            selectedMonth.missing_day_suggestions.map((sug) => {
+          ) : (() => {
+            const raw = selectedMonth.missing_day_suggestions || [];
+            const sorted = [...raw].sort((a, b) => {
+              switch (suggestionSort) {
+                case 'yield_desc':
+                  return b.dividend_yield - a.dividend_yield;
+                case 'yield_asc':
+                  return a.dividend_yield - b.dividend_yield;
+                case 'price_desc':
+                  return (b.current_price || 0) - (a.current_price || 0);
+                case 'price_asc':
+                  return (a.current_price || 0) - (b.current_price || 0);
+                default:
+                  return a.day - b.day;
+              }
+            });
+
+            const stocks = sorted.filter((s) => s.instrument_type !== 'ETF');
+            const etfs = sorted.filter((s) => s.instrument_type === 'ETF');
+
+            const renderCard = (sug: MissingDaySuggestion) => {
               const dateInfo = formatSuggestionDate(sug.date_str, sug.day);
               const creditedText = sug.credited_date_display || dateInfo.creditedLabel;
+              const t212Url = getTrading212InstrumentUrl(sug.ticker);
+
               return (
                 <View
                   key={`${sug.ticker}-${sug.day}`}
@@ -575,8 +710,15 @@ export const PlannerView: React.FC = () => {
                       </Text>
                     </View>
 
-                    <View style={styles.futureYieldTag}>
-                      <Text style={styles.futureYieldText}>{sug.dividend_yield.toFixed(2)}%</Text>
+                    <View style={styles.futureRightMetrics}>
+                      <View style={styles.futureYieldTag}>
+                        <Text style={styles.futureYieldText}>{sug.dividend_yield.toFixed(2)}%</Text>
+                      </View>
+                      {sug.current_price !== undefined && sug.current_price > 0 ? (
+                        <Text style={[styles.futurePriceText, { color: theme.textPrimary }]}>
+                          {formatPrice(sug.current_price, sug.currency)}
+                        </Text>
+                      ) : null}
                     </View>
                   </View>
 
@@ -589,17 +731,53 @@ export const PlannerView: React.FC = () => {
                     <Text style={[styles.futureMetaItem, { color: theme.textSecondary }]}>
                       Credited: {creditedText} • ~€{(sug.payout_amount_per_share || 0).toFixed(2)}/sh ({sug.payout_frequency})
                     </Text>
-                    <View style={styles.t212VerifiedBadge}>
-                      <MaterialCommunityIcons name="check-circle" size={13} color="#16a34a" />
-                      <Text style={[styles.t212VerifiedText, { color: '#15803d' }]}>
-                        Trading 212
-                      </Text>
-                    </View>
+                    <TouchableOpacity
+                      style={styles.t212LinkBadge}
+                      onPress={() => Linking.openURL(t212Url)}
+                      activeOpacity={0.7}
+                    >
+                      <MaterialCommunityIcons name="open-in-new" size={13} color="#0284c7" />
+                      <Text style={styles.t212LinkText}>Trading 212</Text>
+                    </TouchableOpacity>
                   </View>
                 </View>
               );
-            })
-          )}
+            };
+
+            return (
+              <View>
+                {/* Stocks Section */}
+                <View style={styles.subgroupHeader}>
+                  <MaterialCommunityIcons name="chart-bell-curve-cumulative" size={18} color="#7c3aed" />
+                  <Text style={[styles.subgroupTitle, { color: '#6d28d9' }]}>
+                    Stocks ({stocks.length})
+                  </Text>
+                </View>
+                {stocks.length === 0 ? (
+                  <Text style={[styles.subgroupEmptyText, { color: theme.textSecondary }]}>
+                    No stock candidates for this month.
+                  </Text>
+                ) : (
+                  stocks.map(renderCard)
+                )}
+
+                {/* ETFs Section */}
+                <View style={[styles.subgroupHeader, { marginTop: 18 }]}>
+                  <MaterialCommunityIcons name="layers-outline" size={18} color="#d97706" />
+                  <Text style={[styles.subgroupTitle, { color: '#b45309' }]}>
+                    ETFs ({etfs.length})
+                  </Text>
+                </View>
+                {etfs.length === 0 ? (
+                  <Text style={[styles.subgroupEmptyText, { color: theme.textSecondary }]}>
+                    No ETF candidates for this month.
+                  </Text>
+                ) : (
+                  etfs.map(renderCard)
+                )}
+              </View>
+            );
+          })()}
         </View>
       )}
 
@@ -1020,13 +1198,21 @@ const styles = StyleSheet.create({
     fontSize: 11,
     marginTop: 2,
   },
+  futureRightMetrics: {
+    alignItems: 'flex-end',
+    gap: 3,
+  },
+  futurePriceText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
   futureYieldTag: {
     backgroundColor: '#ede9fe',
     borderColor: '#c4b5fd',
     borderWidth: 1,
     paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
+    paddingVertical: 3,
+    borderRadius: 7,
     alignItems: 'flex-end',
   },
   futureYieldText: {
@@ -1046,6 +1232,22 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '500',
   },
+  t212LinkBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#e0f2fe',
+    borderWidth: 1,
+    borderColor: '#bae6fd',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  t212LinkText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#0284c7',
+  },
   t212VerifiedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1054,6 +1256,71 @@ const styles = StyleSheet.create({
   t212VerifiedText: {
     fontSize: 10,
     fontWeight: '700',
+  },
+  sortFilterRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 10,
+    marginBottom: 6,
+  },
+  sortFilterLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  sortDropdownBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  sortDropdownBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  sortDropdownMenu: {
+    borderRadius: 10,
+    borderWidth: 1,
+    padding: 6,
+    marginBottom: 10,
+    gap: 4,
+  },
+  sortDropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  sortDropdownItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  sortDropdownItemText: {
+    fontSize: 12,
+  },
+  subgroupHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  subgroupTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+  subgroupEmptyText: {
+    fontSize: 11,
+    fontStyle: 'italic',
+    paddingVertical: 8,
+    paddingHorizontal: 4,
   },
   noteBox: {
     flexDirection: 'row',

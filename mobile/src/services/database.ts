@@ -864,7 +864,7 @@ export async function getIncomePlannerData(): Promise<IncomePlannerData> {
       paidDays,
       ownedTickers,
       t212CatalogSet,
-      20,
+      30,
       dynamicCandidates
     );
 

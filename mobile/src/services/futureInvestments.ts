@@ -540,11 +540,11 @@ export async function validateCandidateWithYahoo(
 
 /**
  * Executes a separate background discovery sync for new STOCK and ETF dividend candidates
- * Bounded batch size (default 50) protects network and avoids Yahoo rate limits
- * ponytail: bounded 50 batch size in settings JSON; upgrade to indexed table if candidate universe grows > 500
+ * Bounded batch size (default 100) protects network and avoids Yahoo rate limits
+ * ponytail: bounded 100 batch size in settings JSON; upgrade to indexed table if candidate universe grows > 500
  */
 export async function runFutureInvestmentSync(
-  maxBatch = 50,
+  maxBatch = 100,
   onProgress?: (msg: string) => void
 ): Promise<{ success: boolean; message: string; added: number; total: number }> {
   if (isFutureSyncingActive) {
@@ -803,6 +803,7 @@ export function getMissingDaySuggestions(
         payout_frequency: bestCandidate.frequency,
         payout_amount_per_share: bestCandidate.payout_amount_per_share,
         current_price: bestCandidate.current_price,
+        currency: bestCandidate.currency || 'USD',
         is_verified_t212: hasT212Catalog ? isTickerOnTrading212(bestCandidate.ticker, t212CatalogSet) : true,
         instrument_type: bestCandidate.instrument_type || 'STOCK',
         source: 'yfinance_t212_future_investment',
@@ -812,4 +813,24 @@ export function getMissingDaySuggestions(
 
   // Sort suggestions chronologically by day
   return suggestions.sort((a, b) => a.day - b.day);
+}
+
+/**
+ * Constructs the public Trading 212 instrument directory link for deep-diving history
+ * ponytail: maps standard ticker format to Trading 212 web URL; defaults bare US tickers to .US
+ */
+export function getTrading212InstrumentUrl(ticker: string): string {
+  if (!ticker) return 'https://www.trading212.com/trading-instruments/invest';
+  const clean = ticker.trim().toUpperCase();
+
+  const match = clean.match(/^([A-Z0-9.\-]+)_([A-Z]{2})(?:_EQ)?$/);
+  if (match) {
+    const symbol = match[1];
+    let country = match[2];
+    if (country === 'UK') country = 'GB';
+    return `https://www.trading212.com/trading-instruments/invest/${symbol}.${country}`;
+  }
+
+  const bare = clean.replace(/_EQ$/, '');
+  return `https://www.trading212.com/trading-instruments/invest/${bare}.US`;
 }

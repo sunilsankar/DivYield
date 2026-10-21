@@ -25,7 +25,7 @@ TaskManager.defineTask(BACKGROUND_SYNC_TASK, async () => {
     if (result.success) {
       // Headless discovery sync for new STOCK and ETF candidates
       try {
-        await runFutureInvestmentSync(50);
+        await runFutureInvestmentSync(100);
       } catch (e) {
         console.warn('Background candidate discovery sync error:', e);
       }
