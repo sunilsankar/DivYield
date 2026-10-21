@@ -656,7 +656,7 @@ export const PlannerView: React.FC = () => {
 
             const renderCard = (sug: MissingDaySuggestion) => {
               const dateInfo = formatSuggestionDate(sug.date_str, sug.day);
-              const creditedText = sug.credited_date_display || dateInfo.creditedLabel;
+              const payoutDateText = sug.payout_date_display || sug.credited_date_display || dateInfo.creditedLabel;
               const t212Url = getTrading212InstrumentUrl(sug.ticker);
 
               return (
@@ -729,7 +729,7 @@ export const PlannerView: React.FC = () => {
                     ]}
                   >
                     <Text style={[styles.futureMetaItem, { color: theme.textSecondary }]}>
-                      Credited: {creditedText} • ~€{(sug.payout_amount_per_share || 0).toFixed(2)}/sh ({sug.payout_frequency})
+                      Estimated payout: {payoutDateText} • ~{formatPrice(sug.payout_amount_per_share || 0, sug.currency)}/sh ({sug.payout_frequency})
                     </Text>
                     <TouchableOpacity
                       style={styles.t212LinkBadge}

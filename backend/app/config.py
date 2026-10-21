@@ -33,7 +33,7 @@ def get_data_dir() -> Path:
 @dataclass
 class Settings:
     app_name: str = "DivYield"
-    app_version: str = "0.6.0-beta"
+    app_version: str = "0.7.0-beta"
     api_v1_prefix: str = "/api/v1"
     cors_origins: list[str] = field(default_factory=lambda: [
         "http://localhost:5173",

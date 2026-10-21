@@ -797,6 +797,7 @@ export function getMissingDaySuggestions(
         day,
         date_str: dateStr,
         credited_date_display: `${monthName} ${day}`,
+        payout_date_display: `${monthName} ${day}`,
         ticker: bestCandidate.ticker,
         name: bestCandidate.name,
         dividend_yield: bestCandidate.dividend_yield,

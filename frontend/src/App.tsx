@@ -355,7 +355,7 @@ export function App() {
       if (res.update_available) {
         setNotification(`Update available: ${res.latest_version}. Check the banner above to download.`);
       } else {
-        const latest = res.latest_version || (health?.version ? `v${health.version}` : "v0.6.0-beta");
+        const latest = res.latest_version || (health?.version ? `v${health.version}` : "v0.7.0-beta");
         setNotification(`DivYield is up to date (latest tag: ${latest}).`);
       }
     } catch (err: unknown) {
@@ -950,7 +950,7 @@ export function App() {
                   <span className="font-bold text-slate-900 text-xs">Application & System Integration</span>
                   <div className="flex items-center gap-2">
                     <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
-                      {health?.version ? `v${health.version}` : "v0.6.0-beta"}
+                      {health?.version ? `v${health.version}` : "v0.7.0-beta"}
                     </span>
                     <button
                       onClick={handleCheckUpdate}

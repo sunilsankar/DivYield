@@ -249,9 +249,22 @@ export async function runSync(onProgress?: (progress: SyncProgress) => void): Pr
     const divEvents: DividendEvent[] = [];
     for (const item of rawDividends) {
       const ticker = item.ticker;
-      const amountEur = item.amountInEuro || item.amount || 0;
-      const date = (item.paidOn || item.dateTime || '').slice(0, 10);
-      const extId = `t212-div-${item.reference || item.id || `${ticker}_${date}`}`;
+      // ponytail: normalize Trading 212 credited dividends to account currency (EUR) using broker amountInEuro or derived FX
+      let amountEur = 0;
+      if (typeof item.amountInEuro === 'number' && item.amountInEuro > 0) {
+        amountEur = Number(item.amountInEuro.toFixed(2));
+      } else if (typeof item.amount === 'number' && item.amount > 0) {
+        const divCurr = item.currency || instrumentCurrencies.get(ticker) || 'EUR';
+        const fx = rates[divCurr] || 1.0;
+        amountEur = Number((item.amount * fx).toFixed(2));
+      }
+      const rawDate = item.paidOn || item.dateTime || '';
+      const date = rawDate.slice(0, 10);
+      const extId = item.reference
+        ? `t212-div-${item.reference}`
+        : item.id
+        ? `t212-div-${item.id}`
+        : `t212-div-${ticker}_${date}_${amountEur}`;
 
       if (ticker && amountEur > 0 && date) {
         divEvents.push({
@@ -302,18 +315,23 @@ export async function runSync(onProgress?: (progress: SyncProgress) => void): Pr
       const h = holdings[i];
       const enriched = enrichmentResults[i];
       if (enriched) {
+        // ponytail: annual_dividend in holdings represents total EUR dividend income for the position
+        const fxRate = typeof h.fx_rate === 'number' && h.fx_rate > 0 ? h.fx_rate : 1.0;
+        const totalAnnualDividendEur =
+          typeof enriched.annualDividend === 'number' && enriched.annualDividend > 0
+            ? Number((enriched.annualDividend * h.quantity * fxRate).toFixed(2))
+            : undefined;
         holdingUpdates.push({
           ticker: h.ticker,
           sector: enriched.sector,
           industry: enriched.industry,
           dividend_yield: enriched.dividendYield,
-          annual_dividend: enriched.annualDividend,
+          annual_dividend: totalAnnualDividendEur,
           payout_frequency: enriched.payoutFrequency,
         });
 
         for (const proj of enriched.futureDividends) {
           // Apply FX conversion to base account currency (EUR) matching desktop backend
-          const fxRate = typeof h.fx_rate === 'number' && h.fx_rate > 0 ? h.fx_rate : 1.0;
           const amountEur = Number((proj.projectedTotal * fxRate).toFixed(2));
           forecastDividends.push({
             ticker: proj.ticker,

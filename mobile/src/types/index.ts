@@ -91,6 +91,7 @@ export interface MissingDaySuggestion {
   day: number;
   date_str: string;
   credited_date_display?: string;
+  payout_date_display?: string;
   ticker: string;
   name: string;
   dividend_yield: number;

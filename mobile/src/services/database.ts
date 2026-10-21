@@ -821,7 +821,7 @@ export async function getIncomePlannerData(): Promise<IncomePlannerData> {
       } else if (h.dividend_yield && h.dividend_yield > 0 && h.current_price > 0) {
         const freq = (h.payout_frequency || 'QUARTERLY').toUpperCase();
         const divisor = freq === 'MONTHLY' ? 12 : freq === 'SEMI_ANNUAL' ? 2 : freq === 'ANNUAL' ? 1 : 4;
-        payoutPerShare = (h.current_price * fx * (h.dividend_yield / 100)) / divisor;
+        payoutPerShare = (h.current_price * (h.dividend_yield / 100)) / divisor;
       }
 
       if (payoutPerShare <= 0.0001) {
@@ -829,7 +829,8 @@ export async function getIncomePlannerData(): Promise<IncomePlannerData> {
       }
 
       const sharesToFill = gapAmount > 0 ? Math.ceil(gapAmount / payoutPerShare) : 0;
-      const priceEur = (h.current_price || 0) * fx;
+      // ponytail: h.current_price is already EUR normalized during sync
+      const priceEur = h.current_price || 0;
       const capitalNeeded = Math.round(sharesToFill * priceEur * 100) / 100;
 
       recommendations.push({
