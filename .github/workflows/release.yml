@@ -198,94 +198,6 @@ jobs:
             DivYield-Windows.msi
             DivYield-Windows.zip
 
-  build-macos:
-    name: Build & Release macOS Universal (Intel & Apple Silicon)
-    runs-on: macos-14
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "24"
-          cache: "npm"
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Build Frontend
-        working-directory: ./frontend
-        run: |
-          npm ci
-          npm run build
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: "pip"
-
-      - name: Install Python Dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r backend/requirements.txt
-          pip install pyinstaller
-
-      - name: Build with PyInstaller
-        run: |
-          # ponytail: attempt universal2 fat binary build, fallback to host arch if wheels are thin
-          TARGET_ARCH=universal2 pyinstaller DivYield.spec --clean --noconfirm || {
-            echo "Universal2 build not supported by runner environment, falling back to host arch"
-            pyinstaller DivYield.spec --clean --noconfirm
-          }
-
-      - name: Package macOS DMG & ZIP
-        run: |
-          # Detect actual architecture (Universal or thin slice like arm64)
-          ARCHS=$(lipo -archs dist/DivYield.app/Contents/MacOS/DivYield 2>/dev/null || echo "arm64")
-          if [[ "$ARCHS" =~ "x86_64" ]] && [[ "$ARCHS" =~ "arm64" ]]; then
-            PKG_ARCH="Universal"
-          else
-            PKG_ARCH=$(echo "$ARCHS" | awk '{print $1}')
-          fi
-          echo "Packaging macOS package with arch: ${PKG_ARCH}"
-
-          # Create staging folder for DMG with Applications symlink
-          mkdir -p dist/dmg_staging
-          cp -R dist/DivYield.app dist/dmg_staging/
-          ln -s /Applications dist/dmg_staging/Applications
-
-          # Code signing (Apple Developer ID if configured in secrets, else ad-hoc)
-          if [ -n "${{ secrets.APPLE_CERTIFICATE }}" ]; then
-            echo "Importing Apple Developer Certificate..."
-            echo "${{ secrets.APPLE_CERTIFICATE }}" | base64 --decode > certificate.p12
-            KEYCHAIN=build.keychain
-            security create-keychain -p "${{ secrets.KEYCHAIN_PASSWORD || 'build' }}" $KEYCHAIN
-            security default-keychain -s $KEYCHAIN
-            security unlock-keychain -p "${{ secrets.KEYCHAIN_PASSWORD || 'build' }}" $KEYCHAIN
-            security set-keychain-settings -t 3600 -u $KEYCHAIN
-            security import certificate.p12 -k $KEYCHAIN -P "${{ secrets.APPLE_CERTIFICATE_PASSWORD }}" -T /usr/bin/codesign
-            security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "${{ secrets.KEYCHAIN_PASSWORD || 'build' }}" $KEYCHAIN
-            codesign --force --deep --sign "${{ secrets.APPLE_SIGNING_IDENTITY || '-' }}" dist/dmg_staging/DivYield.app
-            rm -f certificate.p12
-          else
-            echo "Applying ad-hoc code signature..."
-            codesign --force --deep --sign - dist/dmg_staging/DivYield.app || true
-          fi
-
-          # Build compressed read-only DMG using native hdiutil
-          hdiutil create -volname "DivYield" -srcfolder dist/dmg_staging -ov -format UDZO "DivYield-macOS-${PKG_ARCH}.dmg"
-
-          # Create zip archive preserving macOS metadata
-          ditto -c -k --sequesterRsrc --keepParent dist/DivYield.app "DivYield-macOS-${PKG_ARCH}.zip"
-
-      - name: Upload macOS Release Assets
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-macos
-          path: |
-            DivYield-macOS-*.dmg
-            DivYield-macOS-*.zip
 
   build-android:
     name: Build & Release Android APK
@@ -340,7 +252,7 @@ jobs:
 
   publish-release:
     name: Publish GitHub Release
-    needs: [build-desktop, build-macos, build-android]
+    needs: [build-desktop, build-android]
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     permissions:
