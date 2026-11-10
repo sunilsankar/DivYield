@@ -3,7 +3,7 @@
     "name": "DivYield",
     "slug": "divyield",
     "scheme": "divyield",
-    "version": "0.7.0-beta",
+    "version": "0.8.0-beta",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
