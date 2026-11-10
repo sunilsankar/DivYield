@@ -208,15 +208,28 @@ async def sync_trading212(progress_cb: Optional[Callable[[int, int, str], None]]
                 orders = await client.get_all_orders()
 
                 with get_db() as conn:
+                    # Orders whose fills were stored under fill ids in this run; their
+                    # legacy per-order rows are removed below.
+                    orders_keyed_by_fill = set()
                     for ord_item in orders:
                         # Support nested v0 structure {"order": {...}, "fill": {...}} or flat structure
+                        nested_fill = ord_item.get("fill") if isinstance(ord_item.get("fill"), dict) else None
                         inner_order = ord_item.get("order") if isinstance(ord_item.get("order"), dict) else ord_item
-                        inner_fill = ord_item.get("fill") if isinstance(ord_item.get("fill"), dict) else ord_item
+                        inner_fill = nested_fill if nested_fill is not None else ord_item
 
                         order_id = inner_order.get("id") or ord_item.get("id")
                         if not order_id:
                             continue
-                        ext_order_id = f"t212-ord-{order_id}"
+                        # The history endpoint returns one item per fill, so an order
+                        # filled in several parts appears several times with the same
+                        # order id. Key each row by its fill id so every fill is kept;
+                        # keying by order id let each fill overwrite the previous one.
+                        fill_id = nested_fill.get("id") if nested_fill else None
+                        if fill_id:
+                            ext_order_id = f"t212-fill-{fill_id}"
+                            orders_keyed_by_fill.add(order_id)
+                        else:
+                            ext_order_id = f"t212-ord-{order_id}"
                         ticker_raw = inner_order.get("ticker") or ord_item.get("ticker", "")
                         base_ticker = ticker_raw.split("_")[0] if "_" in ticker_raw else ticker_raw
 
@@ -271,6 +284,16 @@ async def sync_trading212(progress_cb: Optional[Callable[[int, int, str], None]]
                             ),
                         )
                         synced_orders += 1
+
+                    # Rows written by earlier versions were keyed by order id. Drop
+                    # them for orders whose fills were just stored under fill ids,
+                    # so they aren't counted twice. Only orders seen in this run are
+                    # touched, so a partially fetched history never deletes data.
+                    if orders_keyed_by_fill:
+                        conn.executemany(
+                            "DELETE FROM transactions WHERE external_id = ?;",
+                            [(f"t212-ord-{oid}",) for oid in orders_keyed_by_fill],
+                        )
 
                     conn.commit()
             except Exception as exc:

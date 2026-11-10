@@ -249,3 +249,117 @@ async def test_empty_portfolio_cleans_forecast_dividends():
         cursor = conn.cursor()
         cursor.execute("SELECT COUNT(*) as count FROM dividend_events WHERE status = 'EXPECTED' AND source = 'YFINANCE';")
         assert cursor.fetchone()["count"] == 0
+
+
+def _client_with_orders(orders):
+    """Mock Trading 212 client with an empty portfolio and the given order history."""
+    mock_client = AsyncMock()
+    mock_client.get_account_cash.return_value = {"currency": "GBP", "free": 0.0, "total": 0.0, "ppl": 0.0}
+    mock_client.get_instruments_metadata.return_value = []
+    mock_client.get_portfolio.return_value = []
+    mock_client.get_all_orders.return_value = orders
+    mock_client.get_all_transactions.return_value = []
+    mock_client.get_all_dividends.return_value = []
+    return mock_client
+
+
+def _nested_fill(order_id, fill_id, quantity, price, net_value, filled_at="2026-03-02T14:30:00Z"):
+    """One item from GET /api/v0/equity/history/orders: one fill of one order."""
+    return {
+        "order": {"id": order_id, "ticker": "JEPQl_EQ", "side": "BUY", "status": "FILLED"},
+        "fill": {
+            "id": fill_id,
+            "quantity": quantity,
+            "price": price,
+            "filledAt": filled_at,
+            "walletImpact": {"netValue": net_value, "currency": "GBP"},
+        },
+    }
+
+
+async def _run_sync(mock_client):
+    with (
+        patch("app.services.trading212_sync.get_trading212_credentials", return_value={"api_key": "valid_key", "environment": "live"}),
+        patch("app.services.trading212_sync.Trading212Client", return_value=mock_client),
+    ):
+        res = await sync_trading212()
+    assert res["success"] is True
+    return res
+
+
+def _order_rows():
+    with get_db() as conn:
+        return {
+            r["external_id"]: (r["quantity"], r["amount"])
+            for r in conn.execute("SELECT external_id, quantity, amount FROM transactions WHERE type IN ('BUY', 'SELL')")
+        }
+
+
+@pytest.mark.anyio
+async def test_multi_fill_order_keeps_every_fill():
+    """An order filled in two parts comes back as two items with the same order id."""
+    orders = [
+        _nested_fill(5001, 9001, 3.0, 10.0, 30.0),
+        _nested_fill(5001, 9002, 7.0, 10.0, 70.0, filled_at="2026-03-02T14:30:01Z"),
+    ]
+    await _run_sync(_client_with_orders(orders))
+
+    rows = _order_rows()
+    assert set(rows) == {"t212-fill-9001", "t212-fill-9002"}
+    assert sum(q for q, _ in rows.values()) == pytest.approx(10.0)
+    assert sum(a for _, a in rows.values()) == pytest.approx(100.0)
+
+    # Re-syncing the same history must not add or merge rows.
+    await _run_sync(_client_with_orders(orders))
+    assert _order_rows() == rows
+
+
+@pytest.mark.anyio
+async def test_legacy_order_keyed_row_is_replaced_by_fill_rows():
+    """Rows from earlier versions (keyed t212-ord-<order id>) must not be double counted."""
+    with get_db() as conn:
+        conn.execute(
+            """
+            INSERT INTO transactions (date, ticker, type, quantity, price, amount, fees, currency, external_id, source)
+            VALUES ('2026-03-02T14:30:01Z', 'JEPQl', 'BUY', 7.0, 10.0, 70.0, 0.0, 'GBP', 't212-ord-5001', 'TRADING212');
+            """
+        )
+        conn.commit()
+
+    await _run_sync(_client_with_orders([
+        _nested_fill(5001, 9001, 3.0, 10.0, 30.0),
+        _nested_fill(5001, 9002, 7.0, 10.0, 70.0),
+    ]))
+
+    rows = _order_rows()
+    assert "t212-ord-5001" not in rows
+    assert sum(q for q, _ in rows.values()) == pytest.approx(10.0)
+
+
+@pytest.mark.anyio
+async def test_legacy_rows_for_orders_not_in_fetched_history_are_kept():
+    """A partial history fetch (e.g. after a rate limit) must never delete older rows."""
+    with get_db() as conn:
+        conn.execute(
+            """
+            INSERT INTO transactions (date, ticker, type, quantity, price, amount, fees, currency, external_id, source)
+            VALUES ('2025-01-01T10:00:00Z', 'HTZ', 'BUY', 5.0, 4.0, 20.0, 0.0, 'GBP', 't212-ord-7777', 'TRADING212');
+            """
+        )
+        conn.commit()
+
+    await _run_sync(_client_with_orders([_nested_fill(5001, 9001, 3.0, 10.0, 30.0)]))
+
+    rows = _order_rows()
+    assert rows["t212-ord-7777"] == (5.0, 20.0)
+    assert "t212-fill-9001" in rows
+
+
+@pytest.mark.anyio
+async def test_flat_order_items_without_fill_are_keyed_by_order_id():
+    """Older flat responses carry no fill object, so the order id stays the key."""
+    await _run_sync(_client_with_orders([
+        {"id": 1001, "ticker": "ASML_NL_EQ", "dateExecuted": "2026-01-15T10:00:00Z",
+         "fillQty": 10.0, "fillPrice": 700.0, "fillCost": 7000.0, "status": "FILLED"},
+    ]))
+    assert set(_order_rows()) == {"t212-ord-1001"}
