@@ -1,6 +1,7 @@
 import React from "react";
 import { Database, Server, ShieldCheck } from "lucide-react";
 import { HealthStatus } from "@/types";
+import { getDisplayCurrency } from "@/lib/utils";
 
 interface SystemStatusBannerProps {
   health: HealthStatus | null;
@@ -41,7 +42,7 @@ export const SystemStatusBanner: React.FC<SystemStatusBannerProps> = ({
               </span>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              SQLite (WAL Mode) • Local-first API • Base Currency: EUR
+              SQLite (WAL Mode) • Local-first API • Currency: {getDisplayCurrency()}
             </p>
           </div>
         </div>

@@ -15,6 +15,7 @@ import {
 import { fetchDiversification } from "../../lib/api";
 import { DiversificationResponse } from "../../types";
 import { StockLogo } from "../ui/StockLogo";
+import { currencySymbol, getDisplayCurrency } from "@/lib/utils";
 
 interface DiversificationViewProps {
   onNavigateToHoldings?: () => void;
@@ -327,7 +328,7 @@ export const DiversificationView: React.FC<DiversificationViewProps> = ({
                           </div>
                           <div className="text-right flex-shrink-0">
                             <div className="text-xs font-semibold text-slate-900">{holding.percentage.toFixed(1)}%</div>
-                            <div className="text-[11px] text-slate-500">{holding.value.toLocaleString(undefined, { style: "currency", currency: "EUR" })}</div>
+                            <div className="text-[11px] text-slate-500">{holding.value.toLocaleString(undefined, { style: "currency", currency: getDisplayCurrency() })}</div>
                           </div>
                         </div>
                       ))}
@@ -374,7 +375,7 @@ export const DiversificationView: React.FC<DiversificationViewProps> = ({
                     <div className="text-right flex items-center gap-2">
                       <div>
                         <div className="text-xs font-bold text-slate-900">{geo.percentage.toFixed(1)}%</div>
-                        <div className="text-[11px] text-slate-500">€{geo.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                        <div className="text-[11px] text-slate-500">{currencySymbol()}{geo.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                       </div>
                       {isExpanded ? <ChevronUp className="w-3.5 h-3.5 text-slate-400" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-400" />}
                     </div>
@@ -392,7 +393,7 @@ export const DiversificationView: React.FC<DiversificationViewProps> = ({
                           </div>
                           <div className="text-right flex-shrink-0">
                             <div className="text-xs font-semibold text-slate-900">{holding.percentage.toFixed(1)}%</div>
-                            <div className="text-[11px] text-slate-500">{holding.value.toLocaleString(undefined, { style: "currency", currency: "EUR" })}</div>
+                            <div className="text-[11px] text-slate-500">{holding.value.toLocaleString(undefined, { style: "currency", currency: getDisplayCurrency() })}</div>
                           </div>
                         </div>
                       ))}

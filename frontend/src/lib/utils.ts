@@ -5,7 +5,26 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatCurrency(amount: number, currency: string = "EUR"): string {
+// Currency used when a caller doesn't pass one: the account currency, set by
+// App from the portfolio summary. Defaults to EUR until that loads.
+let displayCurrency = "EUR";
+
+export function setDisplayCurrency(currency?: string | null): void {
+  if (currency && /^[A-Za-z]{3}$/.test(currency)) displayCurrency = currency.toUpperCase();
+}
+
+export function getDisplayCurrency(): string {
+  return displayCurrency;
+}
+
+export function currencySymbol(currency: string = displayCurrency): string {
+  const part = new Intl.NumberFormat("en-IE", { style: "currency", currency })
+    .formatToParts(0)
+    .find((p) => p.type === "currency");
+  return part?.value ?? currency;
+}
+
+export function formatCurrency(amount: number, currency: string = displayCurrency): string {
   return new Intl.NumberFormat("en-IE", {
     style: "currency",
     currency: currency,

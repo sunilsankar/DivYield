@@ -10,7 +10,7 @@ import {
 } from "recharts";
 import { MonthlyDividend } from "@/types";
 import { BarChart3 } from "lucide-react";
-import { formatCurrency } from "@/lib/utils";
+import { currencySymbol, formatCurrency } from "@/lib/utils";
 
 interface DividendBarChartProps {
   data: MonthlyDividend[];
@@ -76,7 +76,7 @@ export const DividendBarChart: React.FC<DividendBarChartProps> = ({ data }) => {
               fontSize={11}
               tickLine={false}
               axisLine={false}
-              tickFormatter={(v) => `€${v}`}
+              tickFormatter={(v) => `${currencySymbol()}${v}`}
             />
             <Tooltip
               content={({ active, payload, label }) => {

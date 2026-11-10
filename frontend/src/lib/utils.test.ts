@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { formatCurrency, formatPercent, cn } from "./utils";
+import { afterEach, describe, it, expect } from "vitest";
+import { cn, currencySymbol, formatCurrency, formatPercent, getDisplayCurrency, setDisplayCurrency } from "./utils";
 
 describe("Utils tests", () => {
   it("formats positive and negative currency amounts correctly in EUR", () => {
@@ -17,5 +17,25 @@ describe("Utils tests", () => {
 
   it("merges class names correctly", () => {
     expect(cn("px-2", "py-1", "bg-white")).toBe("px-2 py-1 bg-white");
+  });
+});
+
+describe("display currency", () => {
+  afterEach(() => setDisplayCurrency("EUR"));
+
+  it("formats amounts without an explicit currency in the account currency", () => {
+    expect(formatCurrency(1234.5)).toContain("€");
+    setDisplayCurrency("gbp");
+    expect(getDisplayCurrency()).toBe("GBP");
+    expect(formatCurrency(1234.5)).toBe("£1,234.50");
+    expect(formatCurrency(10, "USD")).toContain("$");
+  });
+
+  it("gives the symbol for the current currency and ignores invalid codes", () => {
+    setDisplayCurrency("GBP");
+    expect(currencySymbol()).toBe("£");
+    setDisplayCurrency(undefined);
+    setDisplayCurrency("pounds");
+    expect(getDisplayCurrency()).toBe("GBP");
   });
 });

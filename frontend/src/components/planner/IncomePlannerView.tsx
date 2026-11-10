@@ -13,6 +13,7 @@ import {
 import { fetchIncomePlanner } from "../../lib/api";
 import { IncomePlannerResponse, PlannerMonth } from "../../types";
 import { StockLogo } from "../ui/StockLogo";
+import { getDisplayCurrency } from "@/lib/utils";
 
 interface IncomePlannerViewProps {
   onNavigateToHoldings?: () => void;
@@ -45,7 +46,7 @@ export const IncomePlannerView: React.FC<IncomePlannerViewProps> = () => {
     loadData();
   }, []);
 
-  const formatCurrency = (val: number, cur: string = "EUR") => {
+  const formatCurrency = (val: number, cur: string = getDisplayCurrency()) => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
       currency: cur,
@@ -300,7 +301,7 @@ export const IncomePlannerView: React.FC<IncomePlannerViewProps> = () => {
               </div>
               <p className="text-xs text-slate-500 mt-1">
                 {selectedMonth.is_gap
-                  ? `Invest in your existing holdings that pay dividends in ${selectedMonth.month_name} to lift this month to the €${data.monthly_average.toFixed(2)} target.`
+                  ? `Invest in your existing holdings that pay dividends in ${selectedMonth.month_name} to lift this month to the ${formatCurrency(data.monthly_average, data.currency)} target.`
                   : `This month already meets or exceeds your 12-month average dividend target.`}
               </p>
             </div>
@@ -398,7 +399,7 @@ export const IncomePlannerView: React.FC<IncomePlannerViewProps> = () => {
                           <span className="font-bold text-slate-900 block text-xs">
                             {formatCurrency(rec.capital_needed, data.currency)}
                           </span>
-                          <span className="text-[10px] text-slate-400">to fill €{selectedMonth.gap_amount.toFixed(2)}</span>
+                          <span className="text-[10px] text-slate-400">to fill {formatCurrency(selectedMonth.gap_amount, data.currency)}</span>
                         </td>
                       </tr>
                     ))}
@@ -409,7 +410,7 @@ export const IncomePlannerView: React.FC<IncomePlannerViewProps> = () => {
               <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/60 text-[11px] text-slate-500 flex items-start gap-2">
                 <Layers className="w-4 h-4 text-slate-400 flex-shrink-0 mt-0.5" />
                 <span>
-                  <strong>How this works:</strong> Each recommendation calculates the estimated dividend per share expected in {selectedMonth.month_name} based on your scheduled payouts, historical payout months, or frequency. Purchasing the indicated additional shares would generate enough cash flow to lift {selectedMonth.month_name} to your portfolio's €{data.monthly_average.toFixed(2)} average.
+                  <strong>How this works:</strong> Each recommendation calculates the estimated dividend per share expected in {selectedMonth.month_name} based on your scheduled payouts, historical payout months, or frequency. Purchasing the indicated additional shares would generate enough cash flow to lift {selectedMonth.month_name} to your portfolio's {formatCurrency(data.monthly_average, data.currency)} average.
                 </span>
               </div>
             </div>

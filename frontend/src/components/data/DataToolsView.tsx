@@ -21,6 +21,7 @@ import {
   importCsv,
 } from "../../lib/api";
 import { CashInterestResponse, CashInterestItem } from "../../types";
+import { currencySymbol, getDisplayCurrency } from "@/lib/utils";
 
 type Tab = "interest" | "manual" | "csv";
 
@@ -138,7 +139,7 @@ const CashInterestPanel: React.FC = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1.5">Average Balance (EUR)</label>
+            <label className="block text-xs font-medium text-slate-700 mb-1.5">Average Balance ({getDisplayCurrency()})</label>
             <input
               type="number"
               value={balance}
@@ -197,7 +198,7 @@ const CashInterestPanel: React.FC = () => {
             <span>Estimate &amp; Save</span>
           </button>
           <span className="text-xs text-slate-500 italic">
-            Daily Accrual: €{(balance * (rate / 100) / 365).toFixed(2)}
+            Daily Accrual: {currencySymbol()}{(balance * (rate / 100) / 365).toFixed(2)}
           </span>
         </div>
 
@@ -225,7 +226,7 @@ const CashInterestPanel: React.FC = () => {
             <div className="text-right">
               <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Total YTD</div>
               <div className="text-lg font-bold text-emerald-700">
-                €{data.total_interest_ytd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {currencySymbol()}{data.total_interest_ytd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
             </div>
           </div>
@@ -241,7 +242,7 @@ const CashInterestPanel: React.FC = () => {
                   <tr className="border-b border-slate-100 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
                     <th className="py-2.5 px-3">Period</th>
                     <th className="py-2.5 px-3">Source</th>
-                    <th className="py-2.5 px-3 text-right">Balance (EUR)</th>
+                    <th className="py-2.5 px-3 text-right">Balance ({getDisplayCurrency()})</th>
                     <th className="py-2.5 px-3 text-right">Rate</th>
                     <th className="py-2.5 px-3 text-right">Interest</th>
                     <th className="py-2.5 px-3">Notes</th>
@@ -258,10 +259,10 @@ const CashInterestPanel: React.FC = () => {
                           {p.source}
                         </span>
                       </td>
-                      <td className="py-2.5 px-3 text-right font-mono text-slate-900">€{p.average_balance.toLocaleString()}</td>
+                      <td className="py-2.5 px-3 text-right font-mono text-slate-900">{currencySymbol()}{p.average_balance.toLocaleString()}</td>
                       <td className="py-2.5 px-3 text-right font-medium text-indigo-600 font-mono">{p.annual_rate.toFixed(2)}%</td>
                       <td className="py-2.5 px-3 text-right font-semibold text-emerald-700 font-mono">
-                        €{p.interest_earned.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        {currencySymbol()}{p.interest_earned.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                       </td>
                       <td className="py-2.5 px-3 text-slate-500">{p.notes || "—"}</td>
                     </tr>
@@ -376,7 +377,7 @@ const ManualEntriesPanel: React.FC = () => {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1.5">Avg Price (€)</label>
+            <label className="block text-xs font-medium text-slate-700 mb-1.5">Avg Price ({currencySymbol()})</label>
             <input
               type="number"
               step="0.01"
@@ -396,7 +397,7 @@ const ManualEntriesPanel: React.FC = () => {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1.5">Annual Dividend (€)</label>
+            <label className="block text-xs font-medium text-slate-700 mb-1.5">Annual Dividend ({currencySymbol()})</label>
             <input
               type="number"
               step="0.01"
@@ -454,7 +455,7 @@ const ManualEntriesPanel: React.FC = () => {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1.5">Amount (€)</label>
+            <label className="block text-xs font-medium text-slate-700 mb-1.5">Amount ({currencySymbol()})</label>
             <input
               type="number"
               step="0.01"

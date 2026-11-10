@@ -14,7 +14,7 @@ import {
   Info,
 } from "lucide-react";
 import { ApiDividendItem, ApiHolding, Holding } from "../../types";
-import { formatCurrency } from "../../lib/utils";
+import { formatCurrency, getDisplayCurrency } from "../../lib/utils";
 import { StockLogo } from "../ui/StockLogo";
 import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
 
@@ -32,7 +32,7 @@ export const DividendCalendarView: React.FC<DividendCalendarViewProps> = ({
   receivedDividends,
   expectedDividends = [],
   holdings = [],
-  currency = "EUR",
+  currency = getDisplayCurrency(),
 }) => {
   const [viewMode, setViewMode] = useState<CalendarViewMode>("month");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
@@ -329,7 +329,7 @@ export const DividendCalendarView: React.FC<DividendCalendarViewProps> = ({
               <h2 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
                 Dividend Calendar & Schedule
                 <span className="text-[11px] font-semibold bg-indigo-50 border border-indigo-200/70 text-indigo-700 px-2.5 py-0.5 rounded-full">
-                  EUR
+                  {currency}
                 </span>
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">
@@ -474,7 +474,7 @@ export const DividendCalendarView: React.FC<DividendCalendarViewProps> = ({
             {formatCurrency(totalExpected, currency)}
           </div>
           <div className="text-xs text-indigo-700 mt-1">
-            Expected declarations converted to EUR
+            Expected declarations converted to {currency}
           </div>
         </div>
 

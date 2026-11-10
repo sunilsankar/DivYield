@@ -27,6 +27,7 @@ import {
   CartesianGrid,
 } from "recharts";
 import { StockLogo } from "../ui/StockLogo";
+import { currencySymbol, getDisplayCurrency } from "@/lib/utils";
 
 export const AnalyticsView: React.FC = () => {
   const [overview, setOverview] = useState<AnalyticsOverview | null>(null);
@@ -83,9 +84,9 @@ export const AnalyticsView: React.FC = () => {
   }, [projYears, dividendGrowthRate, reinvestDividends, annualContribution, expectedPriceGrowth]);
 
   const formatCurrency = (val: number) => {
-    return new Intl.NumberFormat("nl-NL", {
+    return new Intl.NumberFormat("en-IE", {
       style: "currency",
-      currency: "EUR",
+      currency: getDisplayCurrency(),
       maximumFractionDigits: 2,
     }).format(val);
   };
@@ -256,7 +257,7 @@ export const AnalyticsView: React.FC = () => {
           <div>
             <label className="block text-slate-700 font-medium mb-1.5 flex items-center justify-between">
               <span>Annual Contribution</span>
-              <span className="font-semibold text-indigo-600">€{annualContribution}</span>
+              <span className="font-semibold text-indigo-600">{currencySymbol()}{annualContribution}</span>
             </label>
             <input
               type="number"
@@ -378,7 +379,7 @@ export const AnalyticsView: React.FC = () => {
                 <YAxis
                   yAxisId="div"
                   tick={{ fontSize: 11, fill: "#64748b" }}
-                  tickFormatter={(val) => `€${val}`}
+                  tickFormatter={(val) => `${currencySymbol()}${val}`}
                   axisLine={false}
                   tickLine={false}
                 />
