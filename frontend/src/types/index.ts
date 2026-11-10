@@ -158,6 +158,13 @@ export interface Trading212Status {
   account_currency?: string | null;
 }
 
+export interface Preferences {
+  base_currency: string;
+  account_currency: string;
+  account_currency_source: "trading212" | "preference" | "default" | string;
+  supported_base_currencies: string[];
+}
+
 export interface ConnectionsResponse {
   trading212: Trading212Status;
 }

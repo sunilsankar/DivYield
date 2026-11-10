@@ -10,6 +10,7 @@ from typing import Final
 TRADING212_READ_ALLOWLIST: Final[frozenset[str]] = frozenset(
     [
         "/api/v0/equity/account/info",
+        "/api/v0/equity/account/summary",
         "/api/v0/equity/account/cash",
         "/api/v0/equity/portfolio",
         "/api/v0/equity/metadata/instruments",

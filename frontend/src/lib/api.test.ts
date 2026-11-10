@@ -18,6 +18,8 @@ import {
   fetchSyncSettings,
   updateSyncSettings,
   fetchIncomePlanner,
+  fetchPreferences,
+  updatePreferences,
 } from "./api";
 
 describe("API Client Tests", () => {
@@ -333,6 +335,51 @@ describe("API Client Tests", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ clear_credentials: true }),
       })
+    );
+  });
+
+  it("fetchPreferences and updatePreferences save the base currency", async () => {
+    const prefs = {
+      base_currency: "GBP",
+      account_currency: "GBP",
+      account_currency_source: "preference",
+      supported_base_currencies: ["EUR", "USD", "GBP"],
+    };
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => prefs,
+    } as unknown as Response);
+
+    const getRes = await fetchPreferences();
+    expect(getRes.base_currency).toBe("GBP");
+    expect(globalThis.fetch).toHaveBeenCalledWith("/api/v1/preferences");
+
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => prefs,
+    } as unknown as Response);
+
+    const postRes = await updatePreferences({ base_currency: "GBP" });
+    expect(postRes.account_currency).toBe("GBP");
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      "/api/v1/preferences",
+      expect.objectContaining({
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ base_currency: "GBP" }),
+      })
+    );
+  });
+
+  it("updatePreferences surfaces the server's validation message", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      json: async () => ({ detail: "base_currency must be one of EUR, USD, GBP" }),
+    } as unknown as Response);
+
+    await expect(updatePreferences({ base_currency: "JPY" })).rejects.toThrow(
+      "base_currency must be one of EUR, USD, GBP"
     );
   });
 

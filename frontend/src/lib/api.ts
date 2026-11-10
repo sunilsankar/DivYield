@@ -15,6 +15,7 @@ import {
   NetherlandsTaxData,
   DiversificationResponse,
   IncomePlannerResponse,
+  Preferences,
 } from "../types";
 
 const API_BASE = "/api/v1";
@@ -183,6 +184,27 @@ export async function updateSyncSettings(payload: { sync_frequency: string }): P
   });
   if (!res.ok) {
     throw new Error(`Failed to update sync settings (${res.status})`);
+  }
+  return res.json();
+}
+
+export async function fetchPreferences(): Promise<Preferences> {
+  const res = await fetch(`${API_BASE}/preferences`);
+  if (!res.ok) {
+    throw new Error(`Failed to load preferences (${res.status})`);
+  }
+  return res.json();
+}
+
+export async function updatePreferences(payload: { base_currency: string }): Promise<Preferences> {
+  const res = await fetch(`${API_BASE}/preferences`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.detail || `Failed to update preferences (${res.status})`);
   }
   return res.json();
 }

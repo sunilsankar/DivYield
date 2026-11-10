@@ -45,6 +45,8 @@ import {
   removeSecurityPassword,
   fetchSyncSettings,
   updateSyncSettings,
+  fetchPreferences,
+  updatePreferences,
 } from "./lib/api";
 
 const SECTOR_COLORS = [
@@ -156,6 +158,8 @@ export function App() {
     stepMessage: string;
   } | null>(null);
   const [syncFrequency, setSyncFrequency] = useState<string>("manual");
+  const [baseCurrency, setBaseCurrency] = useState<string>("EUR");
+  const [accountCurrencySource, setAccountCurrencySource] = useState<string>("default");
   const [updateInfo, setUpdateInfo] = useState<UpdateCheckResult | null>(null);
   const [isCheckingUpdate, setIsCheckingUpdate] = useState<boolean>(false);
   const [isResetting, setIsResetting] = useState<boolean>(false);
@@ -324,6 +328,12 @@ export function App() {
         if (s?.sync_frequency) setSyncFrequency(s.sync_frequency);
       })
       .catch(() => {});
+    fetchPreferences()
+      .then((p) => {
+        if (p?.base_currency) setBaseCurrency(p.base_currency);
+        if (p?.account_currency_source) setAccountCurrencySource(p.account_currency_source);
+      })
+      .catch(() => {});
     const interval = setInterval(() => {
       checkHealth();
       loadConnections();
@@ -343,6 +353,25 @@ export function App() {
       );
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to update sync frequency";
+      setNotification(`Error: ${msg}`);
+    }
+  };
+
+  const handleBaseCurrencyChange = async (newCurrency: string) => {
+    const previous = baseCurrency;
+    setBaseCurrency(newCurrency);
+    try {
+      const p = await updatePreferences({ base_currency: newCurrency });
+      setAccountCurrencySource(p.account_currency_source);
+      setNotification(
+        p.account_currency_source === "trading212"
+          ? `Base currency saved as ${p.base_currency}. Trading 212 reports this account in ${p.account_currency}, which is used for its values.`
+          : `Base currency saved as ${p.base_currency}.`
+      );
+      loadLiveData();
+    } catch (err: unknown) {
+      setBaseCurrency(previous);
+      const msg = err instanceof Error ? err.message : "Failed to update base currency";
       setNotification(`Error: ${msg}`);
     }
   };
@@ -799,11 +828,20 @@ export function App() {
               <div className="space-y-4 max-w-md text-xs">
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1.5">Base Currency</label>
-                  <select className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                  <select
+                    value={baseCurrency}
+                    onChange={(e) => handleBaseCurrencyChange(e.target.value)}
+                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
                     <option value="EUR">EUR (€) — Euro (Default)</option>
                     <option value="USD">USD ($) — US Dollar</option>
                     <option value="GBP">GBP (£) — British Pound</option>
                   </select>
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    {accountCurrencySource === "trading212"
+                      ? "Values use the account currency Trading 212 reports."
+                      : "Used as the account currency until Trading 212 reports one. Saved automatically."}
+                  </p>
                 </div>
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1.5">Tax Jurisdiction</label>

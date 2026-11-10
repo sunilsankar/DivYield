@@ -269,6 +269,10 @@ class Trading212Client:
         """Fetch general account metadata (read-only)."""
         return await self._request("/api/v0/equity/account/info")
 
+    async def get_account_summary(self) -> Dict[str, Any]:
+        """Fetch the account summary, including its primary currency (read-only)."""
+        return await self._request("/api/v0/equity/account/summary")
+
     async def get_account_cash(self) -> Dict[str, Any]:
         """Fetch cash balance details (read-only)."""
         return await self._request("/api/v0/equity/account/cash")

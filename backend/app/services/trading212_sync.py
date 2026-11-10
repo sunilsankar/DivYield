@@ -10,7 +10,7 @@ import asyncio
 import logging
 from app.credentials import get_trading212_credentials
 from app.providers.trading212 import Trading212Client
-from app.database import get_db, set_setting
+from app.database import get_db, get_setting, set_setting
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +64,34 @@ def derive_fx_rates(
     return rates
 
 
+async def resolve_account_currency(client: Any, cash_data: Any) -> tuple[str, str]:
+    """Return (currency, source) for the Trading 212 account.
+
+    /equity/account/cash carries no currency field, so the previous fallback
+    always labelled the account EUR. Ask the documented /equity/account/summary
+    endpoint first, then the cash payload, then the user's Base Currency
+    preference, and only then EUR. source is "trading212", "preference" or
+    "default".
+    """
+    reported = None
+    try:
+        summary = await client.get_account_summary()
+        if isinstance(summary, dict) and isinstance(summary.get("currency"), str):
+            reported = summary["currency"]
+    except Exception as exc:
+        logger.info("Trading 212 account summary unavailable (%s); using fallbacks for account currency", exc)
+
+    if not reported and isinstance(cash_data, dict) and isinstance(cash_data.get("currency"), str):
+        reported = cash_data["currency"]
+    if reported and reported.strip():
+        return reported.strip().upper(), "trading212"
+
+    preference = get_setting("base_currency")
+    if preference and preference.strip():
+        return preference.strip().upper(), "preference"
+    return "EUR", "default"
+
+
 async def sync_trading212(progress_cb: Optional[Callable[[int, int, str], None]] = None) -> Dict[str, Any]:
     """Execute full read-only synchronization of Trading 212 data."""
     def _notify(step: int, total: int, msg: str):
@@ -99,12 +127,13 @@ async def sync_trading212(progress_cb: Optional[Callable[[int, int, str], None]]
             # 1. Fetch cash balances and account info
             _notify(1, 8, "Checking Trading 212 account info & cash...")
             cash_data = await client.get_account_cash()
-            account_currency = cash_data.get("currency", "EUR") if isinstance(cash_data, dict) else "EUR"
+            account_currency, currency_source = await resolve_account_currency(client, cash_data)
             free_cash = float(cash_data.get("free", 0.0)) if isinstance(cash_data, dict) else 0.0
             total_cash = float(cash_data.get("total", 0.0)) if isinstance(cash_data, dict) else 0.0
             ppl = float(cash_data.get("ppl", 0.0)) if isinstance(cash_data, dict) else 0.0
 
             set_setting("account_currency", account_currency)
+            set_setting("account_currency_source", currency_source)
             set_setting("account_free_cash", str(free_cash))
             set_setting("account_total_cash", str(total_cash))
             set_setting("account_ppl", str(ppl))
@@ -265,6 +294,7 @@ async def sync_trading212(progress_cb: Optional[Callable[[int, int, str], None]]
                                 quantity = excluded.quantity,
                                 price = excluded.price,
                                 amount = excluded.amount,
+                                currency = excluded.currency,
                                 notes = excluded.notes,
                                 synced_at = excluded.synced_at;
                             """,
@@ -366,8 +396,18 @@ async def sync_trading212(progress_cb: Optional[Callable[[int, int, str], None]]
                         base_ticker = ticker_raw.split("_")[0] if "_" in ticker_raw else ticker_raw
                         raw_pay = str(div.get("paidOn") or now_iso)
                         pay_date = raw_pay[:10]
-                        amount = float(div.get("amountInEuro") or div.get("amount") or div.get("grossAmount") or 0.0)
-                        currency = account_currency if div.get("amountInEuro") is not None else (div.get("currency") or account_currency)
+                        # `amount` is in the account's primary currency (T212 API spec);
+                        # `amountInEuro` is EUR whatever the account currency, so it is
+                        # only a fallback and is labelled EUR when used.
+                        if div.get("amount") is not None:
+                            amount = float(div.get("amount") or 0.0)
+                            currency = div.get("currency") or account_currency
+                        elif div.get("amountInEuro") is not None:
+                            amount = float(div.get("amountInEuro") or 0.0)
+                            currency = "EUR"
+                        else:
+                            amount = float(div.get("grossAmount") or 0.0)
+                            currency = div.get("currency") or account_currency
 
                         conn.execute(
                             """
