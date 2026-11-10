@@ -72,17 +72,23 @@ def resolve_yahoo_symbol(ticker: str, conn: Optional[sqlite3.Connection] = None)
     if clean.upper() == "FB":
         return "META"
 
-    # 1. Check custom user mapping in DB if connection provided
+    # 1. Check custom user mapping in DB if connection provided. Holdings pass
+    #    the full Trading 212 id (JEPQl_EQ), while mappings are often keyed on
+    #    the short ticker (JEPQl), so try both.
     if conn:
+        keys = [clean]
+        if "_" in clean and clean.split("_")[0]:
+            keys.append(clean.split("_")[0])
         try:
             cursor = conn.cursor()
-            cursor.execute(
-                "SELECT yahoo_ticker FROM instrument_mappings WHERE trading212_ticker = ?;",
-                (clean,),
-            )
-            row = cursor.fetchone()
-            if row and row["yahoo_ticker"]:
-                return row["yahoo_ticker"].strip()
+            for key in keys:
+                cursor.execute(
+                    "SELECT yahoo_ticker FROM instrument_mappings WHERE trading212_ticker = ?;",
+                    (key,),
+                )
+                row = cursor.fetchone()
+                if row and row["yahoo_ticker"]:
+                    return row["yahoo_ticker"].strip()
         except Exception:
             pass
 
@@ -114,6 +120,9 @@ def resolve_yahoo_symbol(ticker: str, conn: Optional[sqlite3.Connection] = None)
                 return f"{base}.MC"
             elif suf == "CH":
                 return f"{base}.SW"
+        # No country code (e.g. JEPQl_EQ, RHMd_EQ): the exchange is the
+        # lowercase letter on the base ticker, handled below.
+        clean = base
 
     # 4. Check lowercase trailing character for exchange
     # E.g. ASMLa -> ASML.AS, RHMd -> RHM.DE, NESFl -> NESF.L, MCp -> MC.PA
@@ -135,6 +144,72 @@ def resolve_yahoo_symbol(ticker: str, conn: Optional[sqlite3.Connection] = None)
     return clean.split("_")[0].upper()
 
 
+# Yahoo quotes these in 1/100 of the currency (pence, cents, agorot).
+_MINOR_UNIT_CURRENCIES = {"GBp", "GBX", "ZAc", "ILA"}
+
+
+def _yahoo_price(info: Dict[str, Any]) -> float:
+    for key in ("regularMarketPrice", "currentPrice", "previousClose", "navPrice"):
+        try:
+            value = float(info.get(key) or 0.0)
+        except (TypeError, ValueError):
+            continue
+        if value > 0:
+            return value
+    return 0.0
+
+
+def _account_converter(yahoo_price: float, holding_price: float, fx_rate: float) -> Callable[[float], float]:
+    """Convert an amount quoted like Yahoo's price into the account currency."""
+    if yahoo_price > 0 and holding_price > 0:
+        ratio = holding_price / yahoo_price
+        return lambda amount: amount * ratio
+    return lambda amount: amount * fx_rate
+
+
+def _annual_dividend_per_share(info: Dict[str, Any], divs: Any) -> float:
+    """Forward rate if Yahoo has one, else the trailing 12 months of payouts.
+
+    ETFs (e.g. JEPQ.L, VUSA.L) usually have no dividendRate. Returned in the
+    same unit as Yahoo's price: for lines quoted in minor units (London GBp),
+    Yahoo gives the rate fields in major units (BA.L: price 1883 GBp, rate
+    0.38 GBP) but the payout history in minor units, so the rates are scaled.
+    """
+    minor_unit = str(info.get("currency") or "") in _MINOR_UNIT_CURRENCIES
+    for key in ("dividendRate", "trailingAnnualDividendRate"):
+        try:
+            value = float(info.get(key) or 0.0)
+        except (TypeError, ValueError):
+            value = 0.0
+        if value > 0:
+            return value * 100.0 if minor_unit else value
+    if divs is None or getattr(divs, "empty", True):
+        return 0.0
+    try:
+        idx = divs.index
+        now = datetime.now(idx.tz) if getattr(idx, "tz", None) is not None else datetime.now()
+        recent = divs[idx >= now - timedelta(days=365)]
+        return float(recent.sum())
+    except Exception:
+        return 0.0
+
+
+def _info_yield_percent(info: Dict[str, Any]) -> float:
+    """Yield in percent when no price is available to compute it.
+
+    yfinance >= 0.2.54 reports dividendYield in percent (0.31 = 0.31%), while
+    the ETF `yield` field stays a fraction (0.105 = 10.5%).
+    """
+    try:
+        value = float(info.get("dividendYield") or 0.0)
+        if value > 0:
+            return value
+        value = float(info.get("yield") or 0.0)
+        return value * 100.0 if value > 0 else 0.0
+    except (TypeError, ValueError):
+        return 0.0
+
+
 def _fetch_ticker_enrichment(
     item: Dict[str, Any],
     rate_limiter: YahooRateLimiter,
@@ -145,6 +220,7 @@ def _fetch_ticker_enrichment(
     yahoo_symbol = item["yahoo_symbol"]
     quantity = float(item["quantity"] or 0.0)
     fx_rate = float(item["fx_rate"] or 1.0)
+    holding_price = float(item.get("current_price") or 0.0)
 
     res: Dict[str, Any] = {
         "ticker": t212_ticker,
@@ -166,18 +242,31 @@ def _fetch_ticker_enrichment(
             res["sector"] = info.get("sector")
             res["industry"] = info.get("industry")
 
-            # Yield and Annual Dividend
-            div_rate = float(info.get("dividendRate") or 0.0)
-            div_yield = float(info.get("dividendYield") or 0.0)
-            if div_yield > 0 and div_yield < 1.0:
-                div_yield = round(div_yield * 100.0, 2)
+            divs = t.dividends
+            yahoo_price = _yahoo_price(info)
+            to_account = _account_converter(yahoo_price, holding_price, fx_rate)
 
-            res["dividend_yield"] = div_yield
-            # Store annual dividend per share in EUR
-            res["annual_dividend"] = round(div_rate * fx_rate, 4)
+            # Yield and annual dividend. Yahoo quotes an instrument in its own
+            # currency (JEPQ.L in USD, many London lines in pence), which need
+            # not match Trading 212's instrument currency, so fx_rate alone can
+            # be wrong. Dividend / Yahoo price is unitless; apply it to the
+            # Trading 212 price (account currency) instead.
+            annual_per_share = _annual_dividend_per_share(info, divs)
+            if yahoo_price > 0 and annual_per_share > 0:
+                div_yield = annual_per_share / yahoo_price * 100.0
+                if div_yield > 50.0:
+                    # Dividends in pence against a price in pounds (or similar).
+                    annual_per_share /= 100.0
+                    div_yield /= 100.0
+            else:
+                div_yield = _info_yield_percent(info)
+
+            res["dividend_yield"] = round(div_yield, 2)
+            # Annual income of the whole position, in account currency (what
+            # the analytics, projections and planner read).
+            res["annual_dividend"] = round(to_account(annual_per_share) * quantity, 2)
 
             # Historical dividends analysis for frequency & projections
-            divs = t.dividends
             if divs is not None and not divs.empty and len(divs) > 0:
                 last_date = divs.index[-1].date()
                 last_amt = float(divs.iloc[-1])
@@ -247,9 +336,10 @@ def _fetch_ticker_enrichment(
                         projected_dates.append(next_d)
                     next_d += step
 
-                # Payout amount per share in EUR
-                payout_eur = last_amt * fx_rate
-                total_holding_payout = round(payout_eur * quantity, 2)
+                # Payout of the whole position, in account currency
+                if yahoo_price > 0 and last_amt / yahoo_price > 0.5:
+                    last_amt /= 100.0
+                total_holding_payout = round(to_account(last_amt) * quantity, 2)
 
                 for p_date in projected_dates:
                     if total_holding_payout > 0:
@@ -290,7 +380,7 @@ class YahooFinanceEnrichmentService:
             cursor = conn.cursor()
             cursor.execute(
                 """
-                SELECT ticker, external_id, quantity, fx_rate
+                SELECT ticker, external_id, quantity, fx_rate, current_price
                 FROM holdings
                 WHERE quantity > 0
                 ORDER BY market_value DESC;
@@ -322,6 +412,7 @@ class YahooFinanceEnrichmentService:
                         "yahoo_symbol": yf_sym,
                         "quantity": r["quantity"],
                         "fx_rate": r["fx_rate"],
+                        "current_price": r["current_price"],
                     }
                 )
 

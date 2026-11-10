@@ -508,10 +508,11 @@ export function App() {
   }, [liveDividends]);
 
   const forwardAnnualDividend = useMemo(() => {
-    // 1. If holdings have annual_dividend, sum across active positions
+    // 1. If holdings have annual_dividend (annual income of the whole
+    //    position, as the analytics endpoints use it), sum across positions
     const fromHoldings = liveHoldings.reduce((sum, h) => {
       if (typeof h.annual_dividend === "number" && h.annual_dividend > 0) {
-        return sum + h.annual_dividend * (h.quantity || 1);
+        return sum + h.annual_dividend;
       }
       if (typeof h.dividend_yield === "number" && h.dividend_yield > 0) {
         return sum + h.market_value * (h.dividend_yield / 100);
